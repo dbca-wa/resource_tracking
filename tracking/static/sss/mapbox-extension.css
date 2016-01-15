@@ -1,0 +1,13 @@
+.leaflet-before ,.leaflet-after{
+    position:absolute;
+    z-index:1000;
+    pointer-events:none
+}
+
+.leaflet-before {
+    top:0px;
+}
+
+.leaflet-after {
+    bottom:-50px;
+}

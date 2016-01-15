@@ -1,0 +1,13 @@
+.hg
+.hgignore
+
+*.swp
+*.pyc
+*.env
+*.orig
+venv
+testing
+staticfiles
+
+**/version
+tracking/templates/devices

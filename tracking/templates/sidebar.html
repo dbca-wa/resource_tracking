@@ -1,0 +1,79 @@
+{% verbatim %}
+<!-- Nav tabs -->
+<ul class="sidebar-tabs" role="tablist">
+    <li><a href="#resources" title="Resources - Logged tracking points from resources active in past 14 days" role="tab"><i class="fa fa-car"></i></a></li>
+    <li><a href="#catalog" title="Catalog - Add new layers to the map" role="tab"><i class="fa fa-search"></i></a></li>
+    <li><a href="#layers" title="Layers - Active map layers" role="tab"><i class="fa fa-bars {{^loaded}}fa-spin{{/loaded}}"></i></a></li>
+    <li><i class="fa fa-print" title="Print this map" style="padding:12px;cursor:pointer;"></i></li>
+    <li><a href="#settings" title="Settings - About, help and sign out" role="tab"><i class="fa fa-cog"></i></a></li>
+</ul>
+<!-- Tab panes -->
+<div class="sidebar-content active">
+<div class="sidebar-pane" id="resources">
+    <input type="search" class="search" placeholder="Search" value="{{deviceSearch}}"/>&nbsp;&nbsp;
+    <a href="javascript:;" class="zoom">Fit bounds to {{devices.length}}/{{_devices.length}} resources</a>
+    <ul class="list">
+    {{#devices}}
+        <li id="device-{{this.id}}" {{#if history == this.id}}class="active"{{/if}}>
+            <strong>{{this.name}} - {{this.callsign}} <i class="fa fa-{{this.icon}} icon-black"></i></strong>
+            <p>Saw <span style="color:{{this.age_colour}};"><b>{{this.age_text}}</b></span> on heading {{ this.heading }}</p>
+            <small><a onclick="sss.ractive.set('history', {{this.id}});">{{this.deviceid}} ({{this.symbol}})</a> logged {{this.seen.split("T")[1]}}<br>
+            {{this.category}} {{this.make}} {{this.model}} {{this.rego}}</small>
+        </li>
+    {{/devices}}
+    </ul>
+</div>
+<div class="sidebar-pane" id="catalog">
+    <input type="search" class="search" placeholder="Search {{wms_layercount}} layers..." value="{{layerSearch}}"/>&nbsp;&nbsp;
+    <input id="geocomplete" type="search" class="search" placeholder="Zoom to a place..."/>&nbsp;&nbsp;
+    <button id="geolocate" title="Locate me" class="pure-button"><i class="fa fa-crosshairs"></i></button>
+    <ul class="list">
+    {{#layers}}
+        <li id="layer-{{this.id}}" bbox="{{this.bbox}}">
+            <p class="float-right"><button class="pure-button" data-name={{this.id}} data-action="add">
+                <i class="fa fa-toggle-off"></i></button></p>
+            <h3>{{this.title}}</h3><div class="clear-both">{{{this.abstract}}}</div>
+        </li>
+    {{/layers}}
+    </ul>
+</div>
+<div class="sidebar-pane" id="layers">
+    {{^hasActiveLayers}}
+    <h3>Default baselayer using <a href="http://www.openstreetmap.org/">OpenStreetMap</a></h3>
+    {{/hasActiveLayers}}
+    <ul class="list reorderable">
+    {{#activeLayers}}
+        <li id="layer-{{this.id}}" decorator="sortable" bbox="{{this.bbox}}">
+            <p class="float-right">{{#if this.columns.length > 0}}
+                <a class="pure-button" href="{{this.wfs_url}}request=GetFeature&outputFormat=SHAPE-ZIP{{#this.cql}}&cql_filter={{this.cql}}{{/this.cql}}" target="_blank" title="Download as a shapefile"><i class="fa fa-download"></i></a>
+                <input type="search" onblur="$(this).parent().parent().attr('draggable', true);" onfocus="$(this).parent().parent().attr('draggable', false);"  class="search {{#this.hits}}success{{/this.hits}}" placeholder="CQL Filter..." value="{{this.cql}}"/>{{this.hits}}/{{this.totalHits}}{{/if}}
+                <button class="pure-button pure-button-active float-right" data-name={{this.id}} data-action="remove" title="Remove this layer from the map">
+                <i class="fa fa-toggle-on"></i></button>
+                <br>
+                <input type="range" onmousedown="$(this).parent().parent().attr('draggable', false);" onmouseup="$(this).parent().parent().attr('draggable', true);"   min="0" max="100" step="1" name="opacity" value="{{this.opacity}}" style="width:246px"/>
+            </p>
+            <h3>{{this.title}}</h3><div class="clear-both">{{{this.abstract}}}</div>
+        </li>
+    {{/activeLayers}}
+    </ul>
+</div>
+<div class="sidebar-pane" id="features">
+</div>
+<div class="sidebar-pane" id="settings">
+    <h3>Backup Spatial Support System</h3>
+    <form class="pure-form" id="logout" action="/logout">
+        <button class="pure-button pure-button-primary float-right">Sign Out</button>
+        <legend>Logged in as {{username}}</legend>
+    </form>
+    <small>Resources will refresh in <b>{{secondsLeft}}</b>/{{refreshInterval * 60}} seconds</small><br>
+    <small>Layers will refresh in {{layerMinutesLeft}}/{{refreshInterval * 10}} minutes</small>
+    <hr>
+    <p><span style="color:red;">Warning - Backup System only: </span> This application is designed to provide rapid access to spatial information. Please read more about what it can do and how to use it on the <a href="https://confluence.dpaw.wa.gov.au/display/SSS/AWS+DR+SSS+User+Guide" target="_blank">Confluence User Guide</a>. Note that logging out and in again will clear your entire cache, and probably fix any serious problems, otherwise the map setup is cached in your browser and should be restored as long as you don't clear your browsers offline storage.</p>
+    <hr>
+    <p>Copyright <i class="fa fa-copyright"></i> 2014<br>
+    <a href="http://www.dpaw.wa.gov.au" target="_blank">Department of Parks and Wildlife</a><br>
+    <a href="http://opensource.org/licenses/BSD-3-Clause" target="_blank">BSD 3-Clause Software License</a><br>
+    <a href="https://bitbucket.org/dpaw/resource_tracking" target="_blank">Download Source <i class="fa fa-bitbucket"></i></a></p>
+</div>
+</div>
+{% endverbatim %}
