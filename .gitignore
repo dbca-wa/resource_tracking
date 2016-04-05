@@ -1,5 +1,7 @@
 .hg
 .hgignore
+.env
+.env.port
 
 *.swp
 *.pyc
