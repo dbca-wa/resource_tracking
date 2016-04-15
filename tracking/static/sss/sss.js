@@ -483,7 +483,8 @@ var sss = (function (s) {
         L.mapbox.accessToken =  'pk.eyJ1IjoiZHBhd2FzaSIsImEiOiJtVjY5WmlFIn0.whc76euXLk2PkyxOkZ5xlQ'
 
         //var map = (new L.SssMap('map')).setView([-26, 120], 6);
-        var map = L.mapbox.map('map').setView([-26, 120], 6);
+        var map = L.mapbox.map('map',null,{crs:L.CRS.EPSG4326}).setView([-26, 120], 6);
+        //var map = L.mapbox.map('map').setView([-26, 120], 6);
         //assign the map object to s.map directly, because some callback methods reference s.map and will cause javascript exception. 
         s.map = map;
         map.removeControl(map.zoomControl);
