@@ -50,28 +50,6 @@ var sss = (function (s) {
         }
     }
 
-    //------------The logic to get the preview dimension---------
-    //whole australia bounding box
-    s.australia_bbox = [108.0000,-45.0000,155.0000,-10.0000];
-    //the max preview image dimension
-    s.australia_preview_dimension = [480,278];
-    
-    //based on the layer's bounding box, computing the layer's preview image dimension.
-    s.getPreviewDimension = function(bbox) {
-        if (bbox == null) {
-            return s.australia_preview_dimension;
-        }
-        var bbox_str = bbox.split(",");
-        var bbox_number = [parseFloat(bbox_str[0]),parseFloat(bbox_str[1]),parseFloat(bbox_str[2]),parseFloat(bbox_str[3])];
-        var bbox_ratio = [(bbox_number[2] - bbox_number[0]) / (s.australia_bbox[2] - s.australia_bbox[0]),(bbox_number[3] - bbox_number[1]) / (s.australia_bbox[3] - s.australia_bbox[1])];
-        if (bbox_ratio[0] > bbox_ratio[1]) {
-            return [s.australia_preview_dimension[0],Math.floor(s.australia_preview_dimension[1] * (bbox_ratio[1] / bbox_ratio[0]))];
-        } else {
-            return [Math.floor(s.australia_preview_dimension[0] * bbox_ratio[0] * (1 / bbox_ratio[1])),s.australia_preview_dimension[1]];
-        }
-    }
-    //--------------------------------------------------------------
-
     // Ractive setup
     s.ractive = new Ractive({
         el: '#sidebar', 
@@ -119,6 +97,8 @@ var sss = (function (s) {
                     //data is already cached, why need to call load again.
                     load();
                 };
+            },function() {
+                load();
             })
         } else { 
             //not cachable. load the data directly
@@ -183,57 +163,123 @@ var sss = (function (s) {
     // WMS catalog loader
     s.load_wms_catalog = function(catalog) {
         var layers = {}
-        $(catalog).find("Capability Layer Layer").each(function() {
-            var name = $(this).children("Name").text();
+        //$(catalog).find("Capability Layer Layer").each(function() {
+        $(catalog.getElementsByTagNameNS('http://www.opengis.net/cat/csw/2.0.2','Record')).each(function() {
+            http://purl.org/dc/elements/1.1/
+            var name = $(this.getElementsByTagNameNS('http://purl.org/dc/elements/1.1/',"identifier")[0]).text();
             var id = name.replace(".", "_");  
-            var title = $(this).children("Title").text().trim();
-            var abstrct = $(this).children("Abstract").text().trim();
-            var queryable = $(this).attr("queryable");
-            var bbox = s.australia_bbox[0] + "," + s.australia_bbox[1] + "," + s.australia_bbox[2] + "," + s.australia_bbox[3];
-            /*
-            //comment the following logic out because the bbox from gwc is incorrect.
-            var elements = $(this).children("LatLonBoundingBox");
-            if (elements.length > 0) {
-                bbox = $(elements[0]).attr("minx") + "," + $(elements[0]).attr("miny") + "," + $(elements[0]).attr("maxx") + "," + $(elements[0]).attr("maxy");
-            } else {
-                var bbox_srs = "Australia";
-                var srs = null;
-                var srs_priority = {"EPSG:4283":1,"EPSG:4326":2,"Other":998,"Australia":999};
-                $(this).children("BoundingBox").each(function() {
-                    srs = $(this).attr("SRS");
-                    if (srs_priority[srs] == null || typeof srs_priority[srs] == "undefined" ) {
-                        srs = "Other";
+            var title = $(this.getElementsByTagNameNS('http://purl.org/dc/elements/1.1/',"title")[0]).text();
+            var abstract = $(this.getElementsByTagNameNS('http://purl.org/dc/terms/',"abstract")[0]).text();
+            var wfs_url = false;
+            var wms_url = false;
+            var wms_parameters = {};
+            var preview_url = false;
+            var wms_url_match_type = null;
+            function init_url(url) {
+                if( url.charAt(url.length - 1) == "?" || url.charAt(url.length - 1) == "&") {
+                    return url
+                } else if (url.indexOf("?") >= 0) {
+                    return url + "&";
+                } else {
+                    return url + "?"
+                }
+            }
+            $(this.getElementsByTagNameNS('http://purl.org/dc/terms/',"references")).each(function() {
+                try {
+                    var scheme = null;
+                    var params = null;
+                    scheme = JSON.parse($(this).attr("scheme").replace(/&quot;/g,'"'))
+                    if (scheme["protocol"] == "OGC:WFS") {
+                        wfs_url = init_url(scheme["linkage"]);
+                        params = {
+                            service:"wfs",
+                            version:scheme["version"],
+                        }
+                        if (params["version"] == "2.0.0") {
+                            params["typeNames"] = name;
+                        } else {
+                            params["typeName"] = name;
+                        }
+                        wfs_url = init_url(wfs_url + $.param(params))
                     }
-                    if (srs_priority[bbox_srs] > srs_priority[srs]) {
-                        bbox_srs = srs;
-                        bbox = $(this).attr("minx") + "," + $(this).attr("miny") + "," + $(this).attr("maxx") + "," + $(this).attr("maxy");
+                    else if (scheme["protocol"] == "OGC:WMS") {
+                        if (wms_url_match_type == "gwc_match") {
+                            return true;
+                        }
+                        if ("width" in scheme && scheme["width"] == "1024") {
+                            //gwc endpoint
+                            if ("crs" in scheme && scheme["crs"] == "EPSG:4326") {
+                                wms_url_match_type = "gwc_match";
+                            } else if(wms_url_match_type == "gwc_tile_match"){
+                                return true;
+                            } else {
+                                //can't use multiple srs at the same time.
+                                //wms_url_match_type = "gwc_tile_match"
+                                wms_url_match_type = "gwc_endpoint_match"
+                            }
+                        } else if ("width" in scheme && scheme["width"] != "1024") {
+                            //gwc endpoint ,but tile not match
+                            if (wms_url_match_type == null) {
+                                wms_url_match_type = "gwc_endpoint_match"
+                            } else {
+                                return true;
+                            }
+                        } else if (!("width" in scheme)) {
+                            //wms endpoint
+                            if (wms_url_match_type == null || wms_url_match_type == "gwc_endpoint_match") {
+                                wms_url_match_type = "wms_match"
+                            } else {
+                                return true;
+                            }
+                        }
+                        wms_url = init_url(scheme["linkage"])
+                        params = {
+                            //service:"wms",
+                            //version:scheme["version"],
+                        }
+                        wms_parameters = {
+                            tileSize:1024,
+                            transparent:true,
+                        }
+                        if (wms_url_match_type == "gwc_match" || wms_url_match_type == "gwc_tile_match") {
+                            wms_parameters["crs"] = scheme["crs"]
+                        }
+                        wms_parameters["format"] = ("format" in scheme)?scheme["format"]:"image/png";
+                        wms_url = init_url(wms_url + $.param(params));
+                        preview_url = $(this).text();
+                    } 
+                    if (wfs_url && wms_url_match_type == "gwc_match") {
+                        return false;
                     }
-                });
-            }
-            */
-            var layer = {
-                "name": name,
-                "id": id, 
-                "title": title.replace(/_/g, " "),
-                "abstract": abstrct,
-                "wfs_url": false,
-                "bbox": bbox,
-                "zindex":null,
-            }
-            if (queryable) {
-                layer.wfs_url = s.gs_url + "/ows?service=wfs&version=2.0.0&typeName=" + name + "&";
-            }
-            layers[id] = _.extend(s.ractive.get("_layers."+id) || {}, layer);
-            //if opacity is not customized, use the default one.
-            if  (layers[id].opacity == null) {
-                layers[id].opacity = s.default_opacity;
+                }
+                catch(err) {
+                    alert(err);
+                    //ignore
+                }
+            })
+            if (wms_url) {
+                var layer = {
+                    "name": name,
+                    "id": id, 
+                    "title": title.replace(/_/g, " "),
+                    "abstract": abstract,
+                    "wfs_url": wfs_url,
+                    "wms_url":wms_url,
+                    "wms_parameters":wms_parameters,
+                    "preview_url":preview_url,
+                    "zindex":null,
+                }
+                layers[id] = _.extend(s.ractive.get("_layers."+id) || {}, layer);
+                //if opacity is not customized, use the default one.
+                if  (layers[id].opacity == null) {
+                    layers[id].opacity = s.default_opacity;
+                }
             }
         });
         return layers
     };
 
     // Ractive observers
-
     s.filterDevices = function(search) {
         var devices_full = s.ractive.get('_devices');
         if (search) {
@@ -433,8 +479,20 @@ var sss = (function (s) {
             layer.zindex = null;
             layer._leaflet_id = null;
         }
+        if ("crs" in layer.wms_parameters) {
+            var crs = layer.wms_parameters['crs'];
+            if (typeof crs == "string") {
+                if (crs == "EPSG:3857") {
+                    params["crs"] = L.CRS.EPSG3857
+                } else if (crs == "EPSG:4326") {
+                    params["crs"] = L.CRS.EPSG4326
+                } else if (crs == "EPSG:3395") {
+                    params["crs"] = L.CRS.EPSG3395
+                }
+            }
+        }
         var mapLayer = s.map._layers[layer._leaflet_id] || L.tileLayer.betterWms(
-            s.gs_url + '/ows?tiled=true', _.extend(s.pngLayer, params));
+            layer.wms_url,  _.extend(layer.wms_parameters,params));
         mapLayer._sss_id = id;
         if (action == "remove") {
             s.map.removeLayer(mapLayer);
@@ -484,7 +542,6 @@ var sss = (function (s) {
 
         //var map = (new L.SssMap('map')).setView([-26, 120], 6);
         var map = L.mapbox.map('map',null,{crs:L.CRS.EPSG4326}).setView([-26, 120], 6);
-        //var map = L.mapbox.map('map').setView([-26, 120], 6);
         //assign the map object to s.map directly, because some callback methods reference s.map and will cause javascript exception. 
         s.map = map;
         map.removeControl(map.zoomControl);
@@ -508,13 +565,10 @@ var sss = (function (s) {
         s.printDPI = 150;
         
         s.baseLayer = L.mapbox.tileLayer('dpawasi.k9a74ich').on("loading load", s.loadCheck);
-        s.pngLayer = { format: "image/png", transparent: true, tileSize: 1024 };
 
         // on pageload get catalogs
-        //s.load(s.gs_url+"/gwc/service/wms?request=GetCapabilities&version=1.1.1&tiled=true", "_layers", s.load_wms_catalog, true);
-        s.load(s.gs_url+"/www/themes/sss.wms", "_layers", s.load_wms_catalog, true);
+        s.load(s.csw_url+"?service=CSW&request=GetRecords&version=2.0.2&ElementSetName=full&typeNames=csw:Record&outputFormat=application/xml&resultType=results&maxRecords=1000", "_layers", s.load_wms_catalog, false);
         s.ractive.set("refreshInterval", 1);
-        s.ractive.set("gs_url", s.gs_url);
         s.refresh()
         $("div#resources").on("click", "li", function() {
             var id = $(this).attr("id").slice(7);
@@ -545,22 +599,10 @@ var sss = (function (s) {
             s.constructLayer($(this).attr("data-name"), $(this).attr("data-action"));
         }).on("mouseover", "li", function() {
             var id = $(this).attr("id").slice(6);
-            var bbox = $(this).attr("bbox");
-            var preview_dimension = s.getPreviewDimension(bbox);
             var layer = s.ractive.get("_layers."+id);
-            var url = s.gs_url + "/ows?" + $.param({
-                "service": "wms",
-                "version": "1.1.0",
-                "request": "GetMap",
-                "layers": layer.name,
-                "width": preview_dimension[0],//Math.floor($(map._container).width() / 4),
-                "height": preview_dimension[1],//Math.floor($(map._container).height() / 4),
-                "srs": "EPSG:4326",
-                "format": "image/jpeg",
-                "bbox": bbox//map.getBounds().toBBoxString()
-            });
+            var url = layer.preview_url ;
             s.preview_url = url
-            $("div#layer-preview").html('<img style="border:1px solid #999;" width="100%" height="100%" src="' + url + '" alt="'+layer.name+' preview..." >');
+            $("div#layer-preview").html('<img style="border:1px solid #999; opacity:1.0;background-color:#ffffff;" width="400" height="400" src="' + url + '" alt="'+layer.name+' preview..." >');
         }).on("mouseout", "ul", function() {
             s.preview_url = '';
             $("div#layer-preview").html('');
@@ -741,8 +783,7 @@ var sss = (function (s) {
     };
 
     // Login setup
-    s.gs_url = gs_url; 
-
+    s.csw_url = csw_url;
     s.ractive.set("username",login_user.name);
     s.launch();
 return s; }(sss || {}));

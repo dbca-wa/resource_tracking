@@ -14,15 +14,17 @@
     <link rel="stylesheet" href="/static/sss/leaflet.label.css" />
     <link rel="stylesheet" href="/static/sss/L.SimpleGraticule.css" />
     <link rel="stylesheet" href="/static/sss/{{"sss.css"|autoversion}}" />
-    <script>var gs_url = "{{ settings.GEOSERVER_URL }}";</script>
+    <script>
+        var csw_url = "{{ settings.CSW_URL }}";
+    </script>
     <script src="//maps.googleapis.com/maps/api/js?libraries=places&sensor=false"></script>
-    <script src="//cdn.jsdelivr.net/localforage/1.4.0/localforage.min.js" defer></script>
-    <script src="//cdn.jsdelivr.net/underscorejs/1.7.0/underscore-min.js" defer></script>
+    <script src="//cdn.jsdelivr.net/localforage/1.2.0/localforage.min.js" ></script>
+    <script src="//cdn.jsdelivr.net/underscorejs/1.7.0/underscore-min.js" ></script>
     <script src="//cdn.jsdelivr.net/ractive/0.6.0/ractive.min.js" defer></script>
     <script src="//cdn.jsdelivr.net/jquery/2.1.1/jquery.min.js" ></script>
     <script src="//cdn.jsdelivr.net/jquery.geocomplete/1.6.4/jquery.geocomplete.min.js" defer></script>
     <script src="//cdn.jsdelivr.net/lunr/0.5.3/lunr.min.js" defer></script>
-    <script src="//api.tiles.mapbox.com/mapbox.js/v2.1.4/mapbox.js" ></script>
+    <script src="//api.tiles.mapbox.com/mapbox.js/v2.1.4/mapbox.uncompressed.js" defer></script>
     <script src='//api.tiles.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.2.0/leaflet-omnivore.min.js' defer></script>
     <script src='//api.tiles.mapbox.com/mapbox.js/plugins/leaflet-hash/v0.2.1/leaflet-hash.js' defer></script>
     <script src="/static/sss/leaflet-sidebar.js" defer></script>
