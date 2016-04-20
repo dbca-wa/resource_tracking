@@ -32,7 +32,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 # define the following in the environment
 SECRET_KEY = os.environ.get('SECRET_KEY', '')
 DEBUG = os.environ.get('DEBUG','False').lower() in ["true","yes","on","t","y"]
-GEOSERVER_URL = os.environ.get('GEOSERVER_URL', False)
+CSW_URL = os.environ.get('CSW_URL', "https://oim.dpaw.wa.gov.au/catalogue/sss/")
 TRACPLUS_URL = os.environ.get('TRACPLUS_URL', False)
 for key in os.environ:
     if key.startswith("EMAIL_"):
