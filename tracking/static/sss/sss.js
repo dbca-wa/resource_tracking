@@ -196,7 +196,7 @@ var sss = (function (s) {
                             version:scheme["version"],
                         }
                         if (params["version"] == "2.0.0") {
-                            params["typeNames"] = name;
+                            params["typeName"] = name;
                         } else {
                             params["typeName"] = name;
                         }
@@ -567,7 +567,7 @@ var sss = (function (s) {
         s.baseLayer = L.mapbox.tileLayer('dpawasi.k9a74ich').on("loading load", s.loadCheck);
 
         // on pageload get catalogs
-        s.load(s.csw_url+"?service=CSW&request=GetRecords&version=2.0.2&ElementSetName=full&typeNames=csw:Record&outputFormat=application/xml&resultType=results&maxRecords=1000", "_layers", s.load_wms_catalog, false);
+        s.load(s.csw_url+"?service=CSW&request=GetRecords&version=2.0.2&ElementSetName=full&typeNames=csw:Record&outputFormat=application/xml&resultType=results&maxRecords=1000", "_layers", s.load_wms_catalog, true);
         s.ractive.set("refreshInterval", 1);
         s.refresh()
         $("div#resources").on("click", "li", function() {
