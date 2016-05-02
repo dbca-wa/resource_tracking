@@ -24,7 +24,7 @@
     <script src="//cdn.jsdelivr.net/jquery/2.1.1/jquery.min.js" ></script>
     <script src="//cdn.jsdelivr.net/jquery.geocomplete/1.6.4/jquery.geocomplete.min.js" defer></script>
     <script src="//cdn.jsdelivr.net/lunr/0.5.3/lunr.min.js" defer></script>
-    <script src="//api.tiles.mapbox.com/mapbox.js/v2.1.4/mapbox.uncompressed.js" defer></script>
+    <script src="//api.tiles.mapbox.com/mapbox.js/v2.1.4/mapbox.js" defer></script>
     <script src='//api.tiles.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.2.0/leaflet-omnivore.min.js' defer></script>
     <script src='//api.tiles.mapbox.com/mapbox.js/plugins/leaflet-hash/v0.2.1/leaflet-hash.js' defer></script>
     <script src="/static/sss/leaflet-sidebar.js" defer></script>
@@ -34,8 +34,8 @@
     <script src="/static/sss/leaflet.label.js" defer></script>
     <script src="/static/sss/Ractive-decorators-sortable.js" defer></script>
     <script src="/static/sss/L.SimpleGraticule.js" defer></script>
+    <script src="/static/sss/{{"leaflet.dump.js"|autoversion}}" defer></script>
     <script src="/static/sss/{{"sss.js"|autoversion}}" defer></script>
-    <script src="/static/sss/{{"jquery.print.js"|autoversion}}" defer></script>
     <script type="text/javascript">
         var login_user = {"name":"{{user.username}}"};
     </script>
@@ -45,5 +45,8 @@
         <div id="map"></div>
         <div id="layer-preview"></div>
         <script id='template' type='text/ractive'>{% include 'sidebar.html' %}</script>
+        <form id="print-form" enctype="multipart/form-data" action="{{settings.PRINTING_URL}}/sss/png" target="_blank" method="post">
+            <input id="print-metadata" type="hidden" name="metadata" value=""/>
+        </form>
     </body>
 </html>
