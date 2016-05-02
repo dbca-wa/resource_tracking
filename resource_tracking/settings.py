@@ -33,6 +33,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 SECRET_KEY = os.environ.get('SECRET_KEY', '')
 DEBUG = os.environ.get('DEBUG','False').lower() in ["true","yes","on","t","y"]
 CSW_URL = os.environ.get('CSW_URL', "https://oim.dpaw.wa.gov.au/catalogue/sss/")
+PRINTING_URL = os.environ.get('PRINTING_URL', "https://printing.dpaw.wa.gov.au")
 TRACPLUS_URL = os.environ.get('TRACPLUS_URL', False)
 for key in os.environ:
     if key.startswith("EMAIL_"):
@@ -121,7 +122,6 @@ logging.basicConfig(
 JS_MINIFY = False
 RESOURCE_FILES_WITH_AUTO_VERSION = [
     os.path.join(BASE_DIR,"tracking","static","sss","sss.js"),
-    os.path.join(BASE_DIR,"tracking","static","sss","jquery.print.js"),
+    os.path.join(BASE_DIR,"tracking","static","sss","leaflet.dump.js"),
     os.path.join(BASE_DIR,"tracking","static","sss","sss.css"),
-    os.path.join(BASE_DIR,"tracking","static","sss","sss.print.css"),
 ]

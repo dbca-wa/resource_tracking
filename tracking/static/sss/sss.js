@@ -533,9 +533,6 @@ var sss = (function (s) {
         };
     };
 
-    s.latlngString = function(latlng) {
-        return latlng.lat + " , " + latlng.lng;
-    }
     // Entrypoint
     s.launch = function() { 
         L.mapbox.accessToken =  'pk.eyJ1IjoiZHBhd2FzaSIsImEiOiJtVjY5WmlFIn0.whc76euXLk2PkyxOkZ5xlQ'
@@ -562,8 +559,6 @@ var sss = (function (s) {
         //initialize "loaded" to true.
         s.ractive.set("loaded", true);
 
-        s.printDPI = 150;
-        
         s.baseLayer = L.mapbox.tileLayer('dpawasi.k9a74ich').on("loading load", s.loadCheck);
 
         // on pageload get catalogs
@@ -608,98 +603,18 @@ var sss = (function (s) {
             $("div#layer-preview").html('');
         });
 
-        var latlngString = function(latlng) {
-            return latlng.lat + " , " + latlng.lng;
-        }
-        var map_grid = null;
-        var grid_number = 8;
-        var grid_precision = 0;
-        var beforePrint = function() {
-            if (s.ractive.get("printing")) { return };
-            s.ractive.set("printing", true);
-            $("li i.fa-print").addClass("fa-spin");
-            var lon_span = s.map.getBounds().getEast() - s.map.getBounds().getWest();
-            var lat_span = s.map.getBounds().getNorth() - s.map.getBounds().getSouth();
-            var grid_interval = (lon_span > lat_span)?lat_span / grid_number:lon_span / grid_number;
-            if (grid_interval > 1) {
-                grid_interval = Math.round(grid_interval);
-                grid_precision = 0;
-            } else if (grid_interval > 0.1) {
-                grid_interval = (Math.round(grid_interval * 10) / 10).toFixed(1);
-                grid_precision = 1;
-            } else if (grid_interval > 0.01) { 
-                grid_interval = (Math.round(grid_interval * 100) / 100).toFixed(2);
-                grid_precision = 2;
-            } else if (grid_interval > 0.001) {
-                grid_interval = (Math.round(grid_interval * 1000) / 1000).toFixed(3);
-                grid_precision = 3;
-            } else if (grid_interval > 0.0004) {
-                grid_interval = 0.001;
-                grid_precision = 3;
-            } else {
-                grid_interval = 0;
-                grid_precision = 0;
-            }
-            if (grid_interval > 0) {
-                if (map_grid == null){
-                    map_grid = L.simpleGraticule({
-                        interval:grid_interval,
-                        showOriginLabel:true,
-                        precision:grid_precision,
-                        redraw:'move'
-                    });
-                    map_grid.addTo(s.map);
-                } else {
-                    map_grid.options.interval = grid_interval;
-                    map_grid.options.precision = grid_precision;
-                    map_grid.show();
-                }
-            } else if(map_grid != null) {
-                map_grid.hide();
-            }
-        };
-
-        var afterPrint = function() {
-            $("li i.fa-print").removeClass("fa-spin");
-            s.ractive.set("printing", false);
-            if (map_grid != null) {
-                map_grid.clearLayers();
-                map_grid.hide();
-            }
-        };
-
         $("i.fa-print").click(function(evt) {
             evt.stopImmediatePropagation();
-            beforePrint();
-            var actuallyPrint = function() {
-                $(s.map._container).print({
-                    stylesheet:"/static/sss/sss.print.css",
-                    no_print_selector:".leaflet-control-container , .leaflet-popup-pane",
-                    extra_fields: {
-                        map_zoom_level:s.map.getZoom(),
-                        map_bbox:s.map.getBounds().toBBoxString(),
-                        map_scale:$(".leaflet-control-scale.leaflet-control"),
-                        map_south_west:latlngString(s.map.getBounds().getSouthWest()),
-                        map_north_east:latlngString(s.map.getBounds().getNorthEast()),
-                        map_north_west:latlngString(s.map.getBounds().getNorthWest()),
-                        map_south_east:latlngString(s.map.getBounds().getSouthEast()),
-                        map_creator:s.ractive.get('username'),
-                        map_create_time:(new Date()).toLocaleString(),
-                    },
-                    scale_selector:".leaflet-control-scale.leaflet-control",
-                    iframe:true,
-                    after_print:afterPrint,
-                });
+            var map_data = L.toJson(s.map);
+            map_data.grid = true;
+            map_data.label = true;
+            var metadata = {
+                quality:100,
+                map:map_data
             }
-            var print = function() {
-                if (s.ractive.get("loaded")) {
-                    // give browser a tick to render
-                    setTimeout(actuallyPrint(), 1000);
-                } else {
-                    setTimeout(print, 100);
-                }
-            }
-            print();
+            $("#print-metadata").val(JSON.stringify(metadata));
+            $('#print-form').submit();
+
         });
 
         // Map dependent ractive observers
