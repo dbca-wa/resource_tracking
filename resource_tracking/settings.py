@@ -1,54 +1,37 @@
 """
 Django settings for resource_tracking project.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/1.7/topics/settings/
-
-For the full list of settings and their values, see
-https://docs.djangoproject.com/en/1.7/ref/settings/
 """
+from confy import env, database
+import os
+
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-import os
-import dj_database_url
-import logging
-
-class Env(object):
-    """
-    A utility class to read value from environment.
-    """
-    @staticmethod
-    def get_int(key,default):
-        """
-        Read a int from environmenent 
-        """
-        try:
-            return int(os.environ.get(key,default))
-        except:
-            return default
-
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
-# define the following in the environment
-SECRET_KEY = os.environ.get('SECRET_KEY', '')
-DEBUG = os.environ.get('DEBUG','False').lower() in ["true","yes","on","t","y"]
-CSW_URL = os.environ.get('CSW_URL', "https://oim.dpaw.wa.gov.au/catalogue/sss/")
+# Application definition
+DEBUG = env('DEBUG', False)
+SECRET_KEY = env('SECRET_KEY')
+CSRF_COOKIE_SECURE = env('CSRF_COOKIE_SECURE', False)
+SESSION_COOKIE_SECURE = env('SESSION_COOKIE_SECURE', False)
+if not DEBUG:
+    # Localhost, UAT and Production hosts:
+    ALLOWED_HOSTS = [
+        'localhost',
+        '127.0.0.1',
+        'sss.dpaw.wa.gov.au',
+        'sss.dpaw.wa.gov.au.',
+        'sss-uat.dpaw.wa.gov.au',
+        'sss-uat.dpaw.wa.gov.au.',
+    ]
+INTERNAL_IPS = ['127.0.0.1', '::1']
+ROOT_URLCONF = 'resource_tracking.urls'
+WSGI_APPLICATION = 'resource_tracking.wsgi.application'
+
+CSW_URL = env('CSW_URL', 'https://oim.dpaw.wa.gov.au/catalogue/sss/')
 PRINTING_URL = os.environ.get('PRINTING_URL', "https://printing.dpaw.wa.gov.au")
 TRACPLUS_URL = os.environ.get('TRACPLUS_URL', False)
-for key in os.environ:
-    if key.startswith("EMAIL_"):
-        globals()[key] = os.environ[key]
-
-TEMPLATE_DEBUG = True
-
-DEVICE_HTTP_CACHE_TIMEOUT = Env.get_int('DEVICE_HTTP_CACHE_TIMEOUT', 60)
-HISTORY_HTTP_CACHE_TIMEOUT = Env.get_int('HISTORY_HTTP_CACHE_TIMEOUT', 60)
-
-ALLOWED_HOSTS = [
-    '*'
-]
-
-# Application definition
+DEVICE_HTTP_CACHE_TIMEOUT = env('DEVICE_HTTP_CACHE_TIMEOUT', 60)
+HISTORY_HTTP_CACHE_TIMEOUT = env('HISTORY_HTTP_CACHE_TIMEOUT', 60)
 
 INSTALLED_APPS = (
     'django.contrib.admin',
@@ -61,7 +44,6 @@ INSTALLED_APPS = (
     'tastypie',
     'django_extensions',
     'django_uwsgi',
-    #'django_wsgiserver',
     'resource_autoversion',
     'resource_tracking',
     # Sub-app definitions
@@ -69,7 +51,6 @@ INSTALLED_APPS = (
     'djgeojson',
     'dpaw_utils'
 )
-
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -80,27 +61,31 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
 
-SERIALIZATION_MODULES = {
-    "geojson": "djgeojson.serializers", 
- }
+# Email settings
+ADMINS = ('asi@dpaw.wa.gov.au',)
+EMAIL_HOST = env('EMAIL_HOST', 'email.host')
+EMAIL_PORT = env('EMAIL_PORT', 25)
+EMAIL_USER = env('EMAIL_USER', 'username')
+EMAIL_PASSWORD = env('EMAIL_PASSWORD', 'password')
 
-ROOT_URLCONF = 'resource_tracking.urls'
-WSGI_APPLICATION = 'resource_tracking.wsgi.application'
+
+SERIALIZATION_MODULES = {
+    "geojson": "djgeojson.serializers",
+}
+
 
 # Database
-# https://docs.djangoproject.com/en/1.7/ref/settings/#databases
-DATABASES = {'default': dj_database_url.config()}
+DATABASES = {
+    # Defined in the DATABASE_URL env variable.
+    'default': database.config(),
+}
 
 # Project authentication settings
-#from ldap_email_auth import ldap_default_settings
-#ldap_default_settings()
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
-    #'ldap_email_auth.auth.EmailBackend',
 )
 
 # Internationalization
-# https://docs.djangoproject.com/en/1.7/topics/i18n/
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Australia/Perth'
 USE_I18N = True
@@ -109,19 +94,45 @@ USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/1.7/howto/static-files/
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 
-logging.basicConfig(
-    level=logging.WARNING,
-    format='%(asctime)s %(levelname)s %(message)s',
-)
+# Logging settings
+# Ensure that the logs directory exists:
+if not os.path.exists(os.path.join(BASE_DIR, 'logs')):
+    os.mkdir(os.path.join(BASE_DIR, 'logs'))
+LOGGING = {
+    'version': 1,
+    'formatters': {
+        'verbose': {
+            'format': '%(levelname)s %(asctime)s %(module)s %(message)s'
+        },
+    },
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'prs.log'),
+            'formatter': 'verbose',
+            'maxBytes': 1024 * 1024 * 5
+        },
+    },
+    'loggers': {
+        'django.request': {
+            'handlers': ['file'],
+            'level': 'INFO'
+        },
+        'log': {
+            'handlers': ['file'],
+            'level': 'INFO'
+        },
+    }
+}
 
 JS_MINIFY = False
 RESOURCE_FILES_WITH_AUTO_VERSION = [
-    os.path.join(BASE_DIR,"tracking","static","sss","sss.js"),
-    os.path.join(BASE_DIR,"tracking","static","sss","leaflet.dump.js"),
-    os.path.join(BASE_DIR,"tracking","static","sss","sss.css"),
+    os.path.join(BASE_DIR, "tracking", "static", "sss", "sss.js"),
+    os.path.join(BASE_DIR, "tracking", "static", "sss", "leaflet.dump.js"),
+    os.path.join(BASE_DIR, "tracking", "static", "sss", "sss.css"),
 ]
