@@ -22,4 +22,4 @@ before_script:
     - psql -c 'create database travis_ci_test;' -U postgres
     - python manage.py migrate --noinput
 script:
-    - python manage.py test -v0
+    - python manage.py test -k -v 0
