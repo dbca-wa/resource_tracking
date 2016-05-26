@@ -26,14 +26,12 @@ if not DEBUG:
 INTERNAL_IPS = ['127.0.0.1', '::1']
 ROOT_URLCONF = 'resource_tracking.urls'
 WSGI_APPLICATION = 'resource_tracking.wsgi.application'
-
-CSW_URL = env('CSW_URL', 'https://oim.dpaw.wa.gov.au/catalogue/sss/')
-PRINTING_URL = os.environ.get('PRINTING_URL', "https://printing.dpaw.wa.gov.au")
-TRACPLUS_URL = os.environ.get('TRACPLUS_URL', False)
+CSW_URL = env('CSW_URL', '')
+PRINTING_URL = env('PRINTING_URL', '')
+TRACPLUS_URL = env('TRACPLUS_URL', False)
 DEVICE_HTTP_CACHE_TIMEOUT = env('DEVICE_HTTP_CACHE_TIMEOUT', 60)
 HISTORY_HTTP_CACHE_TIMEOUT = env('HISTORY_HTTP_CACHE_TIMEOUT', 60)
-
-INSTALLED_APPS = (
+INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -44,22 +42,38 @@ INSTALLED_APPS = (
     'tastypie',
     'django_extensions',
     'django_uwsgi',
-    'resource_autoversion',
     'resource_tracking',
     # Sub-app definitions
     'tracking',
     'djgeojson',
     'dpaw_utils'
-)
-MIDDLEWARE_CLASSES = (
+]
+MIDDLEWARE_CLASSES = [
+    'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'dpaw_utils.middleware.SSOLoginMiddleware',
+    'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-)
+    'dpaw_utils.middleware.SSOLoginMiddleware',
+]
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
 
 # Email settings
 ADMINS = ('asi@dpaw.wa.gov.au',)
