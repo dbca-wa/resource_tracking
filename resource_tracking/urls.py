@@ -1,12 +1,12 @@
 from django.conf.urls import include, url
+from django.contrib import admin
 
-from .harvest import cron
+from resource_tracking.harvest import cron
 from tracking.views import index, device, v1_api, print_map
-from tracking.admin import site
 from tracking.geojsonviews import geojson_patterns
 
 urlpatterns = [
-    url(r'^admin/', include(site.urls)),
+    url(r'^admin/', include(admin.site.urls)),
     url(r'^api/', include(v1_api.urls)),
     url(r'^cron', cron),
     url(r'^$', index),
