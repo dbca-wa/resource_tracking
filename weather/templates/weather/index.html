@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DPaW Weather Stations</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/leaflet/0.7.3/leaflet.css" />
+    <script src="//cdn.jsdelivr.net/leaflet/0.7.3/leaflet.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://raw.githubusercontent.com/buche/leaflet-openweathermap/ecb5b5cb1b6fe95e6faa3a1713552454d75f9056/leaflet-openweathermap.css" />
+    <script type="text/javascript" src="https://raw.githubusercontent.com/buche/leaflet-openweathermap/ecb5b5cb1b6fe95e6faa3a1713552454d75f9056/leaflet-openweathermap.js"></script>
+
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+        }
+        html, body, #map {
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id='legend' class='leaflet-control-attribution'>
+    <strong style="float:right;">DPaW Weather Stations</strong>
+        {% for station in stations %}
+        <br><a class="leaflet-control-locate" href="#{{ station.abbreviation }}" onclick="map.panTo(stations['{{ station.abbreviation }}'].getLatLng());">&#9906;</a> {{ station }} (updated {{ station.last_reading_local }}) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a style="float:right;" href="/station/{{ station.pk }}">View Data</a>
+        {% endfor %}
+    </div>
+    <div id="map"></div>
+    <script>
+        map = L.map('map').setView([-41.2858, 174.78682], 14);
+        var legend = L.control({position: 'topright'});
+        legend.onAdd = function (map) {
+            return document.getElementById('legend');
+        };
+        legend.addTo(map);
+        mapLink = 
+            '<a href="http://openstreetmap.org">OpenStreetMap</a>';
+        L.tileLayer(
+            '//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; ' + mapLink + ' Contributors',
+            maxZoom: 18,
+            }).addTo(map);
+        var stations = {};
+        var group = new L.featureGroup();
+        {% for station in stations %}
+        stations["{{ station.abbreviation }}"] = L.marker([{{ station.location.point.get_y }}, {{ station.location.point.get_x }}]).addTo(group);
+        stations["{{ station.abbreviation }}"].bindPopup('{{ station }} (updated {{ station.last_reading_local }}) - <a href="/station/{{ station.pk }}">View Data</a>');
+        {% endfor %}
+        group.addTo(map)
+        map.fitBounds(group.getBounds());
+
+        // Enhance with openweathermap
+        var overlayMaps = {
+            "Clouds": L.OWM.clouds({showLegend: true, opacity: 0.5}),
+            "Precipitation": L.OWM.precipitation({showLegend: true, opacity: 0.5}),
+            "Temperature": L.OWM.temperature({showLegend: true, opacity: 0.5}),
+            "Wind Speed": L.OWM.wind({showLegend: true, opacity: 0.5}),
+            "Pressure": L.OWM.pressure({showLegend: true, opacity: 0.5}),
+            "Pressure Contours": L.OWM.pressureContour({showLegend: true, opacity: 0.5}),
+        };
+        var layerControl = L.control.layers(null, overlayMaps).addTo(map);
+
+
+    </script>
+</body>
+</html>

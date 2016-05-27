@@ -1,6 +1,5 @@
 from django import template
-
-from resource_autoversion import get_resource_file
+from resource_tracking.templatetags import get_resource_file
 
 register = template.Library()
 @register.filter(name="autoversion")
