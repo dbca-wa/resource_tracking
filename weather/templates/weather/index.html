@@ -23,7 +23,7 @@
     <div id='legend' class='leaflet-control-attribution'>
     <strong style="float:right;">DPaW Weather Stations</strong>
         {% for station in stations %}
-        <br><a class="leaflet-control-locate" href="#{{ station.abbreviation }}" onclick="map.panTo(stations['{{ station.abbreviation }}'].getLatLng());">&#9906;</a> {{ station }} (updated {{ station.last_reading_local }}) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a style="float:right;" href="/station/{{ station.pk }}">View Data</a>
+        <br><a class="leaflet-control-locate" href="#{{ station.abbreviation }}" onclick="map.panTo(stations['{{ station.abbreviation }}'].getLatLng());">&#9906;</a> {{ station }} (updated {{ station.last_reading_local }}) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a style="float:right;" href="{% url 'weather_station' station_id=station.pk %}">View Data</a>
         {% endfor %}
     </div>
     <div id="map"></div>
@@ -34,7 +34,7 @@
             return document.getElementById('legend');
         };
         legend.addTo(map);
-        mapLink = 
+        mapLink =
             '<a href="http://openstreetmap.org">OpenStreetMap</a>';
         L.tileLayer(
             '//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -45,7 +45,7 @@
         var group = new L.featureGroup();
         {% for station in stations %}
         stations["{{ station.abbreviation }}"] = L.marker([{{ station.location.point.get_y }}, {{ station.location.point.get_x }}]).addTo(group);
-        stations["{{ station.abbreviation }}"].bindPopup('{{ station }} (updated {{ station.last_reading_local }}) - <a href="/station/{{ station.pk }}">View Data</a>');
+        stations["{{ station.abbreviation }}"].bindPopup('{{ station }} (updated {{ station.last_reading_local }}) - <a href="{% url 'weather_station' station_id=station.pk %}">View Data</a>');
         {% endfor %}
         group.addTo(map)
         map.fitBounds(group.getBounds());
