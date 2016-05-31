@@ -9,7 +9,7 @@ def index(request):
     })
 
 
-def weatherstation(request, station):
+def weatherstation(request, station_id):
     return render_to_response('weather/station.html', {
-        'station': WeatherStation.objects.get(id=station)
+        'station': WeatherStation.objects.get(pk=station_id)
     })

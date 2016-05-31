@@ -151,3 +151,6 @@ RESOURCE_FILES_WITH_AUTO_VERSION = [
     os.path.join(BASE_DIR, "tracking", "static", "sss", "leaflet.dump.js"),
     os.path.join(BASE_DIR, "tracking", "static", "sss", "sss.css"),
 ]
+
+# Tastypie settings
+TASTYPIE_DEFAULT_FORMATS = ['json']
