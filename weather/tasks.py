@@ -1,11 +1,4 @@
 from __future__ import absolute_import
-
-import confy
-confy.read_environment_file('.env')
-
-import django
-django.setup()
-
 import csv
 from datetime import timedelta
 from django.conf import settings
@@ -19,11 +12,10 @@ import paramiko
 import StringIO
 import sys
 import telnetlib
-from uwsgidecorators import timer, harakiri
 
 from weather.models import WeatherStation, WeatherObservation
 
-logger = logging.getLogger('log')
+logger = logging.getLogger('weather')
 
 
 def ftp_upload(host, port, username, password, observations):
@@ -31,6 +23,7 @@ def ftp_upload(host, port, username, password, observations):
 
     try:
         transport = paramiko.Transport((host, port))
+
         transport.connect(username=username, password=password)
         client = paramiko.SFTPClient.from_transport(transport)
     except Exception as e:
@@ -103,8 +96,6 @@ def retrieve_observation(args):
     return output
 
 
-@timer(10, target='spooler')
-@harakiri(300)
 def cron(request=None):
     start = timezone.now()
     """

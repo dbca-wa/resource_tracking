@@ -132,6 +132,13 @@ LOGGING = {
             'formatter': 'verbose',
             'maxBytes': 1024 * 1024 * 5
         },
+        'weather': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'weather.log'),
+            'formatter': 'verbose',
+            'maxBytes': 1024 * 1024 * 5
+        },
     },
     'loggers': {
         'django.request': {
@@ -140,6 +147,10 @@ LOGGING = {
         },
         'log': {
             'handlers': ['file'],
+            'level': 'INFO'
+        },
+        'weather': {
+            'handlers': ['weather'],
             'level': 'INFO'
         },
     }
@@ -154,3 +165,11 @@ RESOURCE_FILES_WITH_AUTO_VERSION = [
 
 # Tastypie settings
 TASTYPIE_DEFAULT_FORMATS = ['json']
+
+# DAFWA config
+DAFWA_UPLOAD = env('DAFWA_UPLOAD', False)
+DAFWA_UPLOAD_HOST = env('DAFWA_UPLOAD_HOST', 'host')
+DAFWA_UPLOAD_PORT = env('DAFWA_UPLOAD_PORT', 22)
+DAFWA_UPLOAD_DIR = env('DAFWA_UPLOAD_DIR', '/inbound')
+DAFWA_UPLOAD_USER = env('DAFWA_UPLOAD_USER', 'username')
+DAFWA_UPLOAD_PASSWORD = env('DAFWA_UPLOAD_PASSWORD', 'password')
