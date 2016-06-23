@@ -131,7 +131,6 @@ def cron(request=None):
                 pk, response, retrieval_time = result
                 station = WeatherStation.objects.get(pk=pk)
                 station.save_weather_data(response, retrieval_time)
-            break
         else:
             logger.info("Skipping {}".format(station))
 
