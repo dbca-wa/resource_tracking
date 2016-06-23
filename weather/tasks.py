@@ -96,7 +96,7 @@ def retrieve_observation(args):
     return output
 
 
-def cron(request=None):
+def download_data(request=None):
     start = timezone.now()
     """
     Check all of our active weather stations to see if we need to update their
@@ -131,7 +131,6 @@ def cron(request=None):
                 pk, response, retrieval_time = result
                 station = WeatherStation.objects.get(pk=pk)
                 station.save_weather_data(response, retrieval_time)
-            break
         else:
             logger.info("Skipping {}".format(station))
 
@@ -152,5 +151,5 @@ def cron(request=None):
             )
 
     delta = timezone.now() - start
-    html = "<html><body>Cron run at {} for {}.</body></html>".format(start, delta)
+    html = "<html><body>Download at {} for {}.</body></html>".format(start, delta)
     return HttpResponse(html)
