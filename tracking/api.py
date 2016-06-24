@@ -3,12 +3,45 @@ from django.conf import settings
 from django.conf.urls import url
 from django.core.exceptions import FieldError
 from django.utils import timezone
+import StringIO
 from tastypie import fields
 from tastypie.cache import NoCache
 from tastypie.http import HttpBadRequest
-from tastypie.resources import ModelResource, ALL_WITH_RELATIONS
+from tastypie.resources import ModelResource, ALL, ALL_WITH_RELATIONS
+from tastypie.serializers import Serializer
+import unicodecsv as csv
 
 from tracking.models import Device, LoggedPoint
+
+
+class CSVSerializer(Serializer):
+    formats = settings.TASTYPIE_DEFAULT_FORMATS + ['csv']
+
+    content_types = dict(
+        Serializer.content_types.items() +
+        [('csv', 'text/csv')])
+
+    def to_csv(self, data, options=None):
+        options = options or {}
+        data = self.to_simple(data, options)
+        raw_data = StringIO.StringIO()
+        if data['objects']:
+            fields = data['objects'][0].keys()
+            writer = csv.DictWriter(
+                raw_data, fields, dialect='excel', extrasaction='ignore')
+            header = dict(zip(fields, fields))
+            writer.writerow(header)
+            for item in data['objects']:
+                writer.writerow(item)
+
+        return raw_data.getvalue()
+
+    def from_csv(self, content):
+        raw_data = StringIO.StringIO(content)
+        data = []
+        for item in csv.DictReader(raw_data):
+            data.append(item)
+        return data
 
 
 def generate_filtering(mdl):
@@ -83,18 +116,33 @@ class HttpCache(NoCache):
 
 
 class DeviceResource(APIResource):
-    age_minutes = fields.IntegerField(attribute='age_minutes', readonly=True)
-    age_colour = fields.CharField(attribute='age_colour', readonly=True)
-    age_text = fields.CharField(attribute='age_text', readonly=True)
-    icon = fields.CharField(attribute='icon', readonly=True)
+
+    def build_filters(self, filters=None):
+        """Override build_filters to allow filtering by seen_age__lte=<minutes>
+        """
+        if filters is None:
+            filters = {}
+        orm_filters = super(DeviceResource, self).build_filters(filters)
+
+        if 'seen_age__lte' in filters:
+            # Convert seen_age__lte to a timedelta
+            td = timedelta(minutes=int(filters['seen_age__lte']))
+            orm_filters['seen__gte'] = timezone.now() - td
+
+        return orm_filters
+
     Meta = generate_meta(Device, {
-        "queryset": Device.objects.filter(seen__gte=timezone.now() - timedelta(days=14)),
-        "cache": HttpCache(settings.DEVICE_HTTP_CACHE_TIMEOUT)
+        'cache': HttpCache(settings.DEVICE_HTTP_CACHE_TIMEOUT),
+        'serializer': CSVSerializer(),
     })
+    age_minutes = fields.IntegerField(attribute='age_minutes', readonly=True, null=True)
+    age_colour = fields.CharField(attribute='age_colour', readonly=True, null=True)
+    age_text = fields.CharField(attribute='age_text', readonly=True, null=True)
+    icon = fields.CharField(attribute='icon', readonly=True)
 
 
 class LoggedPointResource(APIResource):
     device = fields.IntegerField(attribute='device_id', readonly=True)
     Meta = generate_meta(LoggedPoint, {
-        "cache": HttpCache(settings.HISTORY_HTTP_CACHE_TIMEOUT)
+        'cache': HttpCache(settings.HISTORY_HTTP_CACHE_TIMEOUT)
     })
