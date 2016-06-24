@@ -35,7 +35,7 @@ def device_csv(request):
     # Allow filtering by ``seen_age__lte=<minutes>`` query param
     if 'seen_age__lte' in request.GET:
         params['seen_age__lte'] = request.GET['seen_age__lte']
-    r = requests.get(request.build_absolute_uri(api_url), params=params)
+    r = requests.get(request.build_absolute_uri(api_url), params=params, cookies=request.COOKIES)
 
     if not r.status_code == 200:
         r.raise_for_status()
