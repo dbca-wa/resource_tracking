@@ -279,9 +279,7 @@ class WeatherObservation(models.Model):
         return calendar.timegm(self.date.timetuple())*1000
 
     def local_date(self):
-        # TODO: use pytz
-        date = (timezone.localtime(self.date) + datetime.timedelta(hours=8)).isoformat().rsplit(':', 2)[0]
-        return date
+        return timezone.localtime(self.date).isoformat().rsplit('.')[0]
 
     def dew_point(self):
         """
