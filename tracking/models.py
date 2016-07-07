@@ -90,7 +90,7 @@ class LoggedPoint(BasePoint):
         handles duplicates
         """
         device = Device.objects.get_or_create(deviceid=sbd["ID"])[0]
-        if sbd["LG"] == 0 or sbd["LT"] == 0:
+        if sbd.get("LG", 0) == 0 or sbd.get("LT", 0) == 0:
             logger.warn("Bad geometry for {}, discarding".format(device))
             return None
         seen = timezone.make_aware(datetime.fromtimestamp(float(sbd['TU'])), pytz.timezone("UTC"))
