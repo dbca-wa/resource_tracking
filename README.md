@@ -20,4 +20,4 @@ Variables below may also need to be defined (context-dependent):
     EMAIL_PASSWORD="password"
     CSW_URL="https://oim.dpaw.wa.gov.au/catalogue/sss/"
     PRINTING_URL="https://printing.dpaw.wa.gov.au"
-    TRACPLUS_URL="https://service.daestra.com/gateways/csv/gateway.aspx?user=wadecgw&pw=rE68zF&hours=0"
+    TRACPLUS_URL="https://your-trackplus-gateway-url/parameters"
