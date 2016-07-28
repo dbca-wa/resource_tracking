@@ -5,7 +5,6 @@ from django.conf import settings
 from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.encoding import force_text
-from django.template.defaultfilters import date
 import logging
 import os
 import paramiko
@@ -19,15 +18,15 @@ logger = logging.getLogger('weather')
 
 
 def ftp_upload(host, port, username, password, observations):
-    logger.debug("Connecting to {}...".format(host))
+    logger.info("Connecting to {}...".format(host))
 
     try:
         transport = paramiko.Transport((host, port))
-
         transport.connect(username=username, password=password)
         client = paramiko.SFTPClient.from_transport(transport)
     except Exception as e:
         logger.error("Connection to {} failed... {} exiting".format(host, e))
+        logger.exception(e)
         return
 
     output = StringIO.StringIO()
@@ -37,26 +36,30 @@ def ftp_upload(host, port, username, password, observations):
         logger.info("Date: {}".format(reading_date))
         writer = csv.writer(output)
         writer.writerow([
-            observation.station.bom_abbreviation, reading_date.date(),
-            reading_date.time(), observation.temperature,
-            observation.humidity, observation.wind_speed,
-            observation.wind_speed_max, observation.wind_direction,
+            observation.station.bom_abbreviation,
+            reading_date.strftime('%Y-%m-%d'),
+            reading_date.strftime('%H:%M:%S'),
+            observation.temperature,
+            observation.humidity,
+            observation.wind_speed,
+            observation.wind_speed_max,
+            observation.wind_direction,
             observation.get_rainfall(),
-            observation.station.battery_voltage, None,
+            observation.station.battery_voltage,
+            None,
             observation.get_pressure()
         ])
 
         # Reset the position to the beginning of our file-like object.
-        name = "DPAW-{}".format(observation.station.bom_abbreviation)
-        reading_date = date(reading_date, "YmdHis")
-        output.seek(0)
-        output.name = "{}{}.txt".format(name, reading_date)
-        semaphore = "{}{}.ok".format(name, reading_date)
+        name = "DPAW{}".format(reading_date.strftime('%Y%m%d%H%M%S'))
+        output.name = "{}.txt".format(name)
+        semaphore = "{}.ok".format(name)
         path = settings.DAFWA_UPLOAD_DIR
 
         try:
             # First write the data, then the semaphore file.
             f = client.open(os.path.join(path, output.name), 'w')
+            output.seek(0)
             f.write(output.read())
             f.close()
 
