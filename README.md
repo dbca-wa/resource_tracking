@@ -1,6 +1,9 @@
 # Resource Tracking application
 
-Django and Leaflet application that collects tracking information using IMAP from a mailbox and displays it on a collection of layers provided by Geoserver.
+Django and Leaflet application that collects tracking information using IMAP
+from a mailbox and displays it on a collection of layers provided by
+Geoserver. The application also downloads observation data from
+automatic weather stations, and uploads weather data to DAFWA.
 
 # Environment variables
 
@@ -21,3 +24,7 @@ Variables below may also need to be defined (context-dependent):
     CSW_URL="https://oim.dpaw.wa.gov.au/catalogue/sss/"
     PRINTING_URL="https://printing.dpaw.wa.gov.au"
     TRACPLUS_URL="https://your-trackplus-gateway-url/parameters"
+    DAFWA_UPLOAD_HOST="dafwaftp.agric.wa.gov.au"
+    DAFWA_UPLOAD_USER="username"
+    DAFWA_UPLOAD_PASSWORD="password"
+    DAFWA_UPLOAD_DIR="data/dir/in"

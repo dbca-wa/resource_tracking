@@ -9,6 +9,5 @@ django-geojson==2.9.0
 dj-static==0.0.6
 slimit==0.8.1
 ply==3.4
-paramiko==1.16.0
 uwsgi==2.0.13.1
 unicodecsv==0.14.1
