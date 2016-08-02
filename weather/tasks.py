@@ -5,9 +5,8 @@ from django.conf import settings
 from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.encoding import force_text
+from ftplib import FTP
 import logging
-import os
-import paramiko
 import StringIO
 import sys
 import telnetlib
@@ -17,23 +16,24 @@ from weather.models import WeatherStation, WeatherObservation
 logger = logging.getLogger('weather')
 
 
-def ftp_upload(host, port, username, password, observations):
-    logger.info("Connecting to {}...".format(host))
+def ftp_upload(observations):
+    logger.info('Connecting to {}'.format(settings.DAFWA_UPLOAD_HOST))
 
     try:
-        transport = paramiko.Transport((host, port))
-        transport.connect(username=username, password=password)
-        client = paramiko.SFTPClient.from_transport(transport)
+        ftp = FTP(settings.DAFWA_UPLOAD_HOST)
+        ftp.login(settings.DAFWA_UPLOAD_USER, settings.DAFWA_UPLOAD_PASSWORD)
+        ftp.cwd(settings.DAFWA_UPLOAD_DIR)
     except Exception as e:
-        logger.error("Connection to {} failed... {} exiting".format(host, e))
+        logger.error('Connection to {} failed'.format(settings.DAFWA_UPLOAD_HOST))
         logger.exception(e)
-        return
+        return False
 
     output = StringIO.StringIO()
+    semaphore = StringIO.StringIO()
 
     for observation in observations:
+        # Generate the CSV for transfer.
         reading_date = timezone.localtime(observation.date)
-        logger.info("Date: {}".format(reading_date))
         writer = csv.writer(output)
         writer.writerow([
             observation.station.bom_abbreviation,
@@ -50,29 +50,22 @@ def ftp_upload(host, port, username, password, observations):
             observation.get_pressure()
         ])
 
-        # Reset the position to the beginning of our file-like object.
-        name = "DPAW{}".format(reading_date.strftime('%Y%m%d%H%M%S'))
-        output.name = "{}.txt".format(name)
-        semaphore = "{}.ok".format(name)
-        path = settings.DAFWA_UPLOAD_DIR
+        output.seek(0)
+        name = 'DPAW{}'.format(reading_date.strftime('%Y%m%d%H%M%S'))
+        output.name = '{}.txt'.format(name)
+        semaphore.name = '{}.ok'.format(name)
 
         try:
             # First write the data, then the semaphore file.
-            f = client.open(os.path.join(path, output.name), 'w')
-            output.seek(0)
-            f.write(output.read())
-            f.close()
+            ftp.storlines('STOR ' + output.name, output)
+            ftp.storlines('STOR ' + semaphore.name, semaphore)
+        except Exception as e:
+            logger.error("DAFWA upload failed for {}".format(observation))
+            logger.exception(e)
+            return False
 
-            f = client.open(os.path.join(path, semaphore), 'w')
-            f.write('')
-            f.close()
-        except:
-            # The SFTP client failed, restart the connection up to three
-            # times before giving up and exiting.
-            logger.error("DAFWA upload failed for {}".format(observation), exc_info=sys.exc_info())
-
-    client.close()
-    logger.info("Published to DAFWA successfully.")
+    ftp.quit()
+    logger.info('Published to DAFWA successfully')
 
 
 def retrieve_observation(args):
@@ -145,13 +138,7 @@ def download_data(request=None):
         observations = WeatherObservation.objects.filter(date__gte=last_minute)
         if observations.count() > 0:
             logger.info("Found {} observations to publish...".format(observations.count()))
-            ftp_upload(
-                settings.DAFWA_UPLOAD_HOST,
-                int(settings.DAFWA_UPLOAD_PORT),
-                settings.DAFWA_UPLOAD_USER,
-                settings.DAFWA_UPLOAD_PASSWORD,
-                observations
-            )
+            ftp_upload(observations)
 
     delta = timezone.now() - start
     html = "<html><body>Download at {} for {}.</body></html>".format(start, delta)
