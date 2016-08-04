@@ -1,4 +1,4 @@
-Django==1.9.5
+Django==1.9.9
 django-extensions==1.6.1
 https://static.dpaw.wa.gov.au/static/py/dpaw-utils/dist/dpaw-utils-0.3a10.tar.gz
 six==1.10.0

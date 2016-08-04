@@ -3,10 +3,8 @@
 <head>
     <title>DPaW Weather Stations</title>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="//cdn.jsdelivr.net/leaflet/0.7.3/leaflet.css" />
-    <script src="//cdn.jsdelivr.net/leaflet/0.7.3/leaflet.js"></script>
-    <link rel="stylesheet" type="text/css" href="https://raw.githubusercontent.com/buche/leaflet-openweathermap/ecb5b5cb1b6fe95e6faa3a1713552454d75f9056/leaflet-openweathermap.css" />
-    <script type="text/javascript" src="https://raw.githubusercontent.com/buche/leaflet-openweathermap/ecb5b5cb1b6fe95e6faa3a1713552454d75f9056/leaflet-openweathermap.js"></script>
+    <link rel="stylesheet" href="//static.dpaw.wa.gov.au/static/libs/leaflet/0.7.7/leaflet.css" />
+    <script src="//static.dpaw.wa.gov.au/static/libs/leaflet/0.7.7/leaflet.js"></script>
 
     <style>
         body {
@@ -35,10 +33,10 @@
         };
         legend.addTo(map);
         mapLink =
-            '<a href="http://openstreetmap.org">OpenStreetMap</a>';
+            '<a href="//openstreetmap.org">OpenStreetMap</a>';
         L.tileLayer(
             '//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; ' + mapLink + ' Contributors',
+            attribution: '&copy; ' + mapLink,
             maxZoom: 18,
             }).addTo(map);
         var stations = {};
@@ -49,19 +47,6 @@
         {% endfor %}
         group.addTo(map)
         map.fitBounds(group.getBounds());
-
-        // Enhance with openweathermap
-        var overlayMaps = {
-            "Clouds": L.OWM.clouds({showLegend: true, opacity: 0.5}),
-            "Precipitation": L.OWM.precipitation({showLegend: true, opacity: 0.5}),
-            "Temperature": L.OWM.temperature({showLegend: true, opacity: 0.5}),
-            "Wind Speed": L.OWM.wind({showLegend: true, opacity: 0.5}),
-            "Pressure": L.OWM.pressure({showLegend: true, opacity: 0.5}),
-            "Pressure Contours": L.OWM.pressureContour({showLegend: true, opacity: 0.5}),
-        };
-        var layerControl = L.control.layers(null, overlayMaps).addTo(map);
-
-
     </script>
 </body>
 </html>
