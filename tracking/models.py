@@ -14,6 +14,48 @@ from django.contrib.humanize.templatetags.humanize import naturaltime
 logger = logging.getLogger(__name__)
 
 
+DISTRICT_PERTH_HILLS = 1
+DISTRICT_SWAN_COASTAL = 2
+DISTRICT_BLACKWOOD = 3
+DISTRICT_WELLINGTON = 4
+DISTRICT_DONNELLY = 5
+DISTRICT_FRANKLAND = 6
+DISTRICT_ALBANY = 7
+DISTRICT_ESPERANCE = 8
+DISTRICT_EAST_KIMBERLEY = 9
+DISTRICT_WEST_KIMBERLEY = 10
+DISTRICT_EXMOUTH = 11
+DISTRICT_PILBARA = 12
+DISTRICT_KALGOORLIE = 13
+DISTRICT_GERALDTON = 14
+DISTRICT_MOORA = 15
+DISTRICT_SHARK_BAY = 16
+DISTRICT_GREAT_SOUTHERN = 17
+DISTRICT_CENTRAL_WHEATBELT = 18
+DISTRICT_SOUTHERN_WHEATBELT = 19
+
+DISTRICT_CHOICES = (
+    (DISTRICT_PERTH_HILLS, "Perth Hills"),
+    (DISTRICT_SWAN_COASTAL, "Swan Coastal"),
+    (DISTRICT_BLACKWOOD, "Blackwood"),
+    (DISTRICT_WELLINGTON, "Wellington"),
+    (DISTRICT_DONNELLY, "Donnelly"),
+    (DISTRICT_FRANKLAND, "Frankland"),
+    (DISTRICT_ALBANY, "Albany"),
+    (DISTRICT_ESPERANCE, "Esperance"),
+    (DISTRICT_EAST_KIMBERLEY, "East Kimberley"),
+    (DISTRICT_WEST_KIMBERLEY, "West Kimberley"),
+    (DISTRICT_EXMOUTH, "Exmouth"),
+    (DISTRICT_PILBARA, "Pilbara"),
+    (DISTRICT_KALGOORLIE, "Kalgoorlie"),
+    (DISTRICT_GERALDTON, "Geraldton"),
+    (DISTRICT_MOORA, "Moora"),
+    (DISTRICT_SHARK_BAY, "Shark Bay"),
+    (DISTRICT_GREAT_SOUTHERN, "Great Southern"),
+    (DISTRICT_CENTRAL_WHEATBELT, "Central Wheatbelt"),
+    (DISTRICT_SOUTHERN_WHEATBELT, "Southern Wheatbelt")
+)
+
 class BasePoint(models.Model):
     point = models.PointField(null=True, editable=False)
     heading = models.PositiveIntegerField(default=0, help_text="Heading in degrees", editable=False)
@@ -32,6 +74,7 @@ class Device(BasePoint):
     name = models.CharField(max_length=32, default="No Name")
     callsign = models.CharField(max_length=32, default="No Callsign")
     symbol = models.CharField(max_length=32, default="Other")
+    district = models.CharField(max_length=32, choices=DISTRICT_CHOICES, null=True, blank=True)
     rego = models.CharField(max_length=10, null=True, blank=True)
     make = models.CharField(max_length=55, null=True, blank=True)
     model = models.CharField(max_length=55, null=True, blank=True)
