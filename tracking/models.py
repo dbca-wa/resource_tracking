@@ -56,6 +56,26 @@ DISTRICT_CHOICES = (
     (DISTRICT_SOUTHERN_WHEATBELT, "Southern Wheatbelt")
 )
 
+SYMBOL_CHOICES = (
+    ("4 wheel drive passenger", "4-Wheel Drive Passenger"),
+    ("4 wheel drive ute", "4-Wheel Drive (Ute)"),
+    ("boat", "Boat"),
+    ("comms bus", "Communications Bus"),
+    ("dozer", "Dozer"),
+    ("fixed wing aircraft", "Fixed-wing Aircraft"),
+    ("float", "Float"),
+    ("gang truck", "Gang Truck"),
+    ("grader", "Grader"),
+    ("heavy duty", "Heavy Duty"),
+    ("light unit", "Light Unit"),
+    ("loader", "Loader"),
+    ("other", "Other"),
+    ("person", "Person"),
+    ("rotary aircraft", "Rotary Aircraft"),
+    ("snorkel", "Snorkel"),
+    ("tender", "Tender")
+)
+
 class BasePoint(models.Model):
     point = models.PointField(null=True, editable=False)
     heading = models.PositiveIntegerField(default=0, help_text="Heading in degrees", editable=False)
@@ -73,7 +93,7 @@ class Device(BasePoint):
     deviceid = models.CharField(max_length=32, unique=True)
     name = models.CharField(max_length=32, default="No Name")
     callsign = models.CharField(max_length=32, default="No Callsign")
-    symbol = models.CharField(max_length=32, default="Other")
+    symbol = models.CharField(max_length=32, choices=SYMBOL_CHOICES, default="Other")
     district = models.CharField(max_length=32, choices=DISTRICT_CHOICES, null=True, blank=True)
     rego = models.CharField(max_length=10, null=True, blank=True)
     make = models.CharField(max_length=55, null=True, blank=True)
