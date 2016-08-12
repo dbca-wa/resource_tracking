@@ -91,14 +91,10 @@ class BasePoint(models.Model):
 @python_2_unicode_compatible
 class Device(BasePoint):
     deviceid = models.CharField(max_length=32, unique=True)
-    name = models.CharField(max_length=32, default="No Name")
-    callsign = models.CharField(max_length=32, default="No Callsign")
+    name = models.CharField(max_length=32, default="No Name", verbose_name="Rego", help_text="e.g. 1QBB157")
+    callsign = models.CharField(max_length=32, default="No Callsign", verbose_name="Vehicle ID", help_text="e.g. GT124, HD121")
     symbol = models.CharField(max_length=32, choices=SYMBOL_CHOICES, default="Other")
     district = models.CharField(max_length=32, choices=DISTRICT_CHOICES, null=True, blank=True)
-    rego = models.CharField(max_length=10, null=True, blank=True)
-    make = models.CharField(max_length=55, null=True, blank=True)
-    model = models.CharField(max_length=55, null=True, blank=True)
-    category = models.CharField(max_length=55, null=True, blank=True)
 
     @property
     def age_minutes(self):
@@ -135,7 +131,7 @@ class Device(BasePoint):
         if self.callsign == "No Callsign":
             callsign = self.name
         callsign = self.callsign
-        return force_text("{} {}".format(callsign, self.rego or self.deviceid))
+        return force_text("{} {}".format(callsign, self.deviceid))
 
 
 @python_2_unicode_compatible

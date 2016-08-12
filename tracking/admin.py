@@ -7,17 +7,17 @@ from .models import Device, LoggedPoint
 @register(Device)
 class DeviceAdmin(ModelAdmin):
     date_hierarchy = "seen"
-    list_display = ("deviceid", "name", "callsign", "symbol", "district", "rego", "make", "model", "category", "seen")
-    list_filter = ("symbol", "district", "make", "model", "category")
-    search_fields = ("deviceid", "name", "callsign", "symbol", "district", "rego", "make", "model", "category")
+    list_display = ("deviceid", "name", "callsign", "symbol", "district", "seen")
+    list_filter = ("symbol", "district")
+    search_fields = ("deviceid", "name", "callsign", "symbol", "district")
     readonly_fields = ("deviceid",)
-    fields = ("deviceid", "district", "symbol", "name", "callsign", "rego", "make", "model", "category")
+    fields = ("deviceid", "symbol", "district", "callsign", "name")
 
 @register(LoggedPoint)
 class LoggedPointAdmin(ModelAdmin):
     list_display = ("seen", "device")
-    list_filter = ("device__symbol", "device__district", "device__make", "device__model", "device__category")
-    search_fields = ("device__deviceid", "device__name", "device__callsign", "device__rego")
+    list_filter = ("device__symbol", "device__district")
+    search_fields = ("device__deviceid", "device__name", "device__callsign")
     date_hierarchy = "seen"
 
     def change_view(self, request, obj=None):
