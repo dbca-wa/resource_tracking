@@ -1,14 +1,33 @@
+# Project directories
+media/
+staticfiles/
+logs/
+**/version
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+
+# dotenv
 .env
 .env.port
 
-*.swp
-*.pyc
-*.env
-*.orig
-venv
-testing
-staticfiles
-logs
+# virtualenv
+venv/
+ENV/
 
-**/version
-tracking/templates/devices
+# Django stuff:
+*.log
+local_settings.py
+
+# Database/fixture dumps
+*.pgdump
+*.dump
+*.db
+*.sqlite3
+
+# Vim swap files
+[._]*.s[a-w][a-z]
+[._]s[a-w][a-z]
