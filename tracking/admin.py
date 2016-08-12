@@ -10,7 +10,8 @@ class DeviceAdmin(ModelAdmin):
     list_display = ("deviceid", "name", "callsign", "symbol", "district", "rego", "make", "model", "category", "seen")
     list_filter = ("symbol", "district", "make", "model", "category")
     search_fields = ("deviceid", "name", "callsign", "symbol", "district", "rego", "make", "model", "category")
-
+    readonly_fields = ("deviceid",)
+    fields = ("deviceid", "district", "symbol", "name", "callsign", "rego", "make", "model", "category")
 
 @register(LoggedPoint)
 class LoggedPointAdmin(ModelAdmin):
