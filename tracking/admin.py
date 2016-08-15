@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.admin import ModelAdmin, register
 from django.core.urlresolvers import reverse
 from django.http import HttpResponseRedirect
@@ -12,6 +13,12 @@ class DeviceAdmin(ModelAdmin):
     search_fields = ("deviceid", "name", "callsign", "symbol", "district")
     readonly_fields = ("deviceid",)
     fields = ("deviceid", "symbol", "district", "callsign", "name")
+
+    class Media:
+        js = (
+            settings.JQUERY_SOURCE,
+            settings.JQUERYUI_SOURCE,
+        )
 
 @register(LoggedPoint)
 class LoggedPointAdmin(ModelAdmin):

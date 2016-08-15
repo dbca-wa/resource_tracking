@@ -4,6 +4,7 @@ from django.core.urlresolvers import reverse
 from django.http import HttpResponse
 from django.shortcuts import render_to_response
 import requests
+import json
 
 from tracking.models import Device
 
@@ -43,3 +44,21 @@ def device_csv(request):
     response = HttpResponse(r.content, content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename=tracking_devices.csv'
     return response
+
+def get_vehicles(request):
+    if request.is_ajax():
+        term = request.GET.get('term','')
+        r = requests.get(settings.KMI_VEHICLE_BASE_URL + "&CQL_FILTER=rego%20ilike%20%27%25"+term+"%25%27", auth=(settings.EMAIL_USER,settings.EMAIL_PASSWORD))
+        vehicle_features = json.loads(r.content).get('features')
+        results = []
+        for vehicle in vehicle_features:
+            vehicle_json = {}
+            vehicle_json['value'] = vehicle.get('properties').get('rego')
+            vehicle_json['label'] = vehicle.get('properties').get('rego') + ', ' + vehicle.get('properties').get('make_desc') +', '+\
+                vehicle.get('properties').get('model_desc') +', '+ vehicle.get('properties').get('category_desc')
+            results.append(vehicle_json)
+        data = json.dumps(results)
+    else:
+        data = ''
+    mimetype = 'application/json'
+    return HttpResponse(data, mimetype)
