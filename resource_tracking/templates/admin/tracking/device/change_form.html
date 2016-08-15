@@ -1,0 +1,31 @@
+{% extends "admin/change_form.html" %}
+{% block extrahead %}
+{{ block.super }}
+<script type="text/javascript">
+$( document ).ready(function() {
+    $(function() {
+        $("#id_name").autocomplete({
+            source: "/vehicle_data/",
+            minLength: 4
+        });
+    });
+});
+</script>
+<style>
+.ui-helper-hidden-accessible { display:none; }
+
+#ui-id-1{
+    padding-left: 0px;
+}
+
+#ui-id-1 .ui-menu-item:hover {
+    background-color: skyblue;
+}
+
+#ui-id-1 .ui-menu-item {
+    background-color: lightblue;
+    list-style-type: none;
+    max-width: 700px;
+}
+</style>
+{% endblock %}
