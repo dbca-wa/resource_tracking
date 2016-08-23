@@ -54,9 +54,12 @@ def actual_rainfall(rainfall, station, date):
     Compute the rainfall in the last minute. We can get this by checking
     the previous weather observation's rainfall and subtracting from it
     this observation's rainfall.
-    If there are no previous readings, return 0.
     """
     from weather.models import WeatherObservation
+
+    # If there are no previous readings, return 0.
+    if not WeatherObservation.objects.filter(station=station).exists():
+        return 0
 
     lastreading = WeatherObservation.objects.filter(station=station).latest('date')
     difference = rainfall - lastreading.rainfall
