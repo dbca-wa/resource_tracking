@@ -27,6 +27,9 @@ class LoggedPointAdmin(ModelAdmin):
     search_fields = ("device__deviceid", "device__name", "device__callsign")
     date_hierarchy = "seen"
 
+    def add_view(self, request, obj=None):
+        return HttpResponseRedirect(reverse('admin:tracking_loggedpoint_changelist'))
+
     def change_view(self, request, obj=None):
         return HttpResponseRedirect(reverse('admin:tracking_loggedpoint_changelist'))
 
