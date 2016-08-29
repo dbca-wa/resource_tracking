@@ -20,6 +20,12 @@ class DeviceAdmin(ModelAdmin):
             settings.JQUERYUI_SOURCE,
         )
 
+class DeviceSSSAdmin(DeviceAdmin):
+
+    def add_view(self, request, obj=None):
+        return HttpResponseRedirect(reverse('sss_admin:tracking_device_changelist'))
+
+
 @register(LoggedPoint)
 class LoggedPointAdmin(ModelAdmin):
     list_display = ("seen", "device")
@@ -38,6 +44,6 @@ class TrackingAdminSite(AdminSite):
     site_header = 'SSS administration'
     site_url = None
 
-tracking_admin_site = TrackingAdminSite(name='tracking_admin')
-tracking_admin_site.register(Device, DeviceAdmin)
+tracking_admin_site = TrackingAdminSite(name='sss_admin')
+tracking_admin_site.register(Device, DeviceSSSAdmin)
 
