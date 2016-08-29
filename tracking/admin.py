@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.contrib.admin import ModelAdmin, register
+from django.contrib.admin import ModelAdmin, register, AdminSite
 from django.core.urlresolvers import reverse
 from django.http import HttpResponseRedirect
 from .models import Device, LoggedPoint
@@ -29,3 +29,12 @@ class LoggedPointAdmin(ModelAdmin):
 
     def change_view(self, request, obj=None):
         return HttpResponseRedirect(reverse('admin:tracking_loggedpoint_changelist'))
+
+
+class TrackingAdminSite(AdminSite):
+    site_header = 'SSS administration'
+    site_url = None
+
+tracking_admin_site = TrackingAdminSite(name='tracking_admin')
+tracking_admin_site.register(Device, DeviceAdmin)
+
