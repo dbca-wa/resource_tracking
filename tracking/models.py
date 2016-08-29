@@ -6,10 +6,13 @@ import pytz
 import json
 import logging
 
+from django.contrib.auth.models import Group, User
 from django.contrib.gis.db import models
 from django.utils import timezone
 from django.utils.encoding import force_text, python_2_unicode_compatible
 from django.contrib.humanize.templatetags.humanize import naturaltime
+from django.dispatch import receiver
+from django.db.models.signals import pre_save, post_save
 
 logger = logging.getLogger(__name__)
 
@@ -175,3 +178,15 @@ class LoggedPoint(BasePoint):
 
     class Meta:
         unique_together = (("device", "seen"),)
+
+@receiver(pre_save, sender=User)
+def user_pre_save(sender, instance, **kwargs):
+    # Set is_staff to True so users can edit Device details
+    instance.is_staff = True
+
+@receiver(post_save, sender=User)
+def user_post_save(sender, instance, **kwargs):
+    # Add users to the 'Edit Resource Tracking Device' group so users can edit Device details
+    # NOTE: does not work when saving user in Django Admin
+    g = Group.objects.get(name='Edit Resource Tracking Device')
+    instance.groups.add(g)
