@@ -1,4 +1,27 @@
+from django.utils import timezone
 import math
+
+
+def dafwa_obs(observation):
+    """Given a passed-in WeatherObservation object, return a list of
+    sensor information that is compatible with being transmitted to
+    DAFWA (typically as a CSV).
+    """
+    reading_date = timezone.localtime(observation.date)
+    return [
+        observation.station.bom_abbreviation,
+        reading_date.strftime('%Y-%m-%d'),
+        reading_date.strftime('%H:%M:%S'),
+        observation.temperature,
+        observation.humidity,
+        observation.wind_speed,
+        observation.wind_speed_max,
+        observation.wind_direction,
+        observation.get_rainfall(),
+        observation.station.battery_voltage,
+        None,
+        observation.get_pressure()
+    ]
 
 
 def dew_point(T, RH=None):

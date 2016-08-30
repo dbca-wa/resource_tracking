@@ -12,6 +12,7 @@ import sys
 import telnetlib
 
 from weather.models import WeatherStation, WeatherObservation
+from weather.utils import dafwa_obs
 
 logger = logging.getLogger('weather')
 
@@ -35,20 +36,7 @@ def ftp_upload(observations):
         # Generate the CSV for transfer.
         reading_date = timezone.localtime(observation.date)
         writer = csv.writer(output)
-        writer.writerow([
-            observation.station.bom_abbreviation,
-            reading_date.strftime('%Y-%m-%d'),
-            reading_date.strftime('%H:%M:%S'),
-            observation.temperature,
-            observation.humidity,
-            observation.wind_speed,
-            observation.wind_speed_max,
-            observation.wind_direction,
-            observation.get_rainfall(),
-            observation.station.battery_voltage,
-            None,
-            observation.get_pressure()
-        ])
+        writer.writerow(dafwa_obs(observation))
 
         output.seek(0)
         name = 'DPAW{}'.format(reading_date.strftime('%Y%m%d%H%M%S'))
