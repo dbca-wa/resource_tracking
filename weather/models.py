@@ -334,18 +334,18 @@ class WeatherObservation(models.Model):
 
     def get_rainfall(self):
         """
-        Compute the rainfall in the last minute. We can get this by checking
-        the previous weather observation's rainfall and subtracting from it
-        this observation's rainfall.
+        Compute the rainfall difference between this reading and the previous
+        reading.
         If there are no previous readings, return 0.
+        If previous reading > this reading, return 0 (counter was reset).
         """
         try:
-            previous = self._default_manager.get(
-                station=self.station, date=self.date - datetime.timedelta(minutes=1))
+            previous = self._default_manager.filter(station=self.station, date__lt=self.date).exclude(pk=self.pk).order_by('-date').first()
         except WeatherObservation.DoesNotExist:
             return Decimal('0.0')
-        else:
-            return Decimal(self.rainfall) - previous.rainfall
+        if previous.rainfall > self.rainfall:
+            return Decimal('0.0')
+        return Decimal(self.rainfall) - previous.rainfall
 
     def __str__(self):
         return 'Data for {} on {}'.format(self.station.name, self.date)
