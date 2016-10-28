@@ -2,14 +2,10 @@ from __future__ import absolute_import
 import csv
 from datetime import timedelta
 from django.conf import settings
-from django.http import HttpResponse
 from django.utils import timezone
-from django.utils.encoding import force_text
 from ftplib import FTP
 import logging
 import StringIO
-import sys
-import telnetlib
 
 from weather.models import WeatherStation, WeatherObservation
 from weather.utils import dafwa_obs
@@ -18,6 +14,9 @@ logger = logging.getLogger('weather')
 
 
 def ftp_upload(observations):
+    """Utility function to upload weather data to the DAFWA FTP site in a
+    suitable format.
+    """
     logger.info('Connecting to {}'.format(settings.DAFWA_UPLOAD_HOST))
 
     try:
@@ -56,38 +55,12 @@ def ftp_upload(observations):
     logger.info('Published to DAFWA successfully')
 
 
-def retrieve_observation(args):
-    station_name, ip_address, port, pk, retrieval_time = args
-    logger.info("Trying to connect to {}".format(station_name))
-    client, output = None, False
-    try:
-        client = telnetlib.Telnet(ip_address, port)
-        response = client.read_until('\r\n'.encode('utf8'), 60)
-        response = response[2:]
-    except:
-        logger.info("Failed to read weather data from {}...".format(station_name), exc_info=sys.exc_info())
-    else:
-        try:
-            logger.info("PERIODIC READING OF {}".format(station_name))
-            logger.info(force_text(response))
-            output = (pk, force_text(response), retrieval_time)
-            if client:
-                client.close()
-        except Exception, e:
-            logger.info("Had some trouble saving this stuff... {}".format(e))
-
-    logger.info("Finished collecting observation for {}".format(station_name))
-    return output
-
-
-def download_data(request=None):
-    start = timezone.now()
-    """
-    Check all of our active weather stations to see if we need to update their
-    observations. Launch a sub-task if so that telnets to the station and
-    retrieves the latest data.
+def download_data():
+    """A utility function to check all active weather stations to see
+    if a new weather observation needs to be downloaded from each.
     """
     logger.info("Scheduling new gatherers...")
+    observations = []
     for station in WeatherStation.objects.filter(active=True):
         logger.info("Checking station {}".format(station))
 
@@ -110,24 +83,30 @@ def download_data(request=None):
             logger.info("Scheduling {} for a new observation".format(station))
             station.last_scheduled = now
             station.save()
-            result = retrieve_observation((station.name, station.ip_address, station.port, station.pk, now))
+            result = station.download_observation()
             if result:
+                logger.info("Finished collecting observation for {}".format(station.name))
                 pk, response, retrieval_time = result
-                station = WeatherStation.objects.get(pk=pk)
-                station.save_weather_data(response, retrieval_time)
+                observations.append(station.save_weather_data(response, retrieval_time))
+            else:
+                logger.info("Observation failed for {}".format(station.name))
         else:
             logger.info("Skipping {}".format(station))
 
-    if settings.DAFWA_UPLOAD:
-        # Check if there are any observations for
-        # the last minute and upload them to DAFWA if so.
-        now = timezone.now().replace(second=0, microsecond=0)
-        last_minute = now - timedelta(minutes=1)
-        observations = WeatherObservation.objects.filter(date__gte=last_minute)
-        if observations.count() > 0:
-            logger.info("Found {} observations to publish...".format(observations.count()))
-            ftp_upload(observations)
+    return observations
 
-    delta = timezone.now() - start
-    html = "<html><body>Download at {} for {}.</body></html>".format(start, delta)
-    return HttpResponse(html)
+
+def upload_data(observations=None):
+    """Utility function to upload observations to DAFWA.
+    """
+    if settings.DAFWA_UPLOAD:
+        if not observations:
+            # Check if there are any observations for
+            # the last minute and upload them to DAFWA if so.
+            now = timezone.now().replace(second=0, microsecond=0)
+            last_minute = now - timedelta(minutes=1)
+            observations = WeatherObservation.objects.filter(date__gte=last_minute)
+        if len(observations) > 0:
+            logger.info("{} observations to upload".format(len(observations)))
+            ftp_upload(observations)
+    return True
