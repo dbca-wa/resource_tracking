@@ -7,19 +7,22 @@ from django.contrib.gis.db import models
 from django.db.models import Max, Min
 from django.utils import timezone
 from django.utils.encoding import force_text, python_2_unicode_compatible
+import logging
 import math
+import re
+import telnetlib
 
 from weather.utils import dew_point, actual_pressure, actual_rainfall
 
 
+logger = logging.getLogger('weather')
 KNOTS_TO_MS = Decimal('0.51444')
 KNOTS_TO_KS = Decimal('1.85166')
 
 
 @python_2_unicode_compatible
 class Location(models.Model):
-    """
-    Represents the location of a weather station.
+    """Represents the location of a weather station.
     """
     title = models.CharField(blank=True, max_length=128)
     description = models.TextField(blank=True)
@@ -32,6 +35,12 @@ class Location(models.Model):
 
 @python_2_unicode_compatible
 class WeatherStation(models.Model):
+    """Represents an automatic weather station (AWS) installation.
+    """
+    MANUFACTURER_CHOICES = (
+        ('telvent', 'Telvent'),
+        ('vaisala', 'Vaisala'),
+    )
     name = models.CharField(max_length=100)
     location = models.ForeignKey(Location, null=True, blank=True)
     abbreviation = models.CharField(max_length=20)
@@ -45,6 +54,8 @@ class WeatherStation(models.Model):
     active = models.BooleanField(default=False)
     stay_connected = models.BooleanField(
         default=False, verbose_name='Persistent connection')
+    manufacturer = models.CharField(
+        max_length=100, null=True, blank=True, choices=MANUFACTURER_CHOICES)
 
     class Meta:
         ordering = ['-last_reading']
@@ -74,84 +85,143 @@ class WeatherStation(models.Model):
         except:
             return 0
 
+    def download_observation(self):
+        """Utility function to connect to an AWS via Telnet and download a
+        single observation.
+        """
+        retrieval_time = timezone.now().replace(microsecond=0)
+        logger.info("Trying to connect to {}".format(self.name))
+        client, output = None, False
+        try:
+            client = telnetlib.Telnet(self.ip_address, self.port)
+            if self.manufacturer == 'vaisala':
+                pattern = '(\\r\\n)(0R0.+V)(\\r\\n)'
+                clean_response = False
+                while not clean_response:
+                    response = client.read_until('V\r\n'.encode('utf8'), 60)
+                    m = re.search(pattern, response)
+                    if m:
+                        response = m.group(2)
+                        clean_response = True
+            else:  # Default to using the Telvent station format.
+                response = client.read_until('\r\n'.encode('utf8'), 60)
+                response = response[2:]
+            if client:
+                client.close()
+        except Exception as e:
+            logger.error('Failed to read weather data from {}'.format(self.name))
+            logger.exception(e)
+            return None
+
+        logger.info("PERIODIC READING OF {}".format(self.name))
+        logger.info(force_text(response))
+        output = (self.pk, force_text(response), retrieval_time)
+        return output
+
     def save_weather_data(self, raw_data, last_reading=None):
         """
         Convert NVP format to django record
         """
         if last_reading is None:
             last_reading = timezone.now()
-
-        # Data is stored in NVP format separated by the pipe symbol '|'.
-        #   |<NAME>=<VALUE>|
-        items = raw_data.split('|')
-        data = {}
-        for item in items:
-            if (item != ''):
-                try:
-                    key, value = item.split('=')
-                    data[key] = value
-                except:
-                    pass
-
         EMPTY = Decimal('0.00')
 
         # Create a weather reading.from the retrieved data.
-        reading = WeatherObservation()
-        reading.temperature_min = data.get('TN') or EMPTY
-        reading.temperature_max = data.get('TX') or EMPTY
-        reading.temperature = data.get('T') or EMPTY
-        reading.temperature_deviation = data.get('TS') or EMPTY
-        reading.temperature_outliers = data.get('TO') or 0
+        if self.manufacturer == 'vaisala':
+            # Vaisala data is a comma-separated NVP format.
+            items = raw_data.split(',')
+            items.pop(0)  # Remove the first element of the raw data.
+            data = {}
+            for item in items:
+                k, v = item.split('=')
+                data[k] = v
+            reading = WeatherObservation()
+            reading.temperature = Decimal(data.get('Ta')[:-1])
+            reading.humidity = Decimal(data.get('Ua')[:-1])
+            reading.dew_point = dew_point(float(reading.temperature),
+                                          float(reading.humidity))
+            reading.pressure = Decimal(data.get('Pa')[:-1])
+            reading.wind_direction_min = Decimal(data.get('Dn')[:-1])
+            reading.wind_direction_max = Decimal(data.get('Dx')[:-1])
+            reading.wind_direction = Decimal(data.get('Dm')[:-1])
+            reading.wind_speed_min = Decimal(data.get('Sn')[:-1]) * KNOTS_TO_MS
+            reading.wind_speed_min_kn = Decimal(data.get('Sn')[:-1])
+            reading.wind_speed_max = Decimal(data.get('Sx')[:-1]) * KNOTS_TO_MS
+            reading.wind_speed_max_kn = Decimal(data.get('Sx')[:-1])
+            reading.wind_speed = Decimal(data.get('Sm')[:-1]) * KNOTS_TO_MS
+            reading.wind_speed_kn = Decimal(data.get('Sm')[:-1])
+            reading.rainfall = Decimal(data.get('Rc')[:-1])
+            reading.actual_rainfall = actual_rainfall(Decimal(reading.rainfall),
+                                                      self, last_reading)
+            reading.actual_pressure = actual_pressure(float(reading.temperature),
+                                                      float(reading.pressure),
+                                                      float(self.location.height))
+            reading.raw_data = raw_data
+            reading.station = self
+            reading.save()
+            self.last_reading = last_reading
+            self.battery_voltage = Decimal(data.get('Vs')[:-1])
+            self.save()
+        else:  # Default to using the Telvent station format.
+            # Telvent data is stored in NVP format separated by the pipe symbol '|'.
+            #   |<NAME>=<VALUE>|
+            items = raw_data.split('|')
+            data = {}
+            for item in items:
+                if (item != ''):
+                    try:
+                        k, v = item.split('=')
+                        data[k] = v
+                    except:
+                        pass
 
-        reading.pressure_min = data.get('QFEN') or EMPTY
-        reading.pressure_max = data.get('QFEX') or EMPTY
-        reading.pressure = data.get('QFE') or EMPTY
-        reading.pressure_deviation = data.get('QFES') or EMPTY
-        reading.pressure_outliers = data.get('QFEO') or 0
-
-        reading.humidity_min = data.get('HN') or EMPTY
-        reading.humidity_max = data.get('HX') or EMPTY
-        reading.humidity = data.get('H') or EMPTY
-        reading.humidity_deviation = data.get('HS') or EMPTY
-        reading.humidity_outliers = data.get('HO') or 0
-
-        reading.wind_direction_min = data.get('DN') or EMPTY
-        reading.wind_direction_max = data.get('DX') or EMPTY
-        reading.wind_direction = data.get('D') or EMPTY
-        reading.wind_direction_deviation = data.get('DS') or EMPTY
-        reading.wind_direction_outliers = data.get('DO') or 0
-
-        if (data.get('SN')):
-            reading.wind_speed_min = Decimal(data.get('SN')) * KNOTS_TO_MS or 0
-            reading.wind_speed_min_kn = Decimal(data.get('SN')) or 0
-            reading.wind_speed_deviation = Decimal(data.get('SS')) * KNOTS_TO_MS or 0
-            reading.wind_speed_outliers = data.get('SO') or 0
-            reading.wind_speed_deviation_kn = Decimal(data.get('SS')) or 0
-        if (data.get('SX')):
-            reading.wind_speed_max = Decimal(data.get('SX')) * KNOTS_TO_MS or 0
-            reading.wind_speed_max_kn = Decimal(data.get('SX')) or 0
-
-        if (data.get('S')):
-            reading.wind_speed = Decimal(data.get('S')) * KNOTS_TO_MS or 0
-            reading.wind_speed_kn = Decimal(data.get('S')) or 0
-
-        reading.rainfall = data.get('R') or EMPTY
-
-        reading.dew_point = dew_point(float(reading.temperature),
-                                      float(reading.humidity))
-        reading.actual_rainfall = actual_rainfall(Decimal(reading.rainfall),
-                                                  self, last_reading)
-        reading.actual_pressure = actual_pressure(float(reading.temperature),
-                                                  float(reading.pressure),
-                                                  float(self.location.height))
-
-        reading.raw_data = raw_data
-        reading.station = self
-        reading.save()
-
-        self.last_reading = last_reading
-        self.battery_voltage = data.get('BV', EMPTY) or EMPTY
-        self.save()
+            reading = WeatherObservation()
+            reading.temperature_min = data.get('TN') or EMPTY
+            reading.temperature_max = data.get('TX') or EMPTY
+            reading.temperature = data.get('T') or EMPTY
+            reading.temperature_deviation = data.get('TS') or EMPTY
+            reading.temperature_outliers = data.get('TO') or 0
+            reading.pressure_min = data.get('QFEN') or EMPTY
+            reading.pressure_max = data.get('QFEX') or EMPTY
+            reading.pressure = data.get('QFE') or EMPTY
+            reading.pressure_deviation = data.get('QFES') or EMPTY
+            reading.pressure_outliers = data.get('QFEO') or 0
+            reading.humidity_min = data.get('HN') or EMPTY
+            reading.humidity_max = data.get('HX') or EMPTY
+            reading.humidity = data.get('H') or EMPTY
+            reading.humidity_deviation = data.get('HS') or EMPTY
+            reading.humidity_outliers = data.get('HO') or 0
+            reading.wind_direction_min = data.get('DN') or EMPTY
+            reading.wind_direction_max = data.get('DX') or EMPTY
+            reading.wind_direction = data.get('D') or EMPTY
+            reading.wind_direction_deviation = data.get('DS') or EMPTY
+            reading.wind_direction_outliers = data.get('DO') or 0
+            if (data.get('SN')):
+                reading.wind_speed_min = Decimal(data.get('SN')) * KNOTS_TO_MS or 0
+                reading.wind_speed_min_kn = Decimal(data.get('SN')) or 0
+                reading.wind_speed_deviation = Decimal(data.get('SS')) * KNOTS_TO_MS or 0
+                reading.wind_speed_outliers = data.get('SO') or 0
+                reading.wind_speed_deviation_kn = Decimal(data.get('SS')) or 0
+            if (data.get('SX')):
+                reading.wind_speed_max = Decimal(data.get('SX')) * KNOTS_TO_MS or 0
+                reading.wind_speed_max_kn = Decimal(data.get('SX')) or 0
+            if (data.get('S')):
+                reading.wind_speed = Decimal(data.get('S')) * KNOTS_TO_MS or 0
+                reading.wind_speed_kn = Decimal(data.get('S')) or 0
+            reading.rainfall = data.get('R') or EMPTY
+            reading.dew_point = dew_point(float(reading.temperature),
+                                          float(reading.humidity))
+            reading.actual_rainfall = actual_rainfall(Decimal(reading.rainfall),
+                                                      self, last_reading)
+            reading.actual_pressure = actual_pressure(float(reading.temperature),
+                                                      float(reading.pressure),
+                                                      float(self.location.height))
+            reading.raw_data = raw_data
+            reading.station = self
+            reading.save()
+            self.last_reading = last_reading
+            self.battery_voltage = data.get('BV', EMPTY) or EMPTY
+            self.save()
 
         return reading
 
@@ -161,8 +231,7 @@ class WeatherStation(models.Model):
 
 @python_2_unicode_compatible
 class WeatherObservation(models.Model):
-    """
-    Records observations of weather from an AWS.
+    """Represents an observation of weather from an AWS.
 
     Capable of storing information from a NVP messsage about the following
     (one minute unless otherwise specified):
