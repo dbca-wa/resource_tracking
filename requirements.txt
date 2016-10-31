@@ -11,3 +11,4 @@ slimit==0.8.1
 ply==3.4
 uwsgi==2.0.13.1
 unicodecsv==0.14.1
+pytz==2016.7
