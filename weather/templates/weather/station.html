@@ -16,7 +16,7 @@
         <h3>{{ station }}</h3>
     </div>
     <div class="pure-u-1-3">
-        <h3><a href="/">DPaW Weather Stations</a></h3>
+        <h3><a href="{% url 'weather_index' %}">DPaW Weather Stations</a></h3>
     </div>
     <div class="pure-u-1-3">
         <h3>Rain from 0900 to {{ station.last_reading_time }}: {{ station.rain_since_nine_am }}mm</h3>
