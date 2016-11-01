@@ -118,7 +118,7 @@ def save_iriditrak(queueitem):
     sbd = {'ID': deviceid, 'TU': timestamp}
     # Normal BEAM sbdtext message
     if attachment.find(',') == 0:
-        for field in ['SQ', 'FU', 'DD', 'LT', 'LG', 'TU', 'VL', 'DR', 'AL']:
+        for field in ['SQ', 'FU', 'DD', 'LT', 'LG', 'TU', 'VL', 'DR', 'AL', 'EQ']:
             try:
                 sbd[field] = sbdfield(attachment, field)
             except:
@@ -135,7 +135,7 @@ def save_iriditrak(queueitem):
             # Byte 1 Equation byte, use to detect type of message
             sbd['EQ'] = raw[0]
             # BEAM 10byte and 20byte binary messages
-            if sbd['EQ'] in [1, 2, 3, 4, 18, 25, 26]:
+            if sbd['EQ'] in [1, 2, 3, 4, 18, 19, 25, 26]:
                 # Byte 2: SSSS:GPS:Lat:Lng:Msd (SSSS = SQ, Msd = Most Significant Digit of Longitude)
                 sbd['SQ'] = int('0'+bin(raw[1])[2:][-8:-4], 2)
                 GPS = int(bin(raw[1])[2:][-4])
