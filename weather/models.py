@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
 from decimal import Decimal
-from datetime import timedelta
-import datetime
+from datetime import timedelta, time, datetime
+from django.conf import settings
 from django.contrib.gis.db import models
 from django.db.models import Max, Min
 from django.utils import timezone
 from django.utils.encoding import force_text, python_2_unicode_compatible
 import logging
 import math
+import pytz
 import re
 import telnetlib
 
@@ -18,6 +19,7 @@ from weather.utils import dew_point, actual_pressure, actual_rainfall
 logger = logging.getLogger('weather')
 KNOTS_TO_MS = Decimal('0.51444')
 KNOTS_TO_KS = Decimal('1.85166')
+TIMEZONE = pytz.timezone(settings.TIME_ZONE)
 
 
 @python_2_unicode_compatible
@@ -61,23 +63,22 @@ class WeatherStation(models.Model):
         ordering = ['-last_reading']
 
     def last_reading_local(self):
-        # TODO: use pytz
-        reading = (timezone.localtime(self.last_reading) + timedelta(hours=8)).isoformat().rsplit(':', 2)[0]
-        return reading
+        """Return the datetime of the latest reading, offset to local time.
+        """
+        return self.last_reading.astimezone(TIMEZONE)
 
     def last_reading_time(self):
-        # 24hr format time
-        return self.last_reading_local().split('T')[1].replace(':', '')
+        """Reading local time of latest reading in 24h time (HHMM).
+        """
+        return datetime.strftime(self.last_reading_local(), '%H%M')
 
     def rain_since_nine_am(self):
-        import pytz
-        tz = pytz.timezone('Australia/Perth')
-        now = timezone.make_aware(datetime.datetime.now(), tz)
+        now = timezone.make_aware(datetime.now(), TIMEZONE)
 
-        if now.time() > datetime.time(9):
+        if now.time() > time(9):
             last_9am = now.replace(hour=9, minute=0, second=0, microsecond=0)
         else:
-            yesterday = now - datetime.timedelta(hours=24)
+            yesterday = now - timedelta(hours=24)
             last_9am = yesterday.replace(hour=9, minute=0, second=0, microsecond=0)
         try:
             rainfall_stats = self.readings.filter(rainfall__gt=0, date__gte=last_9am).aggregate(Min('rainfall'), Max('rainfall'))
