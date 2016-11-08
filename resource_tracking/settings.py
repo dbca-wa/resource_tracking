@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'resource_tracking',
     # Sub-app definitions
     'tracking',
+    'shift_register',
     'weather',
     'djgeojson',
     'dpaw_utils'
