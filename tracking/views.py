@@ -106,7 +106,9 @@ def export_stop_start_points(request):
         fromdate = pytz.utc.localize(datetime.utcnow()) + timedelta(days=-30)
         todate = pytz.utc.localize(datetime.utcnow())
 
-    filename = 'SSS_LoggedPoint_{}-{}.csv'.format(fromdate.strftime('%Y%m%d'), todate.strftime('%Y%m%d'))
+    fromdatetext = fromdate.astimezone(pytz.timezone("Australia/Perth"))
+    todatetext = todate.astimezone(pytz.timezone("Australia/Perth"))
+    filename = 'SSS_LoggedPoint_{}-{}.csv'.format(fromdatetext.strftime('%Y%m%d'), todatetext.strftime('%Y%m%d'))
     points = LoggedPoint.objects.filter(seen__gte=fromdate,seen__lte=todate,message__in=(1,2,25,26)).order_by('seen')
 
     for p in points:
