@@ -57,9 +57,9 @@ def dew_point(T, RH=None):
 def actual_pressure(temperature, pressure, height=0.0):
     """
     Convert the pressure from absolute pressure into sea-level adjusted
-    atmospheric pressure.
-    Uses the barometric formula.
-    Returns the mean sea-level pressure values in hPa.
+    atmospheric pressure. Returns the mean sea-level pressure values in hPa.
+    Uses the barometric formula, reference
+    https://en.wikipedia.org/wiki/Barometric_formula
     """
     temperature = temperature + 273.15
     pressure = pressure * 100
