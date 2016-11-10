@@ -12,7 +12,16 @@ class DeviceAdmin(ModelAdmin):
     list_filter = ("symbol", "district")
     search_fields = ("deviceid", "name", "callsign", "symbol", "district")
     readonly_fields = ("deviceid",)
-    fields = ("deviceid", "symbol", "district", "callsign", "name")
+    fieldsets = (
+        ("Vehicle/Device details", {
+            "description": """<p class="errornote">This is the live tracking database; 
+            changes made to these fields will apply to the Device Tracking map in all 
+            variants of the Spatial Support System.</p>
+            """ if settings.PROD_SCARY_WARNING else "",
+            "fields": ("deviceid", "symbol", "district", "callsign", "name")
+        }),
+    )
+
 
     class Media:
         js = (

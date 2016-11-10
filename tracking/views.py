@@ -3,8 +3,12 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse
 from django.shortcuts import render_to_response
+from datetime import datetime, timedelta
+from tracking.models import LoggedPoint
 import requests
 import json
+import unicodecsv
+import pytz
 
 from tracking.models import Device
 
@@ -62,3 +66,69 @@ def get_vehicles(request):
         data = ''
     mimetype = 'application/json'
     return HttpResponse(data, mimetype)
+
+
+def export_stop_start_points(request):
+
+    query_list = []
+    try:
+        fromdate = request.GET['fromdate']
+    except:
+        fromdate = None
+    try:
+        todate = request.GET['todate']
+    except:
+        todate = None
+
+    if fromdate and todate:
+        try:
+            fromdate = pytz.timezone("Australia/Perth").localize(datetime.strptime(fromdate, '%d-%m-%Y'))
+            fromdate = fromdate.astimezone(pytz.UTC)
+            todate = pytz.timezone("Australia/Perth").localize(datetime.strptime(todate, '%d-%m-%Y'))
+            todate = todate.astimezone(pytz.UTC)
+        except:
+            pass
+    elif fromdate:
+        try:
+            fromdate = pytz.timezone("Australia/Perth").localize(datetime.strptime(fromdate, '%d-%m-%Y'))
+            fromdate = fromdate.astimezone(pytz.UTC)
+            todate = fromdate + timedelta(days=30)
+        except:
+            pass
+    elif todate:
+        try:
+            todate = pytz.timezone("Australia/Perth").localize(datetime.strptime(todate, '%d-%m-%Y'))
+            todate = todate.astimezone(pytz.UTC)
+            fromdate = todate + timedelta(days=-30)
+        except:
+            pass
+    else:
+        fromdate = pytz.utc.localize(datetime.utcnow()) + timedelta(days=-30)
+        todate = pytz.utc.localize(datetime.utcnow())
+
+    filename = 'SSS_LoggedPoint_{}-{}.csv'.format(fromdate.strftime('%Y%m%d'), todate.strftime('%Y%m%d'))
+    points = LoggedPoint.objects.filter(seen__gte=fromdate,seen__lte=todate,message__in=(1,2,25,26)).order_by('seen')
+
+    for p in points:
+        seen = datetime.strftime(p.seen.astimezone(pytz.timezone("Australia/Perth")), "%d-%m-%Y %H:%M:%S")
+        device_id = p.device.deviceid
+        message = p.get_message_display()
+        latitude = p.point.y
+        longitude = p.point.x
+        vehicle_id = p.device.callsign
+        rego = p.device.name
+        district = p.device.get_district_display()
+        symbol = p.device.get_symbol_display()
+
+        query_list.append([seen, device_id, message, latitude, longitude, vehicle_id, rego, district, symbol])
+
+    response = HttpResponse(content_type="text/csv")
+    response['Content-Disposition'] = 'attachment; filename={}'.format(filename)
+
+    writer = unicodecsv.writer(response, quoting=unicodecsv.QUOTE_ALL)
+    writer.writerow(["Seen", "DeviceID", "Message", "Latitude", "Longitude", "VehicleID", "Rego", "District", "Symbol"])
+
+    for row in query_list:
+        writer.writerow([unicode(s).encode("utf-8") for s in row])
+
+    return response
