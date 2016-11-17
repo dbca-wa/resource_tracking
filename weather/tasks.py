@@ -47,17 +47,21 @@ def ftp_upload(observations):
             ftp.storlines('STOR ' + output.name, output)
             ftp.storlines('STOR ' + semaphore.name, semaphore)
         except Exception as e:
-            logger.error("DAFWA upload failed for {}".format(observation))
+            logger.error('DAFWA upload failed for {}'.format(observation))
             logger.exception(e)
             return False
 
     ftp.quit()
     logger.info('Published to DAFWA successfully')
+    return True
 
 
 def download_data():
     """A utility function to check all active weather stations to see
     if a new weather observation needs to be downloaded from each.
+
+    NOTE: this method for polling stations to download observation data is
+    deprecated in favour of the standalone pollstations.py script.
     """
     logger.info("Scheduling new gatherers...")
     observations = []
