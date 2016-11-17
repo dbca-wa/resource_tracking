@@ -1,9 +1,11 @@
 from django.core.management.base import BaseCommand, CommandError
+from django.conf import settings
 from weather.models import WeatherStation
+from weather.tasks import ftp_upload
 
 
 class Command(BaseCommand):
-    help = 'Accepts a string argument ("IP::RAW_DATA") and writes a weather observation to the database.'
+    help = 'Accepts a string argument ("IP::RAW_DATA") and writes a weather observation to the database (and optionally upload it to DAFWA).'
 
     def add_arguments(self, parser):
         # Required positional argument.
@@ -15,5 +17,11 @@ class Command(BaseCommand):
             station = WeatherStation.objects.get(ip_address=ip)
             obs = station.save_weather_data(data)
             self.stdout.write(self.style.SUCCESS('Recorded observation {}'.format(obs)))
+            if settings.DAFWA_UPLOAD:
+                uploaded = ftp_upload([obs])
+                if uploaded:
+                    self.stdout.write(self.style.SUCCESS('Published observation to DAFWA'))
+                else:
+                    self.stdout.write(self.style.WARNING('Publish to DAFWA failed'))
         except:
             raise CommandError('Unable to parse observation string')

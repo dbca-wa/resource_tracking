@@ -92,6 +92,8 @@ while polling:
                         # Looks like a weather string; feed to Django
                         process.terminate()
                         obs = '{}::{}'.format(ip, line)
+                        # This mgmt command will write the observation to the
+                        # db and optionally upload it to DAFWA.
                         subprocess.call(['python', 'manage.py', 'write_observation', obs])
             except Exception as e:
                 continue
