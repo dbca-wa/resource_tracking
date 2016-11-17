@@ -1,10 +1,9 @@
-from dateutil import parser as dateparser
 from django.core.management.base import BaseCommand, CommandError
 from weather.models import WeatherStation
 
 
 class Command(BaseCommand):
-    help = 'Accepts a string argument ("IP::TIMESTAMP::RAW_DATA") and writes a weather observation to the database.'
+    help = 'Accepts a string argument ("IP::RAW_DATA") and writes a weather observation to the database.'
 
     def add_arguments(self, parser):
         # Required positional argument.
@@ -12,9 +11,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         try:
-            (ip, ts, data) = options['string'].split('::')
+            (ip, data) = options['string'].split('::')
             station = WeatherStation.objects.get(ip_address=ip)
-            obs = station.save_weather_data(data, dateparser.parse(ts))
+            obs = station.save_weather_data(data)
             self.stdout.write(self.style.SUCCESS('Recorded observation {}'.format(obs)))
         except:
             raise CommandError('Unable to parse observation string')
