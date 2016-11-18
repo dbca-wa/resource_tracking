@@ -1,9 +1,24 @@
 #!/usr/bin/env python
-from fcntl import fcntl, F_GETFL, F_SETFL
 from datetime import datetime
+from fcntl import fcntl, F_GETFL, F_SETFL
+import logging
+from logging import handlers
 from os import O_NONBLOCK
+import re
 import subprocess
 import time
+
+
+# Ensure that the logs dir is present.
+subprocess.call(['mkdir', '-p', 'logs'])
+# Set up logging in a standardised way.
+logger = logging.getLogger('pollstations')
+logger.setLevel(logging.INFO)
+fh = handlers.RotatingFileHandler(
+    'logs/pollstations.log', maxBytes=5 * 1024 * 1024, backupCount=5)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+fh.setFormatter(formatter)
+logger.addHandler(fh)
 
 
 def get_stations():
@@ -22,18 +37,23 @@ def get_stations():
     }
     """
     # Parse the list of IPs for active weather stations.
-    station_string = subprocess.check_output(
-        ['python', 'manage.py', 'station_ips'], stderr=subprocess.STDOUT)
+    try:
+        station_string = subprocess.check_output(
+            ['python', 'manage.py', 'station_metadata'], stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        logger.error(e.output)
+        return False
     stations = {}
     # Generate a dict of station IP, port, interval, last polled and process.
     for i in [s for s in station_string.strip().split(",")]:
-        station = i.split(':')
-        stations[station[0]] = {
-            'port': station[1],
-            'interval': int(station[2]),
-            'polled': None,
-            'process': None
-        }
+        if i:
+            station = i.split(':')
+            stations[station[0]] = {
+                'port': station[1],
+                'interval': int(station[2]),
+                'polled': None,
+                'process': None
+            }
     return stations
 
 
@@ -41,7 +61,7 @@ def connect_station(ip, port):
     """Connect to a weather station via Telnet using subprocess, in a
     non-blocking manner.
     """
-    #print("Connecting to station {}:{}".format(ip, port))
+    logger.info("Connecting to station {}:{}".format(ip, port))
     p = subprocess.Popen(["telnet", ip, port], stdout=subprocess.PIPE)
     flags = fcntl(p.stdout, F_GETFL)
     fcntl(p.stdout, F_SETFL, flags | O_NONBLOCK)
@@ -51,10 +71,19 @@ def connect_station(ip, port):
 # Get the dict of weather stations.
 try:
     STATIONS = get_stations()
-    polling = True
+    if STATIONS:
+        polling = True
+    else:
+        polling = False  # No active weather stations.
 except subprocess.CalledProcessError as e:
     # We can't do anything without this dict, so abort.
     polling = False
+
+# Observation string patterns
+OBS_PATTERNS = [
+    '([A-Z]+=\d*\.?\d*\|)',  # Telvent
+    '(^0R0),([A-Za-z]{2}=\d+[A-Z])',  # Vaisala
+]
 
 
 while polling:
@@ -87,14 +116,22 @@ while polling:
                 # Split the lines of the response and find the observation.
                 for line in data.strip().split('\n'):
                     line = line.strip()
-                    if line.find('=') > -1:  # Hopefully any welcome msg never contains "=" :/
-                        STATIONS[ip]['polled'] = datetime.now()
-                        # Looks like a weather string; feed to Django
-                        process.terminate()
-                        obs = '{}::{}'.format(ip, line)
-                        # This mgmt command will write the observation to the
-                        # db and optionally upload it to DAFWA.
-                        subprocess.call(['python', 'manage.py', 'write_observation', obs])
+                    for pattern in OBS_PATTERNS:
+                        if re.search(pattern, line):  # Found matching pattern.
+                            STATIONS[ip]['polled'] = datetime.now()
+                            # Looks like an observation string; save it.
+                            obs = '{}::{}'.format(ip, line)
+                            logger.info('Observation data: {}'.format(obs))
+                            # This mgmt command will write the observation to the
+                            # database and optionally upload it to DAFWA.
+                            try:
+                                output = subprocess.check_output([
+                                    'python', 'manage.py', 'write_observation', obs])
+                                logger.info(output.strip())
+                            except subprocess.CalledProcessError as e:
+                                logger.error(e.output)
+                            # Terminate this polling process, it's finished with.
+                            process.terminate()
             except Exception as e:
                 continue
     # Pause, and repeat the polling loop.
