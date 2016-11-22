@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 from datetime import datetime
 from fcntl import fcntl, F_GETFL, F_SETFL
 import logging
@@ -7,7 +7,16 @@ from os import O_NONBLOCK
 import re
 import subprocess
 import time
+from subprocess import PIPE, STDOUT
 
+"""
+Standalone daemon meant to be run to poll weatherstations in parallel.
+Example to run using uwsgi:
+
+    attach-daemon2  = exec=venv/bin/python pollstations.py
+
+Should be run from dir with venv and manage.py available.
+"""
 
 # Ensure that the logs dir is present.
 subprocess.call(['mkdir', '-p', 'logs'])
@@ -39,7 +48,7 @@ def get_stations():
     # Parse the list of IPs for active weather stations.
     try:
         station_string = subprocess.check_output(
-            ['python', 'manage.py', 'station_metadata'], stderr=subprocess.STDOUT)
+            ['venv/bin/python', 'manage.py', 'station_metadata'], stderr=STDOUT)
     except subprocess.CalledProcessError as e:
         logger.error(e.output)
         return False
@@ -62,7 +71,7 @@ def connect_station(ip, port):
     non-blocking manner.
     """
     logger.info("Connecting to station {}:{}".format(ip, port))
-    p = subprocess.Popen(["telnet", ip, port], stdout=subprocess.PIPE)
+    p = subprocess.Popen(["/usr/bin/telnet", ip, port], stdin=PIPE, stdout=PIPE, stderr=PIPE)
     flags = fcntl(p.stdout, F_GETFL)
     fcntl(p.stdout, F_SETFL, flags | O_NONBLOCK)
     return p
@@ -101,12 +110,6 @@ while polling:
         if not last_poll or ((now - last_poll).total_seconds() / 60) >= interval:
             # If any existing process hasn't terminated, do so now.
             if not process or process.poll() is not None:  # Non-existent/terminated.
-                if process:
-                    # Kill process and reconnect if exited
-                    try:
-                        process.kill()
-                    except Exception as e:
-                        pass
                 # Establish a connection.
                 STATIONS[ip]['process'] = process = connect_station(ip, port)
             try:
@@ -126,7 +129,7 @@ while polling:
                             # database and optionally upload it to DAFWA.
                             try:
                                 output = subprocess.check_output([
-                                    'python', 'manage.py', 'write_observation', obs])
+                                    'venv/bin/python', 'manage.py', 'write_observation', obs])
                                 logger.info(output.strip())
                             except subprocess.CalledProcessError as e:
                                 logger.error(e.output)
