@@ -107,7 +107,7 @@ while polling:
         last_poll = metadata['polled']
         now = datetime.now()
         # If the polling interval has passed, create a process and read data.
-        if not last_poll or ((now - last_poll).total_seconds() / 60) >= interval:
+        if not last_poll or interval <= 1 or ((now - last_poll).total_seconds() / 60) >= interval:
             # If any existing process hasn't terminated, do so now.
             if not process or process.poll() is not None:  # Non-existent/terminated.
                 # Establish a connection.
