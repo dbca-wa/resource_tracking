@@ -5,7 +5,7 @@ from weather.models import WeatherStation
 
 def index(request):
     return render_to_response('weather/index.html', {
-        'stations': WeatherStation.objects.all()
+        'stations': WeatherStation.objects.filter(active=True)
     })
 
 
