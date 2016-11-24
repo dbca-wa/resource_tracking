@@ -18,10 +18,10 @@ if not DEBUG:
     ALLOWED_HOSTS = [
         'localhost',
         '127.0.0.1',
-        'sss.dpaw.wa.gov.au',
-        'sss.dpaw.wa.gov.au.',
-        'sss-uat.dpaw.wa.gov.au',
-        'sss-uat.dpaw.wa.gov.au.',
+        'resourcetracking.dpaw.wa.gov.au',
+        'resourcetracking.dpaw.wa.gov.au.',
+        'resourcetracking-uat.dpaw.wa.gov.au',
+        'resourcetracking-uat.dpaw.wa.gov.au.',
     ]
 INTERNAL_IPS = ['127.0.0.1', '::1']
 ROOT_URLCONF = 'resource_tracking.urls'
