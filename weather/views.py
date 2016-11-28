@@ -38,6 +38,7 @@ def observations_health(request):
         now = datetime.utcnow().replace(tzinfo=pytz.utc)
         diff = timedelta(seconds=(60 * 60) + 30)  # 1 h 30 s.
         obs = WeatherObservation.objects.filter(station=i, date__gte=now - diff).count()
+        s['observations_actual_hr'] = obs
         if obs < exp_obs:
             s['observations_health'] = 'warning'
 
@@ -46,7 +47,7 @@ def observations_health(request):
         now = datetime.utcnow().replace(tzinfo=pytz.utc)
         diff = timedelta(seconds=((60 * i.connect_every) * 2) + 10)  # Twice interval plus 10 s
         obs = WeatherObservation.objects.filter(station=i, date__gte=now - diff).count()
-        if obs < exp_obs:
+        if obs < 2:
             s['observations_health'] = 'error'
 
         stations.append(s)
