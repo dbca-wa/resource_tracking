@@ -10,7 +10,7 @@ import time
 from subprocess import PIPE, STDOUT
 
 """
-Standalone daemon meant to be run to poll weatherstations in parallel.
+Standalone daemon meant to be run to poll weather stations in parallel.
 Example to run using uwsgi:
 
     attach-daemon2  = exec=venv/bin/python pollstations.py
@@ -61,7 +61,8 @@ def get_stations():
                 'port': station[1],
                 'interval': int(station[2]),
                 'polled': None,
-                'process': None
+                'process': None,
+                'process_start': None
             }
     return stations
 
@@ -103,15 +104,17 @@ while polling:
     for ip, metadata in STATIONS.iteritems():
         port = metadata['port']
         process = metadata['process']
+        started = metadata['process_start']
         interval = metadata['interval']
         last_poll = metadata['polled']
         now = datetime.now()
         # If the polling interval has passed, create a process and read data.
         if not last_poll or interval <= 1 or ((now - last_poll).total_seconds() / 60) >= interval:
-            # If any existing process hasn't terminated, do so now.
+            # No existing process/terminated process: create one now.
             if not process or process.poll() is not None:  # Non-existent/terminated.
                 # Establish a connection.
                 STATIONS[ip]['process'] = process = connect_station(ip, port)
+                STATIONS[ip]['process_start'] = datetime.now()
             try:
                 # Read up to 2kb of the connection output and parse the
                 # observation string from that.
@@ -134,7 +137,9 @@ while polling:
                             except subprocess.CalledProcessError as e:
                                 logger.error(e.output)
                             # Terminate this polling process, it's finished with.
-                            process.terminate()
+                            age = (now - started).total_seconds()
+                            logger.info('IP {} poller PID {} killed at {} seconds old'.format(ip, process.pid, age))
+                            process.kill()
             except Exception as e:
                 continue
     # Pause, and repeat the polling loop.
