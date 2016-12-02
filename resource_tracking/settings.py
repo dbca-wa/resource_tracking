@@ -23,6 +23,8 @@ if not DEBUG:
         'resourcetracking-uat.dpaw.wa.gov.au',
         'resourcetracking-uat.dpaw.wa.gov.au.',
     ]
+else:  # In debug, allow all hosts to serve the application.
+    ALLOWED_HOSTS = ['*']
 INTERNAL_IPS = ['127.0.0.1', '::1']
 ROOT_URLCONF = 'resource_tracking.urls'
 WSGI_APPLICATION = 'resource_tracking.wsgi.application'
