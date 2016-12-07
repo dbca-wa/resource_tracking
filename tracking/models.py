@@ -60,6 +60,7 @@ DISTRICT_CHOICES = (
 )
 
 SYMBOL_CHOICES = (
+    ("2 wheel drive", "2-Wheel Drive"),
     ("4 wheel drive passenger", "4-Wheel Drive Passenger"),
     ("4 wheel drive ute", "4-Wheel Drive (Ute)"),
     ("boat", "Boat"),

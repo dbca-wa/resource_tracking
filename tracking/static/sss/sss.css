@@ -19,7 +19,7 @@ i[class*=fa-sss] {
     background: url('/static/sss/images/other_64.png') no-repeat scroll center / contain transparent;
 }
 
-i.fa-sss-2wd { background-image: url('/static/sss/images/2wd_64.png'); }
+i.fa-sss-2_wheel_drive { background-image: url('/static/sss/images/2_wheel_drive_64.png'); }
 i.fa-sss-4_wheel_drive_passenger { background-image: url('/static/sss/images/4_wheel_drive_passenger_64.png'); }
 i.fa-sss-4_wheel_drive_ute { background-image: url('/static/sss/images/4_wheel_drive_ute_64.png'); }
 i.fa-sss-boat { background-image: url('/static/sss/images/boat_64.png'); }
