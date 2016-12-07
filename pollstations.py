@@ -136,10 +136,11 @@ while polling:
                                 logger.info(output.strip())
                             except subprocess.CalledProcessError as e:
                                 logger.error(e.output)
-                            # Terminate this polling process, it's finished with.
-                            age = (now - started).total_seconds()
-                            logger.info('IP {} poller PID {} killed at {} seconds old'.format(ip, process.pid, age))
-                            process.kill()
+                            # Terminate this polling process if >1 minute, it's finished with.
+                            if interval > 1:
+                                age = (now - started).total_seconds()
+                                logger.info('IP {} poller PID {} killed at {} seconds old'.format(ip, process.pid, age))
+                                process.kill()
             except Exception as e:
                 continue
     # Pause, and repeat the polling loop.
