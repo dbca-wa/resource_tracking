@@ -17,11 +17,14 @@ class Command(BaseCommand):
             station = WeatherStation.objects.get(ip_address=ip)
             obs = station.save_weather_data(data)
             self.stdout.write(self.style.SUCCESS('Recorded observation {}'.format(obs)))
-            if settings.DAFWA_UPLOAD:
+        except:
+            raise CommandError('Unable to parse observation string')
+        if settings.DAFWA_UPLOAD:
+            try:
                 uploaded = ftp_upload([obs])
                 if uploaded:
                     self.stdout.write(self.style.SUCCESS('Published observation to DAFWA'))
                 else:
-                    self.stdout.write(self.style.WARNING('Publish to DAFWA failed'))
-        except:
-            raise CommandError('Unable to parse observation string')
+                    self.stdout.write(self.style.WARNING('Observation not published to DAFWA'))
+            except:
+                raise CommandError('Publish to DAFWA failed')

@@ -132,7 +132,7 @@ while polling:
                             # database and optionally upload it to DAFWA.
                             try:
                                 output = subprocess.check_output([
-                                    'venv/bin/python', 'manage.py', 'write_observation', obs])
+                                    'venv/bin/python', 'manage.py', 'write_observation', obs], stderr=STDOUT)
                                 logger.info(output.strip())
                             except subprocess.CalledProcessError as e:
                                 logger.error(e.output)
