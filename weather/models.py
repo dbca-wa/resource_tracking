@@ -410,7 +410,7 @@ class WeatherObservation(models.Model):
         If previous reading > this reading, return 0 (counter was reset).
         """
         try:
-            previous = self._default_manager.filter(station=self.station, date__lt=self.date).exclude(pk=self.pk).order_by('-date').first()
+            previous = self._meta.default_manager.filter(station=self.station, date__lt=self.date).exclude(pk=self.pk).order_by('-date').first()
         except WeatherObservation.DoesNotExist:
             return Decimal('0.0')
         if previous.rainfall > self.rainfall:

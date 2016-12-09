@@ -18,11 +18,13 @@ if not DEBUG:
     ALLOWED_HOSTS = [
         'localhost',
         '127.0.0.1',
-        'sss.dpaw.wa.gov.au',
-        'sss.dpaw.wa.gov.au.',
-        'sss-uat.dpaw.wa.gov.au',
-        'sss-uat.dpaw.wa.gov.au.',
+        'resourcetracking.dpaw.wa.gov.au',
+        'resourcetracking.dpaw.wa.gov.au.',
+        'resourcetracking-uat.dpaw.wa.gov.au',
+        'resourcetracking-uat.dpaw.wa.gov.au.',
     ]
+else:  # In debug, allow all hosts to serve the application.
+    ALLOWED_HOSTS = ['*']
 INTERNAL_IPS = ['127.0.0.1', '::1']
 ROOT_URLCONF = 'resource_tracking.urls'
 WSGI_APPLICATION = 'resource_tracking.wsgi.application'
@@ -32,6 +34,10 @@ TRACPLUS_URL = env('TRACPLUS_URL', False)
 KMI_VEHICLE_BASE_URL = env('KMI_VEHICLE_BASE_URL', '')
 JQUERY_SOURCE = env('JQUERY_SOURCE', '')
 JQUERYUI_SOURCE = env('JQUERYUI_SOURCE', '')
+
+# add scary warning on device edit page for prod
+PROD_SCARY_WARNING = env('PROD_SCARY_WARNING', False)
+
 DEVICE_HTTP_CACHE_TIMEOUT = env('DEVICE_HTTP_CACHE_TIMEOUT', 60)
 HISTORY_HTTP_CACHE_TIMEOUT = env('HISTORY_HTTP_CACHE_TIMEOUT', 60)
 INSTALLED_APPS = [

@@ -1,9 +1,10 @@
-{% load autoversion%}
+{% load autoversion %}
 <!DOCTYPE html>
 <html>
 <head>
-    <title>DPaW Resource Tracking</title>
+    <title>Department of Parks and Wildlife</title>
     <meta charset="utf-8" />
+    {% comment %}
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="//cdn.jsdelivr.net/pure/0.5.0/pure-min.css" />
     <link rel="stylesheet" href="//api.tiles.mapbox.com/mapbox.js/v2.1.4/mapbox.css" />
@@ -39,8 +40,10 @@
     <script type="text/javascript">
         var login_user = {"name":"{{user.username}}"};
     </script>
+    {% endcomment %}
 </head>
     <body>
+        {% comment %}
         <div id="sidebar" class="sidebar"></div>
         <div id="map"></div>
         <div id="layer-preview"></div>
@@ -48,5 +51,8 @@
         <form id="print-form" enctype="multipart/form-data" action="{{settings.PRINTING_URL}}/sss/png" target="_blank" method="post">
             <input id="print-metadata" type="hidden" name="metadata" value=""/>
         </form>
+        {% endcomment %}
+        <h1>Department of Parks and Wildlife</h1>
+        <p>For access to the Parks and Wildlife Spatial Support System, please visit <b><a href="https://sss.dpaw.wa.gov.au/">https://sss.dpaw.wa.gov.au/</a></b>.</p>
     </body>
 </html>
