@@ -39,8 +39,8 @@ def device_csv(request):
     api_url = reverse('api_dispatch_list', kwargs={'api_name': 'v1', 'resource_name': 'device'})
     params = {'limit': 10000, 'format': 'csv'}
     # Allow filtering by ``seen_age__lte=<minutes>`` query param
-    if 'id__in' in request.GET:
-        params['id__in'] = request.GET['id__in']
+    if 'deviceid__in' in request.GET:
+        params['deviceid__in'] = request.GET['deviceid__in']
     if 'seen_age__lte' in request.GET:
         params['seen_age__lte'] = request.GET['seen_age__lte']
     r = requests.get(request.build_absolute_uri(api_url), params=params, cookies=request.COOKIES)
