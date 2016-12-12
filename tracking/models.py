@@ -138,7 +138,7 @@ class Device(BasePoint):
     @property
     def age_text(self):
         # returns age in humanized form
-        return naturaltime(self.seen)
+        return naturaltime(self.seen).replace(u'\xa0', u' ')
 
     @property
     def icon(self):
