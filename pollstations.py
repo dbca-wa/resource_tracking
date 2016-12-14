@@ -25,7 +25,7 @@ class Station:
     # Observation string patterns
     patterns = [
         '([A-Z]+=\d*\.?\d*\|)',  # Telvent
-        '(^0R0),([A-Za-z]{2}=\d+[A-Z])',  # Vaisala
+        '(^0[Rr]0),([A-Za-z]{2}=-?(\d+(\.\d+)?)[A-Za-z#],?)+',  # Vaisala
     ]
 
     def __init__(self, ip, port, interval):
