@@ -97,7 +97,7 @@ def configure_stations():
         # Instantiate the list of weather stations.
         for i in [s for s in station_string.strip().split(",")]:
             ip, port, interval = i.split(':')
-            stations.append(Station(ip, port, interval))
+            stations.append(Station(ip, port, int(interval)))
     except subprocess.CalledProcessError as e:
         # We can't do anything without this list, so abort.
         if LOGGER:
@@ -145,6 +145,7 @@ def polling_loop(stations):
                                 obs = '{}::{}'.format(s.ip, line)
                                 if LOGGER:
                                     LOGGER.info('Observation data: {}'.format(obs))
+
                                 # This mgmt command will write the observation to the
                                 # database and optionally upload it to DAFWA.
                                 try:
@@ -156,10 +157,11 @@ def polling_loop(stations):
                                 except subprocess.CalledProcessError as e:
                                     if LOGGER:
                                         LOGGER.error(e.output)
+
                                 # Terminate the process if interval >1 minute, it's finished with.
                                 if s.interval > 1:
-                                    age = (now - s.process_start).total_seconds()
                                     if LOGGER:
+                                        age = (now - s.process_start).total_seconds()
                                         LOGGER.info('Polling {} process PID {} ended at {} seconds old'.format(
                                             s.ip, s.process.pid, age))
                                     s.terminate_poll_process()
