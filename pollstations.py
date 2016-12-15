@@ -109,6 +109,7 @@ def configure_stations():
 def polling_loop(stations):
     """The main polling loop function.
     """
+    loop_count = 0
     if stations:
         polling = True
     else:
@@ -174,11 +175,44 @@ def polling_loop(stations):
             # stuck telnet session (stays alive but stops sending output).
             # In that event, we'll never get to the call to terminate the
             # process, so let's do so now.
-            if s.process and s.last_poll and ((now - s.last_poll).total_seconds() / 60) >= s.interval + 2:
+            if s.last_poll and ((now - s.last_poll).total_seconds() / 60) >= s.interval + 2:
                 s.terminate_poll_process()
                 s.last_poll = None
                 if LOGGER:
                     LOGGER.warning('Polling {} process might be stuck (stopped)'.format(s.ip))
+
+        # Every ten polling loops, review the list of active weather stations.
+        # Compare against the current list of polled stations, and add/remove
+        # any stations as required.
+        # This step is undertaken so that the polling service doesn't need to
+        # be restarted to reset the current list of "active" stations.
+        if loop_count == 10:
+            stations_update = configure_stations()
+            for station in stations_update:
+                # If a Station with this IP is not being polled, append it.
+                if station.ip not in [s.ip for s in stations]:
+                    stations.append(station)
+                    if LOGGER:
+                        LOGGER.info('{} was added to the station pool'.format(station.ip))
+                else:  # Station is currently being polled.
+                    cur_station = next(s for s in stations if s.ip == station.ip)
+                    # Check/update the station polling interval.
+                    if cur_station.interval != station.interval:
+                        cur_station.interval = station.interval
+                        cur_station.last_poll = None  # Reset.
+                        if LOGGER:
+                            LOGGER.info('{} polling interval was updated'.format(cur_station.ip))
+            # If the currently-polled stations include any that aren't active,
+            # remove those from the list.
+            for cur_station in list(stations):
+                if cur_station.ip not in [s.ip for s in stations_update]:
+                    stations.remove(cur_station)
+                    if LOGGER:
+                        LOGGER.info('{} was removed from the station pool'.format(cur_station.ip))
+            # Reset the loop counter.
+            loop_count = 0
+        else:
+            loop_count += 1
 
         # Pause, and repeat the polling loop.
         time.sleep(3)
