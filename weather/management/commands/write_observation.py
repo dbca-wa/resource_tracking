@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
 from weather.models import WeatherStation
-from weather.tasks import ftp_upload
+from weather.utils import ftp_upload
 
 
 class Command(BaseCommand):

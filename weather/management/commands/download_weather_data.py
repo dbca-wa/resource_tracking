@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from weather.tasks import download_data, upload_data
+from weather.utils import download_data, upload_data
 
 
 class Command(BaseCommand):

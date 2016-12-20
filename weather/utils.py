@@ -1,5 +1,15 @@
+from __future__ import unicode_literals, absolute_import
+import csv
+from datetime import timedelta
+from django.conf import settings
 from django.utils import timezone
+from ftplib import FTP
+import logging
 import math
+import StringIO
+
+
+LOGGER = logging.getLogger('weather')
 
 
 def dafwa_obs(observation):
@@ -78,7 +88,7 @@ def actual_rainfall(rainfall, station, date):
     the previous weather observation's rainfall and subtracting from it
     this observation's rainfall.
     """
-    from weather.models import WeatherObservation
+    from .models import WeatherObservation
 
     # If there are no previous readings, return 0.
     if not WeatherObservation.objects.filter(station=station).exists():
@@ -91,3 +101,110 @@ def actual_rainfall(rainfall, station, date):
     difference_corrected = float(difference) * correction
 
     return difference_corrected
+
+
+def ftp_upload(observations):
+    """Utility function to upload weather data to the DAFWA FTP site in a
+    suitable format.
+    """
+    LOGGER.info('Connecting to {}'.format(settings.DAFWA_UPLOAD_HOST))
+
+    try:
+        ftp = FTP(settings.DAFWA_UPLOAD_HOST)
+        ftp.login(settings.DAFWA_UPLOAD_USER, settings.DAFWA_UPLOAD_PASSWORD)
+        ftp.cwd(settings.DAFWA_UPLOAD_DIR)
+    except Exception as e:
+        LOGGER.error('Connection to {} failed'.format(settings.DAFWA_UPLOAD_HOST))
+        LOGGER.exception(e)
+        return False
+
+    output = StringIO.StringIO()
+    semaphore = StringIO.StringIO()
+
+    for observation in observations:
+        # Generate the CSV for transfer.
+        reading_date = timezone.localtime(observation.date)
+        writer = csv.writer(output)
+        writer.writerow(dafwa_obs(observation))
+
+        output.seek(0)
+        name = 'DPAW{}'.format(reading_date.strftime('%Y%m%d%H%M%S'))
+        output.name = '{}.txt'.format(name)
+        semaphore.name = '{}.ok'.format(name)
+
+        try:
+            # First write the data, then the semaphore file.
+            ftp.storlines('STOR ' + output.name, output)
+            ftp.storlines('STOR ' + semaphore.name, semaphore)
+        except Exception as e:
+            LOGGER.error('DAFWA upload failed for {}'.format(observation))
+            LOGGER.exception(e)
+            return False
+
+    ftp.quit()
+    LOGGER.info('Published to DAFWA successfully')
+    return True
+
+
+def download_data():
+    """A utility function to check all active weather stations to see
+    if a new weather observation needs to be downloaded from each.
+
+    NOTE: this method for polling stations to download observation data is
+    deprecated in favour of the standalone pollstations.py script.
+    """
+    from .models import WeatherStation
+    LOGGER.info("Scheduling new gatherers...")
+    observations = []
+
+    for station in WeatherStation.objects.filter(active=True):
+        LOGGER.info("Checking station {}".format(station))
+
+        now = timezone.now().replace(second=0, microsecond=0)
+        last_scheduled = station.last_scheduled
+        connect_every = timedelta(minutes=station.connect_every)
+        next_scheduled = last_scheduled + connect_every
+
+        # Not sure why I can't directly compare them, it *sometimes* works,
+        # but not every check succeeds. I wonder what the difference is...
+        # Their tuples seem to be equal, so we'll use that.
+        schedule = next_scheduled.utctimetuple() <= now.utctimetuple()
+
+        LOGGER.info("Last scheduled: {}, connect every: {} minutes".format(
+            station.last_scheduled, station.connect_every))
+        LOGGER.info("Next: {}".format(next_scheduled))
+        LOGGER.info("Now: {}, schedule new: {}".format(now, schedule))
+
+        if schedule:
+            LOGGER.info("Scheduling {} for a new observation".format(station))
+            station.last_scheduled = now
+            station.save()
+            result = station.download_observation()
+            if result:
+                LOGGER.info("Finished collecting observation for {}".format(station.name))
+                pk, response, retrieval_time = result
+                observations.append(station.save_weather_data(response, retrieval_time))
+            else:
+                LOGGER.info("Observation failed for {}".format(station.name))
+        else:
+            LOGGER.info("Skipping {}".format(station))
+
+    return observations
+
+
+def upload_data(observations=None):
+    """Utility function to upload observations to DAFWA.
+    """
+    from .models import WeatherObservation
+
+    if settings.DAFWA_UPLOAD:
+        if not observations:
+            # Check if there are any observations for
+            # the last minute and upload them to DAFWA if so.
+            now = timezone.now().replace(second=0, microsecond=0)
+            last_minute = now - timedelta(minutes=1)
+            observations = WeatherObservation.objects.filter(date__gte=last_minute)
+        if len(observations) > 0:
+            LOGGER.info("{} observations to upload".format(len(observations)))
+            ftp_upload(observations)
+    return True
