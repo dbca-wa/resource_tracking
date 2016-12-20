@@ -110,7 +110,7 @@ class Device(BasePoint):
     deviceid = models.CharField(max_length=32, unique=True)
     name = models.CharField(max_length=32, default="No Rego", verbose_name="Rego", help_text="e.g. 1QBB157")
     callsign = models.CharField(max_length=32, default="No Vehicle ID", verbose_name="Vehicle ID", help_text="e.g. GT124, HD121")
-    symbol = models.CharField(max_length=32, choices=SYMBOL_CHOICES, default="Other")
+    symbol = models.CharField(max_length=32, choices=SYMBOL_CHOICES, default="other")
     district = models.CharField(max_length=32, choices=DISTRICT_CHOICES, null=True, blank=True)
 
     @property
@@ -138,7 +138,7 @@ class Device(BasePoint):
     @property
     def age_text(self):
         # returns age in humanized form
-        return naturaltime(self.seen)
+        return naturaltime(self.seen).replace(u'\xa0', u' ')
 
     @property
     def icon(self):

@@ -35,9 +35,12 @@ def device(request, device_id):
 def device_csv(request):
     """Query the Device API CSV endpoint, return a file attachment.
     """
+    today = datetime.today()
     api_url = reverse('api_dispatch_list', kwargs={'api_name': 'v1', 'resource_name': 'device'})
     params = {'limit': 10000, 'format': 'csv'}
     # Allow filtering by ``seen_age__lte=<minutes>`` query param
+    if 'deviceid__in' in request.GET:
+        params['deviceid__in'] = request.GET['deviceid__in']
     if 'seen_age__lte' in request.GET:
         params['seen_age__lte'] = request.GET['seen_age__lte']
     r = requests.get(request.build_absolute_uri(api_url), params=params, cookies=request.COOKIES)
@@ -46,7 +49,7 @@ def device_csv(request):
         r.raise_for_status()
 
     response = HttpResponse(r.content, content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename=tracking_devices.csv'
+    response['Content-Disposition'] = 'attachment; filename=tracking_devices_' + datetime.strftime(datetime.today(),"%Y-%m-%d_%H%M") + '.csv'
     return response
 
 def get_vehicles(request):
