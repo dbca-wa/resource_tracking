@@ -141,6 +141,7 @@ def ftp_upload(observations):
         return False
 
     output = StringIO.StringIO()
+    archive = StringIO.StringIO()
     semaphore = StringIO.StringIO()
 
     for observation in observations:
@@ -148,6 +149,12 @@ def ftp_upload(observations):
         reading_date = timezone.localtime(observation.date)
         writer = csv.writer(output)
         writer.writerow(dafwa_obs(observation))
+        # Write to the log of observations uploaded to DAFWA.
+        writer = csv.writer(archive)
+        writer.writerow(dafwa_obs(observation))
+        archive.seek(0)
+        dafwa_log = logging.getLogger('dafwa')
+        dafwa_log.info(archive.read())
 
         output.seek(0)
         name = 'DPAW{}'.format(reading_date.strftime('%Y%m%d%H%M%S'))
