@@ -27,10 +27,10 @@ def dafwa_obs(observation):
         observation.wind_speed,
         observation.wind_speed_max,
         observation.wind_direction,
-        observation.get_rainfall(),
+        observation.actual_rainfall,
         observation.station.battery_voltage,
-        None,
-        observation.get_pressure()
+        None,  # Solar power (watts/m2) - not calculated
+        observation.actual_pressure
     ]
 
 
@@ -82,23 +82,45 @@ def actual_pressure(temperature, pressure, height=0.0):
         (g0 * M) / (R * lapse_rate)) / 100)
 
 
-def actual_rainfall(rainfall, station, date):
-    """
-    Compute the rainfall in the last minute. We can get this by checking
-    the previous weather observation's rainfall and subtracting from it
-    this observation's rainfall.
+def actual_rainfall(rainfall, station, timestamp=None):
+    """Utility function to calculate the actual minute-rainfall for an
+    observation at a station. This function is only used at the time of
+    observation capture (i.e. it assumes that it is being used to calculate
+    actual rainfall for a new observation).
+
+    Where a rainfall counter value for a station is passed in, compute the
+    rainfall over the previous minute. Subtract this counter value from the
+    most recent previous counter value, determine the number of minutes
+    between this observation and the previous one, then return a corrected
+    rainfall total (mm).
+
+    Where no previous observations exist or the current counter value is less
+    than the previous one (implies a reset), return zero. If the passed-in
+    rainfall value is 0, return zero.
     """
     from .models import WeatherObservation
 
-    # If there are no previous readings, return 0.
-    if not WeatherObservation.objects.filter(station=station).exists():
-        return 0
+    rainfall = float(rainfall)
+    if rainfall == 0.0:
+        return rainfall
 
-    lastreading = WeatherObservation.objects.filter(station=station).latest('date')
-    difference = rainfall - lastreading.rainfall
-    diff = date - lastreading.date
-    correction = 60 / diff.total_seconds()
-    difference_corrected = float(difference) * correction
+    # If there are no saved observations for the station, return zero.
+    # Subsequent observations will return a value for actual rainfall.
+    if not WeatherObservation.objects.filter(station=station).exists():
+        return 0.0
+
+    previous_obs = WeatherObservation.objects.filter(station=station).latest('date')
+    counter_diff = rainfall - float(previous_obs.rainfall)  # Rainfall counter.
+    if counter_diff < 0.0:  # Less than 0 implies a counter reset (return zero)
+        return 0.0
+
+    time_diff = timestamp - previous_obs.date
+    # If the returned observation occurred after the timestamp, return zero.
+    if time_diff.total_seconds() <= 0:
+        return 0.0
+
+    correction = 60 / time_diff.total_seconds()
+    difference_corrected = counter_diff * correction
 
     return difference_corrected
 
@@ -183,7 +205,7 @@ def download_data():
             if result:
                 LOGGER.info("Finished collecting observation for {}".format(station.name))
                 pk, response, retrieval_time = result
-                observations.append(station.save_weather_data(response, retrieval_time))
+                observations.append(station.save_observation(response, retrieval_time))
             else:
                 LOGGER.info("Observation failed for {}".format(station.name))
         else:

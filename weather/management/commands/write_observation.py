@@ -15,7 +15,7 @@ class Command(BaseCommand):
         try:
             (ip, data) = options['string'].split('::')
             station = WeatherStation.objects.get(ip_address=ip)
-            obs = station.save_weather_data(data)
+            obs = station.save_observation(data)
             self.stdout.write(self.style.SUCCESS('Recorded observation {}'.format(obs)))
         except:
             raise CommandError('Unable to parse observation string')
