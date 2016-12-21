@@ -14,8 +14,7 @@ class WeatherStationResource(APIResource):
 
 class WeatherObservationResource(APIResource):
     date = fields.CharField(attribute='local_date', readonly=True)
-    # TODO: dew_point and rainfall should be calculated on save and served straight from db
-    # rainfall = fields.DecimalField(attribute='get_rainfall', readonly=True)
+    rainfall = fields.DecimalField(attribute='actual_rainfall', readonly=True)
     dew_point = fields.DecimalField(attribute='dew_point', readonly=True)
     station = fields.IntegerField(attribute='station_id', readonly=True)
     Meta = generate_meta(WeatherObservation)
