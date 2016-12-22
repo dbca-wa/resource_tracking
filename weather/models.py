@@ -81,28 +81,29 @@ class WeatherStation(models.Model):
             yesterday = now - timedelta(hours=24)
             last_9am = yesterday.replace(hour=9, minute=0, second=0, microsecond=0)
         try:
-            rainfall_stats = self.readings.filter(rainfall__gt=0, date__gte=last_9am).aggregate(Min('rainfall'), Max('rainfall'))
-            return rainfall_stats['rainfall__max'] - rainfall_stats['rainfall__min']
+            rain_stats = self.readings.filter(rainfall__gt=0, date__gte=last_9am)
+            rain_stats = rain_stats.aggregate(Min('rainfall'), Max('rainfall'))
+            return rain_stats['rainfall__max'] - rain_stats['rainfall__min']
         except:
             return 0
 
     def download_observation(self):
-        """Utility function to connect to an AWS via Telnet and download a
+        """Utility function to connect to a station via Telnet and download a
         single observation.
         """
         retrieval_time = timezone.now().replace(microsecond=0)
-        logger.info("Trying to connect to {}".format(self.name))
+        logger.info('Trying to connect to {}'.format(self.name))
         client, output = None, False
         try:
             client = telnetlib.Telnet(self.ip_address, self.port)
             if self.manufacturer == 'vaisala':
-                pattern = '(\\r\\n)(0R0.+V)(\\r\\n)'
+                pattern = '(^0[Rr]0),([A-Za-z]{2}=-?(\d+(\.\d+)?)[A-Za-z#],?)+'
                 clean_response = False
                 while not clean_response:
-                    response = client.read_until('V\r\n'.encode('utf8'), 60)
+                    response = client.read_until('\r\n'.encode('utf8'), 60)
                     m = re.search(pattern, response)
                     if m:
-                        response = m.group(2)
+                        response = response.strip()
                         clean_response = True
             else:  # Default to using the Telvent station format.
                 response = client.read_until('\r\n'.encode('utf8'), 60)
@@ -114,18 +115,18 @@ class WeatherStation(models.Model):
             logger.exception(e)
             return None
 
-        logger.info("PERIODIC READING OF {}".format(self.name))
+        logger.info('PERIODIC READING OF {}'.format(self.name))
         logger.info(force_text(response))
         output = (self.pk, force_text(response), retrieval_time)
         return output
 
-    def save_weather_data(self, raw_data, last_reading=None):
+    def save_observation(self, raw_data, timestamp=None):
+        """Convert a raw observation and save it to the database.
         """
-        Convert NVP format to django record
-        """
-        if last_reading is None:
-            last_reading = timezone.now()
-        EMPTY = Decimal('0.00')
+        if timestamp is None:
+            timestamp = timezone.now()
+        empty = Decimal('0.00')
+        reading = WeatherObservation()
 
         # Create a weather reading.from the retrieved data.
         if self.manufacturer == 'vaisala':
@@ -136,32 +137,32 @@ class WeatherStation(models.Model):
             for item in items:
                 k, v = item.split('=')
                 data[k] = v
-            reading = WeatherObservation()
-            reading.temperature = Decimal(data.get('Ta')[:-1])
-            reading.humidity = Decimal(data.get('Ua')[:-1])
+            pattern = '(\d+(\.\d+)?)(.+)'
+            reading.temperature = Decimal(re.search(pattern, data['Ta']).group(1))
+            reading.humidity = Decimal(re.search(pattern, data['Ua']).group(1))
             reading.dew_point = dew_point(float(reading.temperature),
                                           float(reading.humidity))
-            reading.pressure = Decimal(data.get('Pa')[:-1])
-            reading.wind_direction_min = Decimal(data.get('Dn')[:-1])
-            reading.wind_direction_max = Decimal(data.get('Dx')[:-1])
-            reading.wind_direction = Decimal(data.get('Dm')[:-1])
-            reading.wind_speed_min = Decimal(data.get('Sn')[:-1]) * KNOTS_TO_MS
-            reading.wind_speed_min_kn = Decimal(data.get('Sn')[:-1])
-            reading.wind_speed_max = Decimal(data.get('Sx')[:-1]) * KNOTS_TO_MS
-            reading.wind_speed_max_kn = Decimal(data.get('Sx')[:-1])
-            reading.wind_speed = Decimal(data.get('Sm')[:-1]) * KNOTS_TO_MS
-            reading.wind_speed_kn = Decimal(data.get('Sm')[:-1])
-            reading.rainfall = Decimal(data.get('Rc')[:-1])
+            reading.pressure = Decimal(re.search(pattern, data['Pa']).group(1))
+            reading.wind_direction_min = Decimal(re.search(pattern, data['Dn']).group(1))
+            reading.wind_direction_max = Decimal(re.search(pattern, data['Dx']).group(1))
+            reading.wind_direction = Decimal(re.search(pattern, data['Dm']).group(1))
+            reading.wind_speed_min = Decimal(re.search(pattern, data['Sn']).group(1)) * KNOTS_TO_MS
+            reading.wind_speed_min_kn = Decimal(re.search(pattern, data['Sn']).group(1))
+            reading.wind_speed_max = Decimal(re.search(pattern, data['Sx']).group(1)) * KNOTS_TO_MS
+            reading.wind_speed_max_kn = Decimal(re.search(pattern, data['Sx']).group(1))
+            reading.wind_speed = Decimal(re.search(pattern, data['Sm']).group(1)) * KNOTS_TO_MS
+            reading.wind_speed_kn = Decimal(re.search(pattern, data['Sm']).group(1))
+            reading.rainfall = Decimal(re.search(pattern, data['Rc']).group(1))
             reading.actual_rainfall = actual_rainfall(Decimal(reading.rainfall),
-                                                      self, last_reading)
+                                                      self, timestamp)
             reading.actual_pressure = actual_pressure(float(reading.temperature),
                                                       float(reading.pressure),
                                                       float(self.location.height))
             reading.raw_data = raw_data
             reading.station = self
             reading.save()
-            self.last_reading = last_reading
-            self.battery_voltage = Decimal(data.get('Vs')[:-1])
+            self.last_reading = timestamp
+            self.battery_voltage = Decimal(re.search(pattern, data['Vs']).group(1))
             self.save()
         else:  # Default to using the Telvent station format.
             # Telvent data is stored in NVP format separated by the pipe symbol '|'.
@@ -175,27 +176,25 @@ class WeatherStation(models.Model):
                         data[k] = v
                     except:
                         pass
-
-            reading = WeatherObservation()
-            reading.temperature_min = data.get('TN') or EMPTY
-            reading.temperature_max = data.get('TX') or EMPTY
-            reading.temperature = data.get('T') or EMPTY
-            reading.temperature_deviation = data.get('TS') or EMPTY
+            reading.temperature_min = data.get('TN') or empty
+            reading.temperature_max = data.get('TX') or empty
+            reading.temperature = data.get('T') or empty
+            reading.temperature_deviation = data.get('TS') or empty
             reading.temperature_outliers = data.get('TO') or 0
-            reading.pressure_min = data.get('QFEN') or EMPTY
-            reading.pressure_max = data.get('QFEX') or EMPTY
-            reading.pressure = data.get('QFE') or EMPTY
-            reading.pressure_deviation = data.get('QFES') or EMPTY
+            reading.pressure_min = data.get('QFEN') or empty
+            reading.pressure_max = data.get('QFEX') or empty
+            reading.pressure = data.get('QFE') or empty
+            reading.pressure_deviation = data.get('QFES') or empty
             reading.pressure_outliers = data.get('QFEO') or 0
-            reading.humidity_min = data.get('HN') or EMPTY
-            reading.humidity_max = data.get('HX') or EMPTY
-            reading.humidity = data.get('H') or EMPTY
-            reading.humidity_deviation = data.get('HS') or EMPTY
+            reading.humidity_min = data.get('HN') or empty
+            reading.humidity_max = data.get('HX') or empty
+            reading.humidity = data.get('H') or empty
+            reading.humidity_deviation = data.get('HS') or empty
             reading.humidity_outliers = data.get('HO') or 0
-            reading.wind_direction_min = data.get('DN') or EMPTY
-            reading.wind_direction_max = data.get('DX') or EMPTY
-            reading.wind_direction = data.get('D') or EMPTY
-            reading.wind_direction_deviation = data.get('DS') or EMPTY
+            reading.wind_direction_min = data.get('DN') or empty
+            reading.wind_direction_max = data.get('DX') or empty
+            reading.wind_direction = data.get('D') or empty
+            reading.wind_direction_deviation = data.get('DS') or empty
             reading.wind_direction_outliers = data.get('DO') or 0
             if (data.get('SN')):
                 reading.wind_speed_min = Decimal(data.get('SN')) * KNOTS_TO_MS or 0
@@ -209,19 +208,19 @@ class WeatherStation(models.Model):
             if (data.get('S')):
                 reading.wind_speed = Decimal(data.get('S')) * KNOTS_TO_MS or 0
                 reading.wind_speed_kn = Decimal(data.get('S')) or 0
-            reading.rainfall = data.get('R') or EMPTY
+            reading.rainfall = data.get('R') or empty
             reading.dew_point = dew_point(float(reading.temperature),
                                           float(reading.humidity))
             reading.actual_rainfall = actual_rainfall(Decimal(reading.rainfall),
-                                                      self, last_reading)
+                                                      self, timestamp)
             reading.actual_pressure = actual_pressure(float(reading.temperature),
                                                       float(reading.pressure),
                                                       float(self.location.height))
             reading.raw_data = raw_data
             reading.station = self
             reading.save()
-            self.last_reading = last_reading
-            self.battery_voltage = data.get('BV', EMPTY) or EMPTY
+            self.last_reading = timestamp
+            self.battery_voltage = data.get('BV', empty) or empty
             self.save()
 
         return reading
@@ -332,12 +331,17 @@ class WeatherObservation(models.Model):
         max_digits=4, decimal_places=1, blank=True, null=True)
     wind_speed_deviation_kn = models.DecimalField(
         max_digits=4, decimal_places=1, blank=True, null=True)
-
+    # rainfall represents the rain counter value for the station at the time
+    # of observation (which may periodically be reset).
     rainfall = models.DecimalField(
         max_digits=4, decimal_places=1, blank=True, null=True)
-
+    # actual_rainfall represents the calculated rainfall (mm) over the
+    # previous one minute (normalised where observations occur less often
+    # than once/minute).
     actual_rainfall = models.DecimalField(
         max_digits=4, decimal_places=1, blank=True, null=True)
+    # actual_pressure represents the calculated sea-level adjusted atmospheric
+    # pressure for the observation (based on the station altitude).
     actual_pressure = models.DecimalField(
         max_digits=5, decimal_places=1, blank=True, null=True)
 
@@ -401,21 +405,6 @@ class WeatherObservation(models.Model):
         return '%0.2f' % (pressure / math.pow(
             temp / (temp + (lapse_rate * height)),
             (g0 * M) / (R * lapse_rate)) / 100)
-
-    def get_rainfall(self):
-        """
-        Compute the rainfall difference between this reading and the previous
-        reading.
-        If there are no previous readings, return 0.
-        If previous reading > this reading, return 0 (counter was reset).
-        """
-        try:
-            previous = self._meta.default_manager.filter(station=self.station, date__lt=self.date).exclude(pk=self.pk).order_by('-date').first()
-        except WeatherObservation.DoesNotExist:
-            return Decimal('0.0')
-        if previous.rainfall > self.rainfall:
-            return Decimal('0.0')
-        return Decimal(self.rainfall) - previous.rainfall
 
     def __str__(self):
         return 'Data for {} on {}'.format(self.station.name, self.date)

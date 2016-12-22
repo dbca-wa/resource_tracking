@@ -132,6 +132,9 @@ LOGGING = {
         'verbose': {
             'format': '%(levelname)s %(asctime)s %(module)s %(message)s'
         },
+        'minimal': {
+            'format': '%(asctime)s %(message)s'
+        }
     },
     'handlers': {
         'file': {
@@ -150,6 +153,13 @@ LOGGING = {
             'maxBytes': 1024 * 1024 * 5,
             'backupCount': 5,
         },
+        'dafwa': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'dafwa.log'),
+            'formatter': 'minimal',
+            'maxBytes': 1024 * 1024 * 5,
+            'backupCount': 5,
+        },
     },
     'loggers': {
         'django.request': {
@@ -162,6 +172,10 @@ LOGGING = {
         },
         'weather': {
             'handlers': ['weather'],
+            'level': 'INFO'
+        },
+        'dafwa': {
+            'handlers': ['dafwa'],
             'level': 'INFO'
         },
     }

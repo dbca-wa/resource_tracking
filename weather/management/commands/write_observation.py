@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
 from weather.models import WeatherStation
-from weather.tasks import ftp_upload
+from weather.utils import ftp_upload
 
 
 class Command(BaseCommand):
@@ -15,7 +15,7 @@ class Command(BaseCommand):
         try:
             (ip, data) = options['string'].split('::')
             station = WeatherStation.objects.get(ip_address=ip)
-            obs = station.save_weather_data(data)
+            obs = station.save_observation(data)
             self.stdout.write(self.style.SUCCESS('Recorded observation {}'.format(obs)))
         except:
             raise CommandError('Unable to parse observation string')
