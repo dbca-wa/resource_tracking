@@ -60,13 +60,13 @@ class Station:
         if self.process:
             # Try to terminate the process gracefully.
             pid = self.process.pid
+            if LOGGER:
+                LOGGER.info("Killing pid {}".format(pid))
             self.process.terminate()
+            if self.process.poll() is None:
             # Check if the process has really terminated & force kill if not.
-            try:
-                kill(pid, 0)
                 self.process.kill()
-            except OSError:
-                pass
+                self.process.poll()
         self.process = None
 
 
