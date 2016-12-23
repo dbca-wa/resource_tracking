@@ -127,7 +127,7 @@ def actual_rainfall(rainfall, station, timestamp=None):
     else:
         correction = 1.0
 
-    difference_corrected = counter_diff * correction
+    difference_corrected = float(counter_diff) * correction
     if difference_corrected < 0.01:  # Lowest precision for rainfall.
         return Decimal('0.0')
     else:
