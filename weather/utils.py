@@ -13,28 +13,6 @@ import StringIO
 LOGGER = logging.getLogger('weather')
 
 
-def dafwa_obs(observation):
-    """Given a passed-in WeatherObservation object, return a list of
-    sensor information that is compatible with being transmitted to
-    DAFWA (typically as a CSV).
-    """
-    reading_date = timezone.localtime(observation.date)
-    return [
-        observation.station.bom_abbreviation,
-        unicode(reading_date.strftime('%Y-%m-%d')),
-        unicode(reading_date.strftime('%H:%M:%S')),
-        '{:.2f}'.format(observation.temperature),
-        '{:.2f}'.format(observation.humidity),
-        '{:.2f}'.format(observation.wind_speed),
-        '{:.2f}'.format(observation.wind_speed_max),
-        '{:.2f}'.format(observation.wind_direction),
-        '{:.2f}'.format(observation.actual_rainfall),
-        '{:.2f}'.format(observation.station.battery_voltage),
-        '',  # Solar power (watts/m2) - not calculated
-        '{:.2f}'.format(observation.actual_pressure)
-    ]
-
-
 def dew_point(T, RH=None):
     """
     Given the relative humidity and the dry bulb (actual) temperature,
@@ -157,10 +135,10 @@ def ftp_upload(observations):
         # Generate the CSV for transfer.
         reading_date = timezone.localtime(observation.date)
         writer = csv.writer(output)
-        writer.writerow(dafwa_obs(observation))
+        writer.writerow(observation.get_dafwa_obs())
         # Write to the log of observations uploaded to DAFWA.
         writer = csv.writer(archive)
-        writer.writerow(dafwa_obs(observation))
+        writer.writerow(observation.get_dafwa_obs())
         archive.seek(0)
         dafwa_log = logging.getLogger('dafwa')
         dafwa_log.info(archive.read().strip())
@@ -192,7 +170,6 @@ def download_data():
     deprecated in favour of the standalone pollstations.py script.
     """
     from .models import WeatherStation
-    LOGGER.info("Scheduling new gatherers...")
     observations = []
 
     for station in WeatherStation.objects.filter(active=True):
@@ -202,10 +179,6 @@ def download_data():
         last_scheduled = station.last_scheduled
         connect_every = timedelta(minutes=station.connect_every)
         next_scheduled = last_scheduled + connect_every
-
-        # Not sure why I can't directly compare them, it *sometimes* works,
-        # but not every check succeeds. I wonder what the difference is...
-        # Their tuples seem to be equal, so we'll use that.
         schedule = next_scheduled.utctimetuple() <= now.utctimetuple()
 
         LOGGER.info("Last scheduled: {}, connect every: {} minutes".format(
@@ -228,21 +201,3 @@ def download_data():
             LOGGER.info("Skipping {}".format(station))
 
     return observations
-
-
-def upload_data(observations=None):
-    """Utility function to upload observations to DAFWA.
-    """
-    from .models import WeatherObservation
-
-    if settings.DAFWA_UPLOAD:
-        if not observations:
-            # Check if there are any observations for
-            # the last minute and upload them to DAFWA if so.
-            now = timezone.now().replace(second=0, microsecond=0)
-            last_minute = now - timedelta(minutes=1)
-            observations = WeatherObservation.objects.filter(date__gte=last_minute)
-        if len(observations) > 0:
-            LOGGER.info("{} observations to upload".format(len(observations)))
-            ftp_upload(observations)
-    return True
