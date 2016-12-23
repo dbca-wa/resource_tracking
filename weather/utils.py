@@ -1,7 +1,7 @@
 from __future__ import unicode_literals, absolute_import
 import csv
 from datetime import timedelta
-from decimal import Decimal, getcontext
+from decimal import Decimal
 from django.conf import settings
 from django.utils import timezone
 from ftplib import FTP
@@ -21,17 +21,17 @@ def dafwa_obs(observation):
     reading_date = timezone.localtime(observation.date)
     return [
         observation.station.bom_abbreviation,
-        reading_date.strftime('%Y-%m-%d'),
-        reading_date.strftime('%H:%M:%S'),
-        observation.temperature,
-        observation.humidity,
-        observation.wind_speed,
-        observation.wind_speed_max,
-        observation.wind_direction,
-        observation.actual_rainfall,
-        observation.station.battery_voltage,
-        None,  # Solar power (watts/m2) - not calculated
-        observation.actual_pressure
+        unicode(reading_date.strftime('%Y-%m-%d')),
+        unicode(reading_date.strftime('%H:%M:%S')),
+        '{:.2f}'.format(observation.temperature),
+        '{:.2f}'.format(observation.humidity),
+        '{:.2f}'.format(observation.wind_speed),
+        '{:.2f}'.format(observation.wind_speed_max),
+        '{:.2f}'.format(observation.wind_direction),
+        '{:.2f}'.format(observation.actual_rainfall),
+        '{:.2f}'.format(observation.station.battery_voltage),
+        '',  # Solar power (watts/m2) - not calculated
+        '{:.2f}'.format(observation.actual_pressure)
     ]
 
 
@@ -88,7 +88,7 @@ def actual_rainfall(rainfall, station, timestamp=None):
     observation at a station. This function is only used at the time of
     observation capture (i.e. it assumes that it is being used to calculate
     actual rainfall for a new observation). Always returns a Decimal object
-    with a precision of one decimal place.
+    with a maximum precision of two decimal places.
 
     Where a rainfall counter value for a station is passed in, compute the
     rainfall over the previous minute. Subtract this counter value from the
@@ -102,8 +102,7 @@ def actual_rainfall(rainfall, station, timestamp=None):
     """
     from .models import WeatherObservation
 
-    getcontext().prec = 1
-    rainfall = Decimal(rainfall) * Decimal('1.0')  # Force to 1 d.p.
+    rainfall = Decimal(rainfall)
     if rainfall == 0:
         return rainfall
 
@@ -117,19 +116,22 @@ def actual_rainfall(rainfall, station, timestamp=None):
     if counter_diff < 0:  # Less than 0 implies a counter reset (return zero)
         return Decimal('0.0')
 
-    time_diff = timestamp - previous_obs.date
+    seconds_diff = (timestamp - previous_obs.date).total_seconds()
     # If the returned observation occurred after the timestamp, return zero.
-    if time_diff.total_seconds() <= 0:
+    if seconds_diff <= 0:
         return Decimal('0.0')
 
-    correction = 60 / time_diff.total_seconds()
-    difference_corrected = counter_diff * Decimal(correction)
-    actual = difference_corrected * Decimal('1.0')
+    # Only bother with a correction if the time difference is >90 sec.
+    if seconds_diff > 90:
+        correction = 60.0 / seconds_diff
+    else:
+        correction = 1.0
 
-    if actual < 0.01:  # Lowest precision for rainfall.
+    difference_corrected = counter_diff * correction
+    if difference_corrected < 0.01:  # Lowest precision for rainfall.
         return Decimal('0.0')
     else:
-        return actual
+        return Decimal('{:.2f}'.format(difference_corrected))
 
 
 def ftp_upload(observations):
