@@ -344,9 +344,15 @@ class WeatherObservation(models.Model):
     # pressure for the observation (based on the station altitude).
     actual_pressure = models.DecimalField(
         max_digits=5, decimal_places=1, blank=True, null=True)
-
     dew_point = models.DecimalField(
         max_digits=4, decimal_places=1, blank=True, null=True)
+
+    def __str__(self):
+        return 'Data for {} on {}'.format(self.station.name, self.date)
+
+    class Meta:
+        ordering = ['-date']
+        unique_together = ('station', 'date')
 
     def gm_date(self):
         import calendar
@@ -406,9 +412,22 @@ class WeatherObservation(models.Model):
             temp / (temp + (lapse_rate * height)),
             (g0 * M) / (R * lapse_rate)) / 100)
 
-    def __str__(self):
-        return 'Data for {} on {}'.format(self.station.name, self.date)
-
-    class Meta:
-        ordering = ['-date']
-        unique_together = ('station', 'date')
+    def get_dafwa_obs(self):
+        """Return a list of observation information that is compatible with
+        being transmitted to DAFWA (typically as a CSV).
+        """
+        reading_date = timezone.localtime(self.date)
+        return [
+            self.station.bom_abbreviation,
+            unicode(reading_date.strftime('%Y-%m-%d')),
+            unicode(reading_date.strftime('%H:%M:%S')),
+            '{:.1f}'.format(float(self.temperature)),
+            '{:.1f}'.format(float(self.humidity)),
+            '{:.1f}'.format(float(self.wind_speed)),
+            '{:.1f}'.format(float(self.wind_speed_max)),
+            '{:.1f}'.format(float(self.wind_direction)),
+            '{:.1f}'.format(float(self.actual_rainfall)),
+            '{:.1f}'.format(float(self.station.battery_voltage)),
+            '',  # Solar power (watts/m2) - not calculated
+            '{:.1f}'.format(float(self.actual_pressure))
+        ]
