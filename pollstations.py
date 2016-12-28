@@ -36,6 +36,7 @@ class Station:
         self.process = None
         self.process_start = None
         self.last_poll = None
+        self.failures = 0
 
     def __str__(self):
         return u'{}:{} ({}m)'.format(self.ip, self.port, self.interval)
@@ -60,14 +61,12 @@ class Station:
         if self.process:
             # Try to terminate the process gracefully.
             pid = self.process.pid
-            if LOGGER:
-                LOGGER.info("Killing pid {}".format(pid))
             self.process.terminate()
-            if self.process.poll() is None:
-            # Check if the process has really terminated & force kill if not.
-                self.process.kill()
-                self.process.poll()
-        self.process = None
+            time.sleep(1)
+            exitcode = self.process.poll()
+            if LOGGER:
+                LOGGER.info("Killed pid {} exitcode {}".format(pid, exitcode))
+            self.process = None
 
 
 def configure_logging():
@@ -105,6 +104,19 @@ def configure_stations():
         return []
     return stations
 
+def should_poll(station):
+    # Poll for observation data if:
+    # - the station has never been polled;
+    # - the interval is <1 minute;
+    # - the polling interval (minutes) has passed.
+    now = datetime.now()
+    if not station.last_poll or station.interval <= 1:
+        return True
+    elif (now - station.last_poll).total_seconds() / 60 >= station.interval:
+        return True
+    else:
+        return False
+
 
 def polling_loop(stations):
     """The main polling loop function.
@@ -116,72 +128,72 @@ def polling_loop(stations):
         polling = False  # No active weather stations.
 
     while polling:
+        # Poll max every 3 secs
+        time.sleep(3)
         # For each station, instantiate a process to poll it for observation
         # data at defined intervals (in minutes).
         # We check to see if the required polling interval has passed and if so,
         # we create a process to poll the station immediately for an observation.
-        for s in stations:
-            now = datetime.now()
-            # Poll for observation data if:
-            # - the station has never been polled;
-            # - the interval is <1 minute;
-            # - the polling interval (minutes) has passed.
-            if s.last_poll is None or s.interval <= 1 or ((now - s.last_poll).total_seconds() / 60) >= s.interval:
-                # If no existing process exist or process is terminated, start one now.
-                if not s.process or s.process.poll() is not None:  # Non-existent/terminated.
-                    # Establish a connection.
-                    s.connect_station()
-                    s.process_start = datetime.now()
+        for station in stations:
+            if should_poll(station):
+                logged = False
+                if not (station.process and station.process.poll() is None): # check for process or exit code
+                    # If no existing process exist or process is terminated, start one now.
+                    station.connect_station()
+                    station.process_start = datetime.now()
                 try:
                     # Read up to 2kb of the connection output and parse the
                     # observation string from that.
-                    data = s.process.stdout.read(2048)
-                    # Split the lines of the response and find the observation.
-                    for line in data.strip().split('\n'):
-                        line = line.strip()
-                        for pattern in s.patterns:
-                            if re.search(pattern, line):  # Found a matching pattern in the output.
-                                s.last_poll = datetime.now()
-                                # Looks like an observation string; save it.
-                                obs = '{}::{}'.format(s.ip, line)
-                                if LOGGER:
-                                    LOGGER.info('Observation data: {}'.format(obs))
-
-                                # This mgmt command will write the observation to the
-                                # database and optionally upload it to DAFWA.
-                                try:
-                                    output = subprocess.check_output(
-                                        ['venv/bin/python', 'manage.py', 'write_observation', obs],
-                                        stderr=STDOUT)
-                                    if LOGGER:
-                                        LOGGER.info(output.strip())
-                                except subprocess.CalledProcessError as e:
-                                    if LOGGER:
-                                        LOGGER.error(e.output)
-
-                                # Terminate the process if interval >1 minute, it's finished with.
-                                if s.interval > 1:
-                                    if LOGGER:
-                                        age = (now - s.process_start).total_seconds()
-                                        LOGGER.info('Polling {} process PID {} ended at {} seconds old'.format(
-                                            s.ip, s.process.pid, age))
-                                    s.terminate_poll_process()
+                    data = station.process.stdout.read(2048)
                 except Exception as e:
-                    # No connection output; set last_poll to false for connection cleanup
-                    s.last_poll = False
-                    if LOGGER:
-                        LOGGER.error(e);
+                    # No connection output; pass and try again next loop.
+                    if station.last_poll and (datetime.now() - station.last_poll).total_seconds() / 60 > station.interval + station.failures:
+                        # if data late, increment failures
+                        station.failures += 1
+                        LOGGER.error("No data received from {} for {} seconds".format(station.ip, (datetime.now() - station.last_poll).total_seconds()))
+                    continue
+                # Split the lines of the response and find the observation.
+                for line in data.strip().split('\n'):
+                    line = line.strip()
+                    for pattern in station.patterns:
+                        if re.search(pattern, line):  # Found a matching pattern in the output.
+                            station.last_poll = datetime.now()
+                            # Looks like an observation string; save it.
+                            obs = '{}::{}'.format(station.ip, line)
+                            if LOGGER:
+                                LOGGER.info('Observation data: {}'.format(obs))
+                            # This mgmt command will write the observation to the
+                            # database and optionally upload it to DAFWA.
+                            try:
+                                output = subprocess.check_output(
+                                    ['venv/bin/python', 'manage.py', 'write_observation', obs],
+                                    stderr=STDOUT)
+                                station.failures = 0
+                                if LOGGER:
+                                    LOGGER.info(output.strip())
+                            except subprocess.CalledProcessError as e:
+                                if LOGGER:
+                                    LOGGER.error(e.output)
+
+                            # Terminate the process if interval >1 minute, it's finished with.
+                            if station.interval > 1:
+                                if LOGGER:
+                                    age = (datetime.now() - station.process_start).total_seconds()
+                                    LOGGER.info('Polling {} process PID {} ended at {} seconds old'.format(
+                                        station.ip, station.process.pid, age))
+                                station.terminate_poll_process()
 
             # If we have an active session but the time since last poll has
             # exceeded the interval by more than two minutes, we may have a
             # stuck telnet session (stays alive but stops sending output).
             # In that event, we'll never get to the call to terminate the
             # process, so let's do so now.
-            if s.last_poll is False or (s.last_poll and ((now - s.last_poll).total_seconds() / 60) >= s.interval + 2):
-                s.terminate_poll_process()
-                s.last_poll = None
+            if station.failures > 2:
+                station.last_poll = None
                 if LOGGER:
-                    LOGGER.warning('Polling {} process might be stuck, cleaning up {}'.format(s.ip, s.process.pid))
+                    LOGGER.warning('Polling {} process failed {} times, killing'.format(station.ip, station.failures))
+                station.terminate_poll_process()
+                station.failures = 0
 
         # Every ten polling loops, review the list of active weather stations.
         # Compare against the current list of polled stations, and add/remove
@@ -215,9 +227,6 @@ def polling_loop(stations):
             loop_count = 0
         else:
             loop_count += 1
-
-        # Pause, and repeat the polling loop.
-        time.sleep(3)
 
 
 if __name__ == "__main__":
