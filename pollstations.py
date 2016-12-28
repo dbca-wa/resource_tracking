@@ -126,7 +126,7 @@ def polling_loop(stations):
             # - the station has never been polled;
             # - the interval is <1 minute;
             # - the polling interval (minutes) has passed.
-            if not s.last_poll or s.interval <= 1 or ((now - s.last_poll).total_seconds() / 60) >= s.interval:
+            if s.last_poll is None or s.interval <= 1 or ((now - s.last_poll).total_seconds() / 60) >= s.interval:
                 # If no existing process exist or process is terminated, start one now.
                 if not s.process or s.process.poll() is not None:  # Non-existent/terminated.
                     # Establish a connection.
@@ -167,19 +167,21 @@ def polling_loop(stations):
                                             s.ip, s.process.pid, age))
                                     s.terminate_poll_process()
                 except Exception as e:
-                    # No connection output; pass and try again next loop.
-                    continue
+                    # No connection output; set last_poll to false for connection cleanup
+                    s.last_poll = False
+                    if LOGGER:
+                        LOGGER.error(e);
 
             # If we have an active session but the time since last poll has
             # exceeded the interval by more than two minutes, we may have a
             # stuck telnet session (stays alive but stops sending output).
             # In that event, we'll never get to the call to terminate the
             # process, so let's do so now.
-            if s.last_poll and ((now - s.last_poll).total_seconds() / 60) >= s.interval + 2:
+            if s.last_poll is False or (s.last_poll and ((now - s.last_poll).total_seconds() / 60) >= s.interval + 2):
                 s.terminate_poll_process()
                 s.last_poll = None
                 if LOGGER:
-                    LOGGER.warning('Polling {} process might be stuck (stopped)'.format(s.ip))
+                    LOGGER.warning('Polling {} process might be stuck, cleaning up {}'.format(s.ip, s.process.pid))
 
         # Every ten polling loops, review the list of active weather stations.
         # Compare against the current list of polled stations, and add/remove
