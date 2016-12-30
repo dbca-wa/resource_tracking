@@ -176,7 +176,7 @@ def polling_loop(stations):
                                     LOGGER.error(e.output)
 
                             # Terminate the process if interval >1 minute, it's finished with.
-                            if station.interval > 1:
+                            if station.process and station.interval > 1:
                                 if LOGGER:
                                     age = (datetime.now() - station.process_start).total_seconds()
                                     LOGGER.info('Polling {} process PID {} ended at {} seconds old'.format(

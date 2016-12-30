@@ -161,7 +161,7 @@ class WeatherStation(models.Model):
             observation.raw_data = raw_data
             observation.station = self
             observation.save()
-            self.last_observation = timestamp
+            self.last_reading = timestamp
             self.battery_voltage = Decimal(re.search(pattern, data['Vs']).group(1))
             self.save()
         else:  # Default to using the Telvent station format.
@@ -219,7 +219,7 @@ class WeatherStation(models.Model):
             observation.raw_data = raw_data
             observation.station = self
             observation.save()
-            self.last_observation = timestamp
+            self.last_reading = timestamp
             self.battery_voltage = data.get('BV', empty) or empty
             self.save()
 
