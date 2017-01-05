@@ -13,6 +13,7 @@ from django.utils.encoding import force_text, python_2_unicode_compatible
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.dispatch import receiver
 from django.db.models.signals import pre_save, post_save
+from django.core.validators import MaxValueValidator
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +122,7 @@ class Device(BasePoint):
     deviceid = models.CharField(max_length=32, unique=True)
     name = models.CharField(max_length=32, default="No Rego", verbose_name="Registration", help_text="e.g. 1QBB157")
     callsign = models.CharField(max_length=32, default="No RIN", verbose_name="Resource Identification Number (RIN)", help_text="e.g. HD123, GT456 or P789")
+    rin_number = models.PositiveIntegerField(validators=[MaxValueValidator(999)], verbose_name="Resource Identification Number (RIN)", null=True, blank=True, help_text="Heavy Duty, Gang Truck or Plant only (HD/GT/P automatically prefixed). e.g. Entering 123 for a Heavy Duty will display as HD123, 456 for Gang Truck as GT456 and 789 for Plant as P789.")
     symbol = models.CharField(max_length=32, choices=SYMBOL_CHOICES, default="other")
     district = models.CharField(max_length=32, choices=DISTRICT_CHOICES, default=DISTRICT_OTHER)
     usual_driver = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. John Jones")
@@ -130,6 +132,21 @@ class Device(BasePoint):
     current_callsign = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. FRK99")
     is_contractor = models.BooleanField(default=False)
     contractor_details = models.CharField(max_length=50, null=True, blank=True, help_text="Person engaging contractor is responsible for maintaining contractor resource details")
+
+    @property
+    def rin_display(self):
+        if not self.rin_number:
+            return None
+        if self.symbol == "heavy duty":
+            symbol_prefix = "HD"
+        elif self.symbol == "gang truck":
+            symbol_prefix = "GT"
+        elif self.symbol in ("grader", "dozer", "loader"):
+            symbol_prefix = "P"
+        else:
+            return None
+        display = symbol_prefix + str(self.rin_number)
+        return display
 
     @property
     def age_minutes(self):
