@@ -36,6 +36,7 @@ DISTRICT_SHARK_BAY = 'SHB'
 DISTRICT_GREAT_SOUTHERN = 'GSN'
 DISTRICT_CENTRAL_WHEATBELT = 'CWB'
 DISTRICT_SOUTHERN_WHEATBELT = 'SWB'
+DISTRICT_AVIATION = 'AV'
 
 DISTRICT_CHOICES = (
     (DISTRICT_PERTH_HILLS, "Perth Hills"),
@@ -57,6 +58,7 @@ DISTRICT_CHOICES = (
     (DISTRICT_GREAT_SOUTHERN, "Great Southern"),
     (DISTRICT_CENTRAL_WHEATBELT, "Central Wheatbelt"),
     (DISTRICT_SOUTHERN_WHEATBELT, "Southern Wheatbelt")
+    (DISTRICT_AVIATION, "Aviation")
 )
 
 SYMBOL_CHOICES = (
@@ -109,7 +111,7 @@ class BasePoint(models.Model):
 class Device(BasePoint):
     deviceid = models.CharField(max_length=32, unique=True)
     name = models.CharField(max_length=32, default="No Rego", verbose_name="Rego", help_text="e.g. 1QBB157")
-    callsign = models.CharField(max_length=32, default="No Vehicle ID", verbose_name="Vehicle ID", help_text="e.g. GT124, HD121")
+    callsign = models.CharField(max_length=32, default="No RIN", verbose_name="Resource Identification Number (RIN)", help_text="e.g. HD123, GT456 or P789")
     symbol = models.CharField(max_length=32, choices=SYMBOL_CHOICES, default="other")
     district = models.CharField(max_length=32, choices=DISTRICT_CHOICES, null=True, blank=True)
 
