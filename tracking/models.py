@@ -57,7 +57,7 @@ DISTRICT_CHOICES = (
     (DISTRICT_SHARK_BAY, "Shark Bay"),
     (DISTRICT_GREAT_SOUTHERN, "Great Southern"),
     (DISTRICT_CENTRAL_WHEATBELT, "Central Wheatbelt"),
-    (DISTRICT_SOUTHERN_WHEATBELT, "Southern Wheatbelt")
+    (DISTRICT_SOUTHERN_WHEATBELT, "Southern Wheatbelt"),
     (DISTRICT_AVIATION, "Aviation")
 )
 
