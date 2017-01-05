@@ -37,6 +37,7 @@ DISTRICT_GREAT_SOUTHERN = 'GSN'
 DISTRICT_CENTRAL_WHEATBELT = 'CWB'
 DISTRICT_SOUTHERN_WHEATBELT = 'SWB'
 DISTRICT_AVIATION = 'AV'
+DISTRICT_OTHER = 'OTH'
 
 DISTRICT_CHOICES = (
     (DISTRICT_PERTH_HILLS, "Perth Hills"),
@@ -58,28 +59,36 @@ DISTRICT_CHOICES = (
     (DISTRICT_GREAT_SOUTHERN, "Great Southern"),
     (DISTRICT_CENTRAL_WHEATBELT, "Central Wheatbelt"),
     (DISTRICT_SOUTHERN_WHEATBELT, "Southern Wheatbelt"),
-    (DISTRICT_AVIATION, "Aviation")
+    (DISTRICT_AVIATION, "Aviation"),
+    (DISTRICT_OTHER, "Other")
 )
 
 SYMBOL_CHOICES = (
     ("2 wheel drive", "2-Wheel Drive"),
     ("4 wheel drive passenger", "4-Wheel Drive Passenger"),
     ("4 wheel drive ute", "4-Wheel Drive (Ute)"),
-    ("boat", "Boat"),
-    ("comms bus", "Communications Bus"),
-    ("dozer", "Dozer"),
-    ("fixed wing aircraft", "Fixed-wing Aircraft"),
-    ("float", "Float"),
-    ("gang truck", "Gang Truck"),
-    ("grader", "Grader"),
-    ("heavy duty", "Heavy Duty"),
     ("light unit", "Light Unit"),
+    ("heavy duty", "Heavy Duty"),
+    ("gang truck", "Gang Truck"),
+    (None, ""),
+    ("dozer", "Dozer"),
+    ("grader", "Grader"),
     ("loader", "Loader"),
-    ("other", "Other"),
-    ("person", "Person"),
-    ("rotary aircraft", "Rotary Aircraft"),
+    ("tender", "Tender"),
+    ("float", "Float"),
     ("snorkel", "Snorkel"),
-    ("tender", "Tender")
+    (None, ""),
+    ("fixed wing aircraft", "Waterbomber"),
+    ("rotary aircraft", "Rotary"),
+    ("spotter aircraft", "Spotter"),
+    ("helitac", "Helitac"),
+    ("rescue helicopter", "Rescue Helicopter"),
+    ("aviation fuel truck", "Aviation Fuel Truck"),
+    (None, ""),
+    ("comms bus", "Communications Bus"),
+    ("boat", "Boat"),
+    ("person", "Person"),
+    ("other", "Other")
 )
 
 RAW_EQ_CHOICES = (
@@ -110,10 +119,17 @@ class BasePoint(models.Model):
 @python_2_unicode_compatible
 class Device(BasePoint):
     deviceid = models.CharField(max_length=32, unique=True)
-    name = models.CharField(max_length=32, default="No Rego", verbose_name="Rego", help_text="e.g. 1QBB157")
+    name = models.CharField(max_length=32, default="No Rego", verbose_name="Registration", help_text="e.g. 1QBB157")
     callsign = models.CharField(max_length=32, default="No RIN", verbose_name="Resource Identification Number (RIN)", help_text="e.g. HD123, GT456 or P789")
     symbol = models.CharField(max_length=32, choices=SYMBOL_CHOICES, default="other")
-    district = models.CharField(max_length=32, choices=DISTRICT_CHOICES, null=True, blank=True)
+    district = models.CharField(max_length=32, choices=DISTRICT_CHOICES, default=DISTRICT_OTHER)
+    usual_driver = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. John Jones")
+    usual_callsign = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. DON99")
+    usual_location = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. Karijini National Park")
+    current_driver = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. Jodie Jones")
+    current_callsign = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. FRK99")
+    is_contractor = models.BooleanField(default=False)
+    contractor_details = models.CharField(max_length=50, null=True, blank=True, help_text="Person engaging contractor is responsible for maintaining contractor resource details")
 
     @property
     def age_minutes(self):

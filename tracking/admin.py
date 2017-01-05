@@ -20,6 +20,13 @@ class DeviceAdmin(ModelAdmin):
             """ if settings.PROD_SCARY_WARNING else "",
             "fields": ("deviceid", "symbol", "district", "callsign", "name")
         }),
+        ("Crew Details", {
+            "fields": ("usual_driver", "usual_callsign", "usual_location",
+                "current_driver", "current_callsign")
+        }),
+        ("Contractor Details", {
+            "fields": ("is_contractor", "contractor_details")
+        })
     )
 
 
