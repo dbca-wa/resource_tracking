@@ -1,7 +1,7 @@
 from __future__ import unicode_literals, absolute_import
 import csv
 from datetime import timedelta
-from decimal import Decimal, getcontext
+from decimal import Decimal
 from django.conf import settings
 from django.utils import timezone
 from ftplib import FTP
@@ -11,28 +11,6 @@ import StringIO
 
 
 LOGGER = logging.getLogger('weather')
-
-
-def dafwa_obs(observation):
-    """Given a passed-in WeatherObservation object, return a list of
-    sensor information that is compatible with being transmitted to
-    DAFWA (typically as a CSV).
-    """
-    reading_date = timezone.localtime(observation.date)
-    return [
-        observation.station.bom_abbreviation,
-        reading_date.strftime('%Y-%m-%d'),
-        reading_date.strftime('%H:%M:%S'),
-        observation.temperature,
-        observation.humidity,
-        observation.wind_speed,
-        observation.wind_speed_max,
-        observation.wind_direction,
-        observation.actual_rainfall,
-        observation.station.battery_voltage,
-        None,  # Solar power (watts/m2) - not calculated
-        observation.actual_pressure
-    ]
 
 
 def dew_point(T, RH=None):
@@ -88,7 +66,7 @@ def actual_rainfall(rainfall, station, timestamp=None):
     observation at a station. This function is only used at the time of
     observation capture (i.e. it assumes that it is being used to calculate
     actual rainfall for a new observation). Always returns a Decimal object
-    with a precision of one decimal place.
+    with a maximum precision of two decimal places.
 
     Where a rainfall counter value for a station is passed in, compute the
     rainfall over the previous minute. Subtract this counter value from the
@@ -102,8 +80,7 @@ def actual_rainfall(rainfall, station, timestamp=None):
     """
     from .models import WeatherObservation
 
-    getcontext().prec = 1
-    rainfall = Decimal(rainfall) * Decimal('1.0')  # Force to 1 d.p.
+    rainfall = Decimal(rainfall)
     if rainfall == 0:
         return rainfall
 
@@ -117,19 +94,22 @@ def actual_rainfall(rainfall, station, timestamp=None):
     if counter_diff < 0:  # Less than 0 implies a counter reset (return zero)
         return Decimal('0.0')
 
-    time_diff = timestamp - previous_obs.date
+    seconds_diff = (timestamp - previous_obs.date).total_seconds()
     # If the returned observation occurred after the timestamp, return zero.
-    if time_diff.total_seconds() <= 0:
+    if seconds_diff <= 0:
         return Decimal('0.0')
 
-    correction = 60 / time_diff.total_seconds()
-    difference_corrected = counter_diff * Decimal(correction)
-    actual = difference_corrected * Decimal('1.0')
+    # Only bother with a correction if the time difference is >90 sec.
+    if seconds_diff > 90:
+        correction = 60.0 / seconds_diff
+    else:
+        correction = 1.0
 
-    if actual < 0.01:  # Lowest precision for rainfall.
+    difference_corrected = float(counter_diff) * correction
+    if difference_corrected < 0.01:  # Lowest precision for rainfall.
         return Decimal('0.0')
     else:
-        return actual
+        return Decimal('{:.2f}'.format(difference_corrected))
 
 
 def ftp_upload(observations):
@@ -155,10 +135,10 @@ def ftp_upload(observations):
         # Generate the CSV for transfer.
         reading_date = timezone.localtime(observation.date)
         writer = csv.writer(output)
-        writer.writerow(dafwa_obs(observation))
+        writer.writerow(observation.get_dafwa_obs())
         # Write to the log of observations uploaded to DAFWA.
         writer = csv.writer(archive)
-        writer.writerow(dafwa_obs(observation))
+        writer.writerow(observation.get_dafwa_obs())
         archive.seek(0)
         dafwa_log = logging.getLogger('dafwa')
         dafwa_log.info(archive.read().strip())
@@ -190,7 +170,6 @@ def download_data():
     deprecated in favour of the standalone pollstations.py script.
     """
     from .models import WeatherStation
-    LOGGER.info("Scheduling new gatherers...")
     observations = []
 
     for station in WeatherStation.objects.filter(active=True):
@@ -200,10 +179,6 @@ def download_data():
         last_scheduled = station.last_scheduled
         connect_every = timedelta(minutes=station.connect_every)
         next_scheduled = last_scheduled + connect_every
-
-        # Not sure why I can't directly compare them, it *sometimes* works,
-        # but not every check succeeds. I wonder what the difference is...
-        # Their tuples seem to be equal, so we'll use that.
         schedule = next_scheduled.utctimetuple() <= now.utctimetuple()
 
         LOGGER.info("Last scheduled: {}, connect every: {} minutes".format(
@@ -226,21 +201,3 @@ def download_data():
             LOGGER.info("Skipping {}".format(station))
 
     return observations
-
-
-def upload_data(observations=None):
-    """Utility function to upload observations to DAFWA.
-    """
-    from .models import WeatherObservation
-
-    if settings.DAFWA_UPLOAD:
-        if not observations:
-            # Check if there are any observations for
-            # the last minute and upload them to DAFWA if so.
-            now = timezone.now().replace(second=0, microsecond=0)
-            last_minute = now - timedelta(minutes=1)
-            observations = WeatherObservation.objects.filter(date__gte=last_minute)
-        if len(observations) > 0:
-            LOGGER.info("{} observations to upload".format(len(observations)))
-            ftp_upload(observations)
-    return True
