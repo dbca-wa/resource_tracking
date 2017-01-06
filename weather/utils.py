@@ -120,6 +120,7 @@ def ftp_upload(observations):
 
     try:
         ftp = FTP(settings.DAFWA_UPLOAD_HOST)
+        ftp.set_pasv(False)
         ftp.login(settings.DAFWA_UPLOAD_USER, settings.DAFWA_UPLOAD_PASSWORD)
         ftp.cwd(settings.DAFWA_UPLOAD_DIR)
     except Exception as e:
@@ -147,6 +148,9 @@ def ftp_upload(observations):
         name = 'DPAW{}'.format(reading_date.strftime('%Y%m%d%H%M%S'))
         output.name = '{}.txt'.format(name)
         semaphore.name = '{}.ok'.format(name)
+
+        LOGGER.info(output.name)
+        output.seek(0)
 
         try:
             # First write the data, then the semaphore file.
