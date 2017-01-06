@@ -135,6 +135,18 @@ def polling_loop(stations):
         # We check to see if the required polling interval has passed and if so,
         # we create a process to poll the station immediately for an observation.
         for station in stations:
+            # If we have an active session but the time since last poll has
+            # exceeded the interval by more than two minutes, we may have a
+            # stuck telnet session (stays alive but stops sending output).
+            # In that event, we'll never get to the call to terminate the
+            # process, so let's do so now.
+            if station.failures > 2:
+                station.last_poll = None
+                if LOGGER:
+                    LOGGER.warning('Polling {} process failed {} times, killing'.format(station.ip, station.failures))
+                station.terminate_poll_process()
+                station.failures = 0
+
             if should_poll(station):
                 logged = False
                 if not (station.process and station.process.poll() is None): # check for process or exit code
@@ -182,18 +194,6 @@ def polling_loop(stations):
                                     LOGGER.info('Polling {} process PID {} ended at {} seconds old'.format(
                                         station.ip, station.process.pid, age))
                                 station.terminate_poll_process()
-
-            # If we have an active session but the time since last poll has
-            # exceeded the interval by more than two minutes, we may have a
-            # stuck telnet session (stays alive but stops sending output).
-            # In that event, we'll never get to the call to terminate the
-            # process, so let's do so now.
-            if station.failures > 2:
-                station.last_poll = None
-                if LOGGER:
-                    LOGGER.warning('Polling {} process failed {} times, killing'.format(station.ip, station.failures))
-                station.terminate_poll_process()
-                station.failures = 0
 
         # Every ten polling loops, review the list of active weather stations.
         # Compare against the current list of polled stations, and add/remove
