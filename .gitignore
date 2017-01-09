@@ -2,6 +2,7 @@
 media/
 staticfiles/
 logs/
+upload_data_cache/
 **/version
 
 # Byte-compiled / optimized / DLL files
