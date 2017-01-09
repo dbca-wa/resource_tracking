@@ -27,11 +27,16 @@ class Command(BaseCommand):
                 # Ensure that the upload_data_cache directory exists.
                 if not os.path.exists(os.path.join(settings.BASE_DIR, 'upload_data_cache')):
                     os.mkdir(os.path.join(settings.BASE_DIR, 'upload_data_cache'))
+                # Write the observation and semaphore files.
                 ts = timezone.localtime(obs.date)
-                filename = 'DPAW{}.txt'.format(ts.strftime('%Y%m%d%H%M%S'))
-                outfile = open(os.path.join(settings.BASE_DIR, 'upload_data_cache', filename), 'w')
+                name = 'DPAW{}'.format(ts.strftime('%Y%m%d%H%M%S'))
+                observation = '{}.txt'.format(name)
+                semaphore = '{}.ok'.format(name)
+                outfile = open(os.path.join(settings.BASE_DIR, 'upload_data_cache', observation), 'w')
                 writer = csv.writer(outfile)
                 writer.writerow(obs.get_dafwa_obs())
+                outfile.close()
+                outfile = open(os.path.join(settings.BASE_DIR, 'upload_data_cache', semaphore), 'w')
                 outfile.close()
             except:
                 raise CommandError('Error while writing observation to upload_data_cache')
