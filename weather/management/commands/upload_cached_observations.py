@@ -20,11 +20,10 @@ class Command(BaseCommand):
                 path = os.path.abspath(os.path.join(settings.BASE_DIR, 'upload_data_cache', f))
                 # Use lftp to tranfer each file using SFTP.
                 try:
-                    subprocess.check_call(
+                    output = subprocess.check_output(
                         ['lftp', connect_str, '-e', 'put -E {}; quit'.format(path)],
                         stderr=subprocess.STDOUT)
-                    self.stdout.write(self.style.SUCCESS('Uploaded {} to DAFWA'.format(f)))
                 except subprocess.CalledProcessError:
-                    self.stdout.write(self.style.WARNING('Error uploading {} to DAFWA'.format(f)))
+                    raise CommandError('Error uploading {} to DAFWA'.format(f))
         except:
             raise CommandError('Error while uploading observation data to DAFWA')

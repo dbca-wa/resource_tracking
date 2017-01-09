@@ -225,17 +225,6 @@ def polling_loop(stations):
                     if LOGGER:
                         LOGGER.info('{} was removed from the station pool'.format(cur_station.ip))
 
-            # Call the upload_cached_observations management command.
-            try:
-                output = subprocess.check_output(
-                    ['venv/bin/python', 'manage.py', 'upload_cached_observations'],
-                    stderr=STDOUT)
-                if LOGGER:
-                    LOGGER.info(output.strip())
-            except subprocess.CalledProcessError as e:
-                if LOGGER:
-                    LOGGER.error(e.output)
-
             # Reset the loop counter.
             loop_count = 0
         else:
