@@ -106,10 +106,10 @@ def actual_rainfall(rainfall, station, timestamp=None):
         correction = 1.0
 
     difference_corrected = float(counter_diff) * correction
-    if difference_corrected < 0.01:  # Lowest precision for rainfall.
+    if difference_corrected < 0.1:  # Lowest precision for rainfall is 1 d.p.
         return Decimal('0.0')
     else:
-        return Decimal('{:.2f}'.format(difference_corrected))
+        return Decimal('{:.1f}'.format(difference_corrected))
 
 
 def ftp_upload(observations):
