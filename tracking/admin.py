@@ -8,9 +8,9 @@ from .models import Device, LoggedPoint
 @register(Device)
 class DeviceAdmin(ModelAdmin):
     date_hierarchy = "seen"
-    list_display = ("deviceid", "name", "callsign", "symbol", "district", "seen")
+    list_display = ("deviceid", "name", "symbol", "district", "seen")
     list_filter = ("symbol", "district")
-    search_fields = ("deviceid", "name", "callsign", "symbol", "district")
+    search_fields = ("deviceid", "name", "symbol", "district")
     readonly_fields = ("deviceid",)
     fieldsets = (
         ("Vehicle/Device details", {
@@ -18,14 +18,17 @@ class DeviceAdmin(ModelAdmin):
             changes made to these fields will apply to the Device Tracking map in all 
             variants of the Spatial Support System.</p>
             """ if settings.PROD_SCARY_WARNING else "",
-            "fields": ("deviceid", "symbol", "district", "callsign", "rin_number", "name")
+            "fields": ("deviceid", "district", "symbol", "rin_number", "name")
         }),
         ("Crew Details", {
-            "fields": ("usual_driver", "usual_callsign", "usual_location",
-                "current_driver", "current_callsign")
+            "fields": (("usual_driver", "usual_callsign"), "usual_location",
+                ("current_driver", "current_callsign"))
         }),
         ("Contractor Details", {
-            "fields": ("is_contractor", "contractor_details")
+            "fields": ("contractor_details",)
+        }),
+        ("Other Details", {
+            "fields": ("other_details",)
         })
     )
 
@@ -46,7 +49,7 @@ class DeviceSSSAdmin(DeviceAdmin):
 class LoggedPointAdmin(ModelAdmin):
     list_display = ("seen", "device")
     list_filter = ("device__symbol", "device__district")
-    search_fields = ("device__deviceid", "device__name", "device__callsign")
+    search_fields = ("device__deviceid", "device__name")
     date_hierarchy = "seen"
 
     def add_view(self, request, obj=None):

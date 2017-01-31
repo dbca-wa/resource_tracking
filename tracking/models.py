@@ -14,50 +14,63 @@ from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.dispatch import receiver
 from django.db.models.signals import pre_save, post_save
 from django.core.validators import MaxValueValidator
+from django.forms import ValidationError
 
 logger = logging.getLogger(__name__)
 
 
-DISTRICT_PERTH_HILLS = 'PHS'
-DISTRICT_SWAN_COASTAL = 'SWC'
+DISTRICT_PERTH_HILLS = 'PHD'
+DISTRICT_SWAN_COASTAL = 'SCD'
+DISTRICT_SWAN_REGION = 'SWAN'
 DISTRICT_BLACKWOOD = 'BWD'
 DISTRICT_WELLINGTON = 'WTN'
+DISTRICT_SOUTH_WEST_REGION = 'SWR'
 DISTRICT_DONNELLY = 'DON'
 DISTRICT_FRANKLAND = 'FRK'
+DISTRICT_WARREN_REGION = 'WR'
 DISTRICT_ALBANY = 'ALB'
 DISTRICT_ESPERANCE = 'ESP'
-DISTRICT_EAST_KIMBERLEY = 'EKM'
-DISTRICT_WEST_KIMBERLEY = 'WKM'
+DISTRICT_SOUTH_COAST_REGION = 'SCR'
+DISTRICT_EAST_KIMBERLEY = 'EKD'
+DISTRICT_WEST_KIMBERLEY = 'WKD'
+DISTRICT_KIMBERLEY_REGION = 'KIMB'
 DISTRICT_EXMOUTH = 'EXM'
 DISTRICT_PILBARA = 'PIL'
-DISTRICT_KALGOORLIE = 'KAL'
+DISTRICT_KALGOORLIE = 'GLD'
 DISTRICT_GERALDTON = 'GER'
 DISTRICT_MOORA = 'MOR'
 DISTRICT_SHARK_BAY = 'SHB'
-DISTRICT_GREAT_SOUTHERN = 'GSN'
+DISTRICT_MIDWEST_REGION = 'MWR'
 DISTRICT_CENTRAL_WHEATBELT = 'CWB'
 DISTRICT_SOUTHERN_WHEATBELT = 'SWB'
+DISTRICT_WHEATBELT_REGION = 'WBR'
 DISTRICT_AVIATION = 'AV'
 DISTRICT_OTHER = 'OTH'
 
 DISTRICT_CHOICES = (
+    (DISTRICT_SWAN_REGION, "Swan Region"),
     (DISTRICT_PERTH_HILLS, "Perth Hills"),
     (DISTRICT_SWAN_COASTAL, "Swan Coastal"),
+    (DISTRICT_SOUTH_WEST_REGION, "South West Region"),
     (DISTRICT_BLACKWOOD, "Blackwood"),
     (DISTRICT_WELLINGTON, "Wellington"),
+    (DISTRICT_WARREN_REGION, "Warren Region"),
     (DISTRICT_DONNELLY, "Donnelly"),
     (DISTRICT_FRANKLAND, "Frankland"),
+    (DISTRICT_SOUTH_COAST_REGION, "South Coast Region"),
     (DISTRICT_ALBANY, "Albany"),
     (DISTRICT_ESPERANCE, "Esperance"),
+    (DISTRICT_KIMBERLEY_REGION, "Kimberley Region"),
     (DISTRICT_EAST_KIMBERLEY, "East Kimberley"),
     (DISTRICT_WEST_KIMBERLEY, "West Kimberley"),
     (DISTRICT_EXMOUTH, "Exmouth"),
     (DISTRICT_PILBARA, "Pilbara"),
     (DISTRICT_KALGOORLIE, "Kalgoorlie"),
+    (DISTRICT_MIDWEST_REGION, "Midwest Region"),
     (DISTRICT_GERALDTON, "Geraldton"),
     (DISTRICT_MOORA, "Moora"),
     (DISTRICT_SHARK_BAY, "Shark Bay"),
-    (DISTRICT_GREAT_SOUTHERN, "Great Southern"),
+    (DISTRICT_WHEATBELT_REGION, "Wheatbelt Region"),
     (DISTRICT_CENTRAL_WHEATBELT, "Central Wheatbelt"),
     (DISTRICT_SOUTHERN_WHEATBELT, "Southern Wheatbelt"),
     (DISTRICT_AVIATION, "Aviation"),
@@ -71,13 +84,13 @@ SYMBOL_CHOICES = (
     ("light unit", "Light Unit"),
     ("heavy duty", "Heavy Duty"),
     ("gang truck", "Gang Truck"),
+    ("snorkel", "Snorkel"),
     (None, ""),
     ("dozer", "Dozer"),
     ("grader", "Grader"),
     ("loader", "Loader"),
     ("tender", "Tender"),
     ("float", "Float"),
-    ("snorkel", "Snorkel"),
     (None, ""),
     ("fixed wing aircraft", "Waterbomber"),
     ("rotary aircraft", "Rotary"),
@@ -103,7 +116,6 @@ RAW_EQ_CHOICES = (
     (26, "Stop Moving")
 )
 
-
 class BasePoint(models.Model):
     point = models.PointField(null=True, editable=False)
     heading = models.PositiveIntegerField(default=0, help_text="Heading in degrees", editable=False)
@@ -116,22 +128,47 @@ class BasePoint(models.Model):
         abstract = True
         ordering = ['-seen']
 
+    def clean_fields(self, exclude=None):
+        """
+        Override clean_fields to provide model-level validation.
+        """
+        if exclude is None:
+            exclude = []
+        
+        errors = {}
+        for f in self._meta.fields:
+            if f.name in exclude:
+                continue
+
+            if hasattr(self, "clean_%s" % f.attname):
+                try:
+                    getattr(self, "clean_%s" % f.attname)()
+                except ValidationError as e:
+                    errors[f.name] = e.error_list
+
+        try:
+            super(BasePoint, self).clean_fields(exclude)
+        except ValidationError as e:
+            errors = e.update_error_dict(errors)
+
+        if errors:
+            raise ValidationError(errors)
+
 
 @python_2_unicode_compatible
 class Device(BasePoint):
     deviceid = models.CharField(max_length=32, unique=True)
     name = models.CharField(max_length=32, default="No Rego", verbose_name="Registration", help_text="e.g. 1QBB157")
-    callsign = models.CharField(max_length=32, default="No RIN", verbose_name="Resource Identification Number (RIN)", help_text="e.g. HD123, GT456 or P789")
     rin_number = models.PositiveIntegerField(validators=[MaxValueValidator(999)], verbose_name="Resource Identification Number (RIN)", null=True, blank=True, help_text="Heavy Duty, Gang Truck or Plant only (HD/GT/P automatically prefixed). e.g. Entering 123 for a Heavy Duty will display as HD123, 456 for Gang Truck as GT456 and 789 for Plant as P789.")
     symbol = models.CharField(max_length=32, choices=SYMBOL_CHOICES, default="other")
-    district = models.CharField(max_length=32, choices=DISTRICT_CHOICES, default=DISTRICT_OTHER)
+    district = models.CharField(max_length=32, choices=DISTRICT_CHOICES, default=DISTRICT_OTHER, verbose_name="Region/District")
     usual_driver = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. John Jones")
     usual_callsign = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. DON99")
     usual_location = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. Karijini National Park")
     current_driver = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. Jodie Jones")
     current_callsign = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. FRK99")
-    is_contractor = models.BooleanField(default=False)
     contractor_details = models.CharField(max_length=50, null=True, blank=True, help_text="Person engaging contractor is responsible for maintaining contractor resource details")
+    other_details = models.TextField(null=True, blank=True)
 
     @property
     def rin_display(self):
@@ -179,11 +216,14 @@ class Device(BasePoint):
     def icon(self):
         return "sss-{}".format(self.symbol.lower().replace(" ", "_"))
 
+    def clean_rin_number(self):
+        if self.symbol in ("heavy duty", "gang truck", "dozer", "grader", "loader", "tender", "float") and not self.rin_number:
+            raise ValidationError("Please enter a RIN number.")
+        if self.rin_number and self.symbol not in ("heavy duty", "gang truck", "dozer", "grader", "loader", "tender", "float"):
+            raise ValidationError("Please remove the RIN number or select a symbol from Heavy Duty, Gang Truck, Dozer, Grader, Loader, Tender or Float")
+
     def __str__(self):
-        if self.callsign == "No Callsign":
-            callsign = self.name
-        callsign = self.callsign
-        return force_text("{} {}".format(callsign, self.deviceid))
+        return force_text("{} {}".format(self.name, self.deviceid))
 
 
 @python_2_unicode_compatible
@@ -232,6 +272,7 @@ class LoggedPoint(BasePoint):
 
     class Meta:
         unique_together = (("device", "seen"),)
+
 
 @receiver(pre_save, sender=User)
 def user_pre_save(sender, instance, **kwargs):
