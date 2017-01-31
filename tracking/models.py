@@ -167,7 +167,7 @@ class BasePoint(models.Model):
 @python_2_unicode_compatible
 class Device(BasePoint):
     deviceid = models.CharField(max_length=32, unique=True)
-    name = models.CharField(max_length=32, default="No Rego", verbose_name="Registration", help_text="e.g. 1QBB157")
+    name = models.CharField(max_length=7, default="No Rego", verbose_name="Registration", help_text="e.g. 1QBB157")
     rin_number = models.PositiveIntegerField(validators=[MaxValueValidator(999)], verbose_name="Resource Identification Number (RIN)", null=True, blank=True, help_text="Heavy Duty, Gang Truck or Plant only (HD/GT/P automatically prefixed). e.g. Entering 123 for a Heavy Duty will display as HD123, 456 for Gang Truck as GT456 and 789 for Plant as P789.")
     symbol = models.CharField(max_length=32, choices=SYMBOL_CHOICES, default="other")
     district = models.CharField(max_length=32, choices=DISTRICT_CHOICES, default=DISTRICT_OTHER, verbose_name="Region/District")
