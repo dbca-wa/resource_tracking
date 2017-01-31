@@ -116,6 +116,14 @@ RAW_EQ_CHOICES = (
     (26, "Stop Moving")
 )
 
+SOURCE_DEVICE_TYPE_CHOICES = (
+    ("tracplus", "TracPlus"),
+    ("iriditrak", "Iriditrak"),
+    ("dplus", "DPlus"),
+    ("spot", "Spot"),
+    ("other", "Other")
+)
+
 class BasePoint(models.Model):
     point = models.PointField(null=True, editable=False)
     heading = models.PositiveIntegerField(default=0, help_text="Heading in degrees", editable=False)
@@ -123,6 +131,7 @@ class BasePoint(models.Model):
     altitude = models.IntegerField(default=0, help_text="Altitude above sea level in metres", editable=False)
     seen = models.DateTimeField(null=True, editable=False)
     message = models.PositiveIntegerField(default=3, choices=RAW_EQ_CHOICES)
+    source_device_type = models.CharField(max_length=32, choices=SOURCE_DEVICE_TYPE_CHOICES, default="other")
 
     class Meta:
         abstract = True
@@ -255,6 +264,7 @@ class LoggedPoint(BasePoint):
                 self.message = int(sbd.get("EQ", self.message))
             except:
                 self.message = 3
+            self.source_device_type = str(sbd.get("TY", self.source_device_type))
             self.raw = json.dumps(sbd)
             self.save()
             logger.info("LoggedPoint {} created.".format(self))
@@ -267,6 +277,7 @@ class LoggedPoint(BasePoint):
             self.device.velocity = self.velocity
             self.device.altiitude = self.altitude
             self.device.message = self.message
+            self.device.source_device_type = self.source_device_type
             self.device.save()
         return self
 

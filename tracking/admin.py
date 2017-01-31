@@ -18,7 +18,7 @@ class DeviceAdmin(ModelAdmin):
             changes made to these fields will apply to the Device Tracking map in all 
             variants of the Spatial Support System.</p>
             """ if settings.PROD_SCARY_WARNING else "",
-            "fields": ("deviceid", "district", "symbol", "rin_number", "name")
+            "fields": ("deviceid", "district", ("symbol", "rin_number"), "name")
         }),
         ("Crew Details", {
             "fields": (("usual_driver", "usual_callsign"), "usual_location",

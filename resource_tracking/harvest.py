@@ -115,7 +115,7 @@ def save_iriditrak(queueitem):
         timestamp = time.mktime(email.utils.parsedate(received[0].split(';')[-1].strip()))
     else:
         logger.info("Can't find date in " + str(msg.__dict__))
-    sbd = {'ID': deviceid, 'TU': timestamp}
+    sbd = {'ID': deviceid, 'TU': timestamp, 'TY': 'iriditrak'}
     # Normal BEAM sbdtext message
     if attachment.find(',') == 0:
         for field in ['SQ', 'FU', 'DD', 'LT', 'LG', 'TU', 'VL', 'DR', 'AL', 'EQ']:
@@ -195,6 +195,7 @@ def save_dplus(queueitem):
         sbd["VL"] = int(sbd["RAW"][6]) * 1000
         sbd["DR"] = int(sbd["RAW"][7])
         sbd["AL"] = int(sbd["RAW"][9])
+        sbd["TY"] = 'dplus'
     except ValueError, e:
         logger.warning(e)
         dimap.flag(msgid)
@@ -221,7 +222,8 @@ def save_spot(queueitem):
             'TU': timestamp,
             'DR': 0,
             'AL': 0,
-            'VL': 0
+            'VL': 0,
+            'TY': 'spot'
         }
     except ValueError as e:
         logger.warning("Couldn't parse {}, error: {}".format(sbd, e))
@@ -247,6 +249,7 @@ def save_tracplus():
         device.heading = row["Track"]
         device.seen = timezone.make_aware(datetime.strptime(row["Transmitted"], "%Y-%m-%d %H:%M:%S"), pytz.timezone("UTC"))
         device.point = "POINT ({} {})".format(row["Longitude"], row["Latitude"])
+        device.source_device_type = 'tracplus'
         device.save()
         lp, new = LoggedPoint.objects.get_or_create(device=device, seen=device.seen)
         lp.velocity = device.velocity
@@ -254,6 +257,7 @@ def save_tracplus():
         lp.altitude = device.altitude
         lp.point = device.point
         lp.seen = device.seen
+        lp.source_device_type = device.source_device_type
         lp.raw = json.dumps(row)
         lp.save()
         if new:
