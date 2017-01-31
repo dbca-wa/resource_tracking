@@ -3,7 +3,7 @@ from datetime import datetime
 from fcntl import fcntl, F_GETFL, F_SETFL
 import logging
 from logging import handlers
-from os import O_NONBLOCK, kill
+from os import O_NONBLOCK
 import re
 import subprocess
 import time
@@ -104,10 +104,11 @@ def configure_stations():
         return []
     return stations
 
+
 def should_poll(station):
     # Poll for observation data if:
     # - the station has never been polled;
-    # - the interval is <1 minute;
+    # - the interval is <=1 minute;
     # - the polling interval (minutes) has passed.
     now = datetime.now()
     if not station.last_poll or station.interval <= 1:
@@ -135,8 +136,19 @@ def polling_loop(stations):
         # We check to see if the required polling interval has passed and if so,
         # we create a process to poll the station immediately for an observation.
         for station in stations:
+            # If we have an active session but the time since last poll has
+            # exceeded the interval by more than two minutes, we may have a
+            # stuck telnet session (stays alive but stops sending output).
+            # In that event, we'll never get to the call to terminate the
+            # process, so let's do so now.
+            if station.failures > 2:
+                station.last_poll = None
+                if LOGGER:
+                    LOGGER.warning('Polling {} process failed {} times, killing'.format(station.ip, station.failures))
+                station.terminate_poll_process()
+                station.failures = 0
+
             if should_poll(station):
-                logged = False
                 if not (station.process and station.process.poll() is None): # check for process or exit code
                     # If no existing process exist or process is terminated, start one now.
                     station.connect_station()
@@ -163,7 +175,7 @@ def polling_loop(stations):
                             if LOGGER:
                                 LOGGER.info('Observation data: {}'.format(obs))
                             # This mgmt command will write the observation to the
-                            # database and optionally upload it to DAFWA.
+                            # database and to the upload_data_cache directory.
                             try:
                                 output = subprocess.check_output(
                                     ['venv/bin/python', 'manage.py', 'write_observation', obs],
@@ -183,23 +195,12 @@ def polling_loop(stations):
                                         station.ip, station.process.pid, age))
                                 station.terminate_poll_process()
 
-            # If we have an active session but the time since last poll has
-            # exceeded the interval by more than two minutes, we may have a
-            # stuck telnet session (stays alive but stops sending output).
-            # In that event, we'll never get to the call to terminate the
-            # process, so let's do so now.
-            if station.failures > 2:
-                station.last_poll = None
-                if LOGGER:
-                    LOGGER.warning('Polling {} process failed {} times, killing'.format(station.ip, station.failures))
-                station.terminate_poll_process()
-                station.failures = 0
-
         # Every ten polling loops, review the list of active weather stations.
         # Compare against the current list of polled stations, and add/remove
         # any stations as required.
         # This step is undertaken so that the polling service doesn't need to
         # be restarted to reset the current list of "active" stations.
+        # Also call the management command to upload cached observation data.
         if loop_count == 10:
             stations_update = configure_stations()
             for station in stations_update:
@@ -223,6 +224,7 @@ def polling_loop(stations):
                     stations.remove(cur_station)
                     if LOGGER:
                         LOGGER.info('{} was removed from the station pool'.format(cur_station.ip))
+
             # Reset the loop counter.
             loop_count = 0
         else:
