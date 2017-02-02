@@ -240,9 +240,9 @@ def save_tracplus():
     updated = 0
     for row in latest:
         device = Device.objects.get_or_create(deviceid=row["Device IMEI"])[0]
-        device.name = row["Asset Name"]
+        device.usual_callsign = row["Asset Name"]
         device.model = row["Asset Model"]
-        device.callsign = row["Asset Regn"][:32]
+        device.name = row["Asset Regn"][:32]
         device.category = "TracPLUS " + row["Asset Type"]
         device.velocity = int(row["Speed"]) * 1000
         device.altitude = row["Altitude"]
