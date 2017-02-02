@@ -8,9 +8,9 @@ from .models import Device, LoggedPoint
 @register(Device)
 class DeviceAdmin(ModelAdmin):
     date_hierarchy = "seen"
-    list_display = ("deviceid", "name", "symbol", "district", "seen")
+    list_display = ("deviceid", "name", "rin_display", "symbol", "district", "seen")
     list_filter = ("symbol", "district")
-    search_fields = ("deviceid", "name", "symbol", "district")
+    search_fields = ("deviceid", "name", "rin_display", "symbol", "district")
     readonly_fields = ("deviceid",)
     fieldsets = (
         ("Vehicle/Device details", {
@@ -21,8 +21,8 @@ class DeviceAdmin(ModelAdmin):
             "fields": ("deviceid", "district", ("symbol", "rin_number"), "name")
         }),
         ("Crew Details", {
-            "fields": (("usual_driver", "usual_callsign"), "usual_location",
-                ("current_driver", "current_callsign"))
+            "fields": (("current_driver", "current_callsign"),
+                ("usual_driver", "usual_callsign"), "usual_location")
         }),
         ("Contractor Details", {
             "fields": ("contractor_details",)
