@@ -243,7 +243,6 @@ def save_tracplus():
         device.usual_callsign = row["Asset Name"]
         device.model = row["Asset Model"]
         device.name = row["Asset Regn"][:32]
-        device.category = "TracPLUS " + row["Asset Type"]
         device.velocity = int(row["Speed"]) * 1000
         device.altitude = row["Altitude"]
         device.heading = row["Track"]
