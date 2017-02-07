@@ -4,11 +4,10 @@ from django.db import migrations
 from tracking.models import Device
 
 def copy_callsign_name_to_other_details(apps, schema_editor):
-    try:
-        for d in Device.objects.all():
-			d.other_details = d.callsign + '\r\n' + d.name
-			d.save()
-    except: pass
+    from django.db import connection
+    cursor = connection.cursor()
+    cursor.execute('''
+    UPDATE tracking_device SET other_details = callsign || '\r\n' || name;''')
 
 class Migration(migrations.Migration):
 

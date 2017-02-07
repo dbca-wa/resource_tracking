@@ -4,20 +4,25 @@ from django.db import migrations
 from tracking.models import Device
 
 def copy_rego_to_name(apps, schema_editor):
-	for d in Device.objects.all():
-		try:
-			if d.other_details.split('\r\n')[1] != '':
-				d.name = d.other_details.split('\r\n')[1]
-				d.save()
-			elif d.other_details.split('\r\n')[0] != '':
-				d.name = d.other_details.split('\r\n')[0]
-				d.save()
-		except:
-			try:
-				d.name = d.other_details
-				d.save()
-			except: pass
-			pass
+    for d in Device.objects.all():
+        try:
+            callsign = d.other_details.split('\r\n')[0]
+            name = d.other_details.split('\r\n')[1]
+            if name != '':
+                d.name = name
+                d.other_details = callsign
+                d.save()
+            elif callsign != '':
+                d.name = callsign
+                d.other_details = None
+                d.save()
+        except:
+            try:
+                d.name = d.other_details
+                d.other_details = None
+                d.save()
+            except: pass
+            pass
 
 class Migration(migrations.Migration):
 
