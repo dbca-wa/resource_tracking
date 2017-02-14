@@ -12,13 +12,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
+        migrations.RenameField(
             model_name='device',
-            name='name',
-        ),
-        migrations.AddField(
-            model_name='device',
-            name='registration',
-            field=models.CharField(default='No Rego', help_text='e.g. 1QBB157', max_length=32),
+            old_name='name',
+            new_name='registration',
         ),
     ]

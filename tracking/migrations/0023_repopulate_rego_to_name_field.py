@@ -4,6 +4,7 @@ from django.db import migrations
 from tracking.models import Device
 
 def copy_rego_to_name(apps, schema_editor):
+    Device = apps.get_model("tracking", "Device")
     for d in Device.objects.all():
         try:
             callsign = d.other_details.split('\r\n')[0]
