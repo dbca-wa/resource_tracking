@@ -121,7 +121,7 @@ def export_stop_start_points(request):
         latitude = p.point.y
         longitude = p.point.x
         vehicle_id = p.device.callsign
-        rego = p.device.name
+        rego = p.device.registration
         district = p.device.get_district_display()
         symbol = p.device.get_symbol_display()
 

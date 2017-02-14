@@ -150,8 +150,7 @@ var sss = (function (s) {
 
     s.idx_devices = lunr(function() {
         this.field("deviceid");
-        this.field("name");
-        this.field("callsign");
+        this.field("registration");
         this.field("symbol");
         this.field("category");
         this.field("make");

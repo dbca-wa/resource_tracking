@@ -167,7 +167,7 @@ class BasePoint(models.Model):
 @python_2_unicode_compatible
 class Device(BasePoint):
     deviceid = models.CharField(max_length=32, unique=True)
-    name = models.CharField(max_length=32, default="No Rego", verbose_name="Registration", help_text="e.g. 1QBB157")
+    registration = models.CharField(max_length=32, default="No Rego", help_text="e.g. 1QBB157")
     rin_number = models.PositiveIntegerField(validators=[MaxValueValidator(999)], verbose_name="Resource Identification Number (RIN)", null=True, blank=True, help_text="Heavy Duty, Gang Truck or Plant only (HD/GT/P automatically prefixed). e.g. Entering 123 for a Heavy Duty will display as HD123, 456 for Gang Truck as GT456 and 789 for Plant as P789.")
     rin_display = models.CharField(max_length=5, null=True, blank=True, verbose_name="RIN")
     symbol = models.CharField(max_length=32, choices=SYMBOL_CHOICES, default="other")
@@ -230,7 +230,7 @@ class Device(BasePoint):
             self.rin_display = None
 
     def __str__(self):
-        return force_text("{} {}".format(self.name, self.deviceid))
+        return force_text("{} {}".format(self.registration, self.deviceid))
 
 
 @python_2_unicode_compatible

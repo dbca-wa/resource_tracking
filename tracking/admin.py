@@ -8,9 +8,9 @@ from .models import Device, LoggedPoint
 @register(Device)
 class DeviceAdmin(ModelAdmin):
     date_hierarchy = "seen"
-    list_display = ("deviceid", "name", "rin_display", "symbol", "district", "seen")
+    list_display = ("deviceid", "registration", "rin_display", "symbol", "district", "seen")
     list_filter = ("symbol", "district")
-    search_fields = ("deviceid", "name", "rin_display", "symbol", "district")
+    search_fields = ("deviceid", "registration", "rin_display", "symbol", "district")
     readonly_fields = ("deviceid",)
     fieldsets = (
         ("Vehicle/Device details", {
@@ -18,7 +18,7 @@ class DeviceAdmin(ModelAdmin):
             changes made to these fields will apply to the Device Tracking map in all 
             variants of the Spatial Support System.</p>
             """ if settings.PROD_SCARY_WARNING else "",
-            "fields": ("deviceid", "district", ("symbol", "rin_number"), "name")
+            "fields": ("deviceid", "district", ("symbol", "rin_number"), "registration")
         }),
         ("Crew Details", {
             "fields": (("current_driver", "current_callsign"),
@@ -49,7 +49,7 @@ class DeviceSSSAdmin(DeviceAdmin):
 class LoggedPointAdmin(ModelAdmin):
     list_display = ("seen", "device")
     list_filter = ("device__symbol", "device__district")
-    search_fields = ("device__deviceid", "device__name")
+    search_fields = ("device__deviceid", "device__registration")
     date_hierarchy = "seen"
 
     def add_view(self, request, obj=None):
