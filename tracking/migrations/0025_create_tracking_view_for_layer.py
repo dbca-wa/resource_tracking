@@ -10,7 +10,7 @@ def create_tracking_history_view(apps, schema_editor):
     CREATE OR REPLACE VIEW tracking_history_view AS
 		SELECT lp.point AS wkb_geometry,
 			lp.seen,
-			td.name,
+			td.registration,
 			lp.altitude,
 			lp.heading,
 			lp.velocity,
@@ -43,7 +43,7 @@ def create_tracking_resource_tracking_view(apps, schema_editor):
 			resource_tracking_with_age.altitude,
 			resource_tracking_with_age.seen,
 			resource_tracking_with_age.deviceid,
-			resource_tracking_with_age.name,
+			resource_tracking_with_age.registration,
 			resource_tracking_with_age.rin_display,
 			resource_tracking_with_age.current_driver,
 			resource_tracking_with_age.current_callsign,
@@ -62,7 +62,7 @@ def create_tracking_resource_tracking_view(apps, schema_editor):
 				tracking_device.altitude,
 				tracking_device.seen,
 				tracking_device.deviceid,
-				tracking_device.name,
+				tracking_device.registration,
 				tracking_device.rin_display,
 				tracking_device.current_driver,
 				tracking_device.current_callsign,
@@ -79,7 +79,7 @@ def create_tracking_resource_tracking_view(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('tracking', '0023_repopulate_rego_to_name_field'),
+        ('tracking', '0025_auto_20170214_1242'),
     ]
 
     operations = [

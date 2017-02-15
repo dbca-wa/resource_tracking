@@ -242,7 +242,7 @@ def save_tracplus():
         device = Device.objects.get_or_create(deviceid=row["Device IMEI"])[0]
         device.usual_callsign = row["Asset Name"]
         device.model = row["Asset Model"]
-        device.name = row["Asset Regn"][:32]
+        device.registration = row["Asset Regn"][:32]
         device.velocity = int(row["Speed"]) * 1000
         device.altitude = row["Altitude"]
         device.heading = row["Track"]

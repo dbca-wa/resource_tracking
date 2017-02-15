@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('tracking', '0023_create_tracking_view_for_layer'),
+        ('tracking', '0023_repopulate_rego_to_name_field'),
     ]
 
     operations = [
