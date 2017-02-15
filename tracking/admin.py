@@ -7,6 +7,7 @@ from .models import Device, LoggedPoint
 
 @register(Device)
 class DeviceAdmin(ModelAdmin):
+    actions = None
     date_hierarchy = "seen"
     list_display = ("deviceid", "registration", "rin_display", "symbol", "district", "seen")
     list_filter = ("symbol", "district")
@@ -32,6 +33,17 @@ class DeviceAdmin(ModelAdmin):
         })
     )
 
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        if obj is not None and obj.source_device_type == 'tracplus':
+            return False
+        else:
+            return super(DeviceAdmin, self).has_change_permission(request, obj=obj)
 
     class Media:
         js = (

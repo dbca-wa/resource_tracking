@@ -26,7 +26,8 @@ def create_tracking_history_view(apps, schema_editor):
 			replace(lower((td.symbol)::text), ' '::text, '_'::text) AS symbolid,
 			(((date_part('day'::text, (now() - lp.seen)) * (24)::double precision) + date_part('hour'::text, (now() - lp.seen))) + (1)::double precision) AS age,
 			lp.id,
-			td.district
+			td.district,
+            td.source_device_type
 		   FROM (tracking_device td
 			 JOIN tracking_loggedpoint lp ON ((lp.device_id = td.id)))
 		ORDER BY lp.seen DESC;''')
@@ -54,7 +55,8 @@ def create_tracking_resource_tracking_view(apps, schema_editor):
 			resource_tracking_with_age.symbol,
 			resource_tracking_with_age.age,
 			replace(lower((resource_tracking_with_age.symbol)::text), ' '::text, '_'::text) AS symbolid,
-			resource_tracking_with_age.district
+			resource_tracking_with_age.district,
+			resource_tracking_with_age.source_device_type
 			FROM ( SELECT tracking_device.id,
 				tracking_device.point,
 				tracking_device.heading,
@@ -72,7 +74,8 @@ def create_tracking_resource_tracking_view(apps, schema_editor):
 				tracking_device.contractor_details,
 				tracking_device.symbol,
 				(((date_part('day'::text, (now() - tracking_device.seen)) * (24)::double precision) + date_part('hour'::text, (now() - tracking_device.seen))) + (1)::double precision) AS age,
-				tracking_device.district
+				tracking_device.district,
+				tracking_device.source_device_type
 			    FROM tracking_device) resource_tracking_with_age
 		WHERE (resource_tracking_with_age.age < (168)::double precision);''')
 
