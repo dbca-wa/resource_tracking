@@ -7,10 +7,11 @@ from .models import Device, LoggedPoint
 
 @register(Device)
 class DeviceAdmin(ModelAdmin):
+    actions = None
     date_hierarchy = "seen"
-    list_display = ("deviceid", "name", "callsign", "symbol", "district", "seen")
+    list_display = ("deviceid", "registration", "rin_display", "symbol", "district", "seen")
     list_filter = ("symbol", "district")
-    search_fields = ("deviceid", "name", "callsign", "symbol", "district")
+    search_fields = ("deviceid", "registration", "rin_display", "symbol", "district")
     readonly_fields = ("deviceid",)
     fieldsets = (
         ("Vehicle/Device details", {
@@ -18,10 +19,31 @@ class DeviceAdmin(ModelAdmin):
             changes made to these fields will apply to the Device Tracking map in all 
             variants of the Spatial Support System.</p>
             """ if settings.PROD_SCARY_WARNING else "",
-            "fields": ("deviceid", "symbol", "district", "callsign", "name")
+            "fields": ("deviceid", "district", ("symbol", "rin_number"), "registration")
         }),
+        ("Crew Details", {
+            "fields": (("current_driver", "current_callsign"),
+                ("usual_driver", "usual_callsign"), "usual_location")
+        }),
+        ("Contractor Details", {
+            "fields": ("contractor_details",)
+        }),
+        ("Other Details", {
+            "fields": ("other_details",)
+        })
     )
 
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        if obj is not None and obj.source_device_type == 'tracplus':
+            return False
+        else:
+            return super(DeviceAdmin, self).has_change_permission(request, obj=obj)
 
     class Media:
         js = (
@@ -39,7 +61,7 @@ class DeviceSSSAdmin(DeviceAdmin):
 class LoggedPointAdmin(ModelAdmin):
     list_display = ("seen", "device")
     list_filter = ("device__symbol", "device__district")
-    search_fields = ("device__deviceid", "device__name", "device__callsign")
+    search_fields = ("device__deviceid", "device__registration")
     date_hierarchy = "seen"
 
     def add_view(self, request, obj=None):
