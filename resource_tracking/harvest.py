@@ -18,7 +18,7 @@ from datetime import datetime
 
 from tracking.models import Device, LoggedPoint
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger('tracking_points')
 BATCH_SIZE = 600
 
 
@@ -50,10 +50,10 @@ class DeferredIMAP():
     def flush(self):
         self.login()
         if self.flags:
-            logger.info("Flagging {} unprocessable emails.".format(len(self.flags)))
+            LOGGER.info("Flagging {} unprocessable emails.".format(len(self.flags)))
             self.imp.store(",".join(self.flags), '+FLAGS', r'(\Flagged)')
         if self.deletions:
-            logger.info("Deleting {} processed emails.".format(len(self.deletions)))
+            LOGGER.info("Deleting {} processed emails.".format(len(self.deletions)))
             self.imp.store(",".join(self.deletions), '+FLAGS', r'(\Deleted)')
             self.logout(expunge=True)
         else:
@@ -92,11 +92,13 @@ def retrieve_emails(search):
             msgid = int(response[0].split(' ')[0])
             msg = email.message_from_string(response[1])
             messages.append((msgid, msg))
-    logger.info("Fetched {}/{} messages for {}.".format(len(messages), len(textids), search))
+    LOGGER.info("Fetched {}/{} messages for {}.".format(len(messages), len(textids), search))
     return messages
+
 
 def lat_long_isvalid(lt, lg):
     return (lt <= 90 and lt >= -90 and lg <= 180 and lg >= -180)
+
 
 def save_iriditrak(queueitem):
     msgid, msg = queueitem
@@ -116,11 +118,13 @@ def save_iriditrak(queueitem):
     elif len(received) == 1:
         timestamp = time.mktime(email.utils.parsedate(received[0].split(';')[-1].strip()))
     else:
-        logger.info("Can't find date in " + str(msg.__dict__))
+        LOGGER.info("Can't find date in " + str(msg.__dict__))
     sbd = {'ID': deviceid, 'TU': timestamp, 'TY': 'iriditrak'}
     # Normal BEAM sbdtext message
     if attachment.find(',') == 0:
         for field in ['SQ', 'FU', 'DD', 'LT', 'LG', 'TU', 'VL', 'DR', 'AL', 'EQ']:
+            # NOTE: the following line will never work as the sbdfield function is
+            # note defined anywhere. Leaving it in at present for posterity's sake.
             try:
                 sbd[field] = sbdfield(attachment, field)
             except:
@@ -171,17 +175,17 @@ def save_iriditrak(queueitem):
                     sbd['AL'] = raw[12]
                     # Byte 19,20 is direction in degrees
                     sbd['DR'] = raw[13]
-                logger.debug(str(sbd))
+                LOGGER.debug(str(sbd))
             else:
-                logger.warning("Don't know how to read " + force_text(sbd['EQ']) + " - " + force_text(raw))
+                LOGGER.warning("Don't know how to read " + force_text(sbd['EQ']) + " - " + force_text(raw))
                 dimap.flag(msgid)
                 return
         except Exception as e:
-            logger.warning("error: " + force_text(e))
+            LOGGER.warning("error: " + force_text(e))
             dimap.flag(msgid)
             return
     else:
-        logger.warning("Extra stuff")
+        LOGGER.warning("Extra stuff")
         dimap.flag(msgid)
         return
     LoggedPoint.parse_sbd(sbd)
@@ -203,7 +207,7 @@ def save_dplus(queueitem):
         sbd["AL"] = int(sbd["RAW"][9])
         sbd["TY"] = 'dplus'
     except ValueError, e:
-        logger.warning(e)
+        LOGGER.warning(e)
         dimap.flag(msgid)
         return
     LoggedPoint.parse_sbd(sbd)
@@ -215,7 +219,7 @@ def save_spot(queueitem):
     if 'DATE' in msg:
         timestamp = time.mktime(email.utils.parsedate(msg["DATE"]))
     else:
-        logger.info("Can't find date in " + str(msg.__dict__))
+        LOGGER.info("Can't find date in " + str(msg.__dict__))
         dimap.flag(msgid)
         return
     try:
@@ -234,7 +238,7 @@ def save_spot(queueitem):
         if not lat_long_isvalid(sbd['LT'], sbd['LG']):
             raise ValueError('Lon/Lat {},{} is not valid.'.format(sbd['LG'],sbd['LT']))
     except ValueError as e:
-        logger.warning("Couldn't parse {}, error: {}".format(sbd, e))
+        LOGGER.warning("Couldn't parse {}, error: {}".format(sbd, e))
         dimap.flag(msgid)
         return
     LoggedPoint.parse_sbd(sbd)
@@ -269,7 +273,7 @@ def save_tracplus():
         lp.save()
         if new:
             updated += 1
-    logger.info("Updated {} of {} scanned TracPLUS devices".format(updated, len(latest)))
+    LOGGER.info("Updated {} of {} scanned TracPLUS devices".format(updated, len(latest)))
 
 
 def harvest_tracking_email(request=None):
@@ -286,10 +290,10 @@ def harvest_tracking_email(request=None):
     try:
         save_tracplus()
     except Exception as e:
-        logger.error(e)
+        LOGGER.error(e)
     delta = timezone.now() - start
     html = "<html><body>Tracking point email harvest run at {} for {}</body></html>".format(start, delta)
     if request:
         return HttpResponse(html)
     else:
-        print(html)
+        return
