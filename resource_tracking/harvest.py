@@ -95,6 +95,8 @@ def retrieve_emails(search):
     logger.info("Fetched {}/{} messages for {}.".format(len(messages), len(textids), search))
     return messages
 
+def lat_long_isvalid(lt, lg):
+    return (lt <= 90 and lt >= -90 and lg <= 180 and lg >= -180)
 
 def save_iriditrak(queueitem):
     msgid, msg = queueitem
@@ -156,6 +158,8 @@ def save_iriditrak(queueitem):
                 LngM += '.' + str(int('0'+bin(raw[8])[2:][-4:], 2)) + str(int('0'+bin(raw[8])[2:][-8:-4], 2))
                 LngM += str(int('0'+bin(raw[9])[2:][-4:], 2)) + str(int('0'+bin(raw[9])[2:][-8:-4], 2))
                 sbd['LG'] = float(Lng + str(int(LngH) + float(LngM) / 60))
+                if not lat_long_isvalid(sbd['LT'], sbd['LG']):
+                    raise ValueError('Lon/Lat {},{} is not valid.'.format(sbd['LG'],sbd['LT']))
                 if len(raw) == 14:
                     # Byte 11,12,13,14 is unix time, but local to the device??
                     # use email timestamp because within 10 secs and fairly accurate
@@ -191,6 +195,8 @@ def save_dplus(queueitem):
     try:
         sbd["LT"] = float(sbd["RAW"][4])
         sbd["LG"] = float(sbd["RAW"][5])
+        if not lat_long_isvalid(sbd['LT'], sbd['LG']):
+            raise ValueError('Lon/Lat {},{} is not valid.'.format(sbd['LG'],sbd['LT']))
         sbd["TU"] = time.mktime(datetime.strptime(sbd["RAW"][1], "%d-%m-%y %H:%M:%S").timetuple())
         sbd["VL"] = int(sbd["RAW"][6]) * 1000
         sbd["DR"] = int(sbd["RAW"][7])
@@ -225,6 +231,8 @@ def save_spot(queueitem):
             'VL': 0,
             'TY': 'spot'
         }
+        if not lat_long_isvalid(sbd['LT'], sbd['LG']):
+            raise ValueError('Lon/Lat {},{} is not valid.'.format(sbd['LG'],sbd['LT']))
     except ValueError as e:
         logger.warning("Couldn't parse {}, error: {}".format(sbd, e))
         dimap.flag(msgid)
