@@ -272,7 +272,7 @@ def save_tracplus():
     logger.info("Updated {} of {} scanned TracPLUS devices".format(updated, len(latest)))
 
 
-def cron(request=None):
+def harvest_tracking_email(request=None):
     """
     Collect and save tracking emails
     """
@@ -288,7 +288,7 @@ def cron(request=None):
     except Exception as e:
         logger.error(e)
     delta = timezone.now() - start
-    html = "<html><body>Cron run at {} for {}.</body></html>".format(start, delta)
+    html = "<html><body>Tracking point email harvest run at {} for {}</body></html>".format(start, delta)
     if request:
         return HttpResponse(html)
     else:
