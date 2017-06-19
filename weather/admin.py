@@ -13,6 +13,5 @@ class LocationAdmin(GeoModelAdmin):
 class WeatherStationAdmin(ModelAdmin):
     list_display = (
         'name', 'manufacturer', 'abbreviation', 'bom_abbreviation',
-        'ip_address', 'last_reading', 'battery_voltage', 'connect_every',
-        'active')
-    list_filter = ('manufacturer', 'active')
+        'ip_address', 'last_reading', 'connect_every', 'active', 'upload_data')
+    list_filter = ('manufacturer', 'active', 'upload_data')
