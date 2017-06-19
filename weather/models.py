@@ -45,19 +45,21 @@ class WeatherStation(models.Model):
     )
     name = models.CharField(max_length=100)
     location = models.ForeignKey(Location, null=True, blank=True)
-    abbreviation = models.CharField(max_length=20)
-    bom_abbreviation = models.CharField(max_length=4)
-    ip_address = models.GenericIPAddressField()
+    abbreviation = models.CharField(max_length=20, unique=True, help_text='Internal abbreviation code')
+    bom_abbreviation = models.CharField(
+        max_length=4, unique=True, verbose_name='BoM abbreviation',
+        help_text='Bureau of Meteorology site abbrevation code')
+    ip_address = models.GenericIPAddressField(verbose_name='IPv4 address')
     port = models.PositiveIntegerField(default=43000)
     last_scheduled = models.DateTimeField()
     last_reading = models.DateTimeField()
     battery_voltage = models.DecimalField(max_digits=3, decimal_places=1)
     connect_every = models.PositiveSmallIntegerField(default=15)
     active = models.BooleanField(default=False)
-    stay_connected = models.BooleanField(
-        default=False, verbose_name='Persistent connection')
     manufacturer = models.CharField(
         max_length=100, null=True, blank=True, choices=MANUFACTURER_CHOICES)
+    upload_data = models.BooleanField(
+        default=True, help_text='Upload observation data to external consumers (e.g. DAFWA)')
 
     class Meta:
         ordering = ['-last_reading']
