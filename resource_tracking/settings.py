@@ -160,6 +160,13 @@ LOGGING = {
             'maxBytes': 1024 * 1024 * 5,
             'backupCount': 5,
         },
+        'tracking_points': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'tracking_points.log'),
+            'formatter': 'minimal',
+            'maxBytes': 1024 * 1024 * 5,
+            'backupCount': 5,
+        },
     },
     'loggers': {
         'django.request': {
@@ -176,6 +183,10 @@ LOGGING = {
         },
         'dafwa': {
             'handlers': ['dafwa'],
+            'level': 'INFO'
+        },
+        'tracking_points': {
+            'handlers': ['tracking_points'],
             'level': 'INFO'
         },
     }

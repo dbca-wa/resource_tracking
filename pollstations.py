@@ -171,7 +171,7 @@ def polling_loop(stations):
                         if re.search(pattern, line):  # Found a matching pattern in the output.
                             station.last_poll = datetime.now()
                             # Looks like an observation string; save it.
-                            obs = '{}::{}'.format(station.ip, line)
+                            obs = '{}::{}'.format(station.ip, line).encode('string_escape')
                             if LOGGER:
                                 LOGGER.info('Observation data: {}'.format(obs))
                             # This mgmt command will write the observation to the

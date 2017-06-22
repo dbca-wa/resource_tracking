@@ -23,7 +23,7 @@ class Command(BaseCommand):
         except:
             raise CommandError('Error while parsing observation string: {}'.format(data))
 
-        if settings.DAFWA_UPLOAD:  # Write observation to the upload cache dir.
+        if settings.DAFWA_UPLOAD and station.upload_data:  # Write observation to the upload cache dir.
             try:
                 # Ensure that the upload_data_cache directory exists.
                 if not os.path.exists(os.path.join(settings.BASE_DIR, 'upload_data_cache')):
