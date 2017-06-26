@@ -153,6 +153,8 @@ LOGGING = {
             'maxBytes': 1024 * 1024 * 5,
             'backupCount': 5,
         },
+        # This log records weather observation data that is written to the
+        # cache for upload to DAFWA (to verify correct format, etc.)
         'dafwa': {
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': os.path.join(BASE_DIR, 'logs', 'dafwa.log'),
@@ -160,6 +162,16 @@ LOGGING = {
             'maxBytes': 1024 * 1024 * 5,
             'backupCount': 5,
         },
+        # This log records the timestamp for upload of each individual cached
+        # observation to the DAFWA FTP site.
+        'dafwa_uploads': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'dafwa_uploads.log'),
+            'formatter': 'minimal',
+            'maxBytes': 1024 * 1024 * 5,
+            'backupCount': 5,
+        },
+        # This log records detail about the download of tracking point device emails.
         'tracking_points': {
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': os.path.join(BASE_DIR, 'logs', 'tracking_points.log'),
@@ -183,6 +195,10 @@ LOGGING = {
         },
         'dafwa': {
             'handlers': ['dafwa'],
+            'level': 'INFO'
+        },
+        'dafwa_uploads': {
+            'handlers': ['dafwa_uploads'],
             'level': 'INFO'
         },
         'tracking_points': {
