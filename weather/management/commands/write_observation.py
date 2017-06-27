@@ -8,7 +8,7 @@ from weather.models import WeatherStation
 
 
 class Command(BaseCommand):
-    help = 'Accepts a string argument ("IP::RAW_DATA") and writes a weather observation to the database and (optionally) to the upload cache directory'
+    help = 'Accepts a string argument ("IP::RAW_DATA"), then writes a weather observation to the database and optionally to the upload_data_cache directory'
 
     def add_arguments(self, parser):
         # Required positional argument.
@@ -30,7 +30,7 @@ class Command(BaseCommand):
                     os.mkdir(os.path.join(settings.BASE_DIR, 'upload_data_cache'))
                 # Write the observation and semaphore files.
                 ts = timezone.localtime(obs.date)
-                name = 'DPAW{}'.format(ts.strftime('%Y%m%d%H%M%S'))
+                name = 'DPAW_{}_{}'.format(station.bom_abbreviation, ts.strftime('%Y%m%d%H%M%S'))
                 observation = '{}.txt'.format(name)
                 semaphore = '{}.ok'.format(name)
                 # Write the observation to file.
