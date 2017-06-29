@@ -1,9 +1,9 @@
 from django.conf.urls import include, url
 from django.contrib import admin
 
-from resource_tracking.harvest import harvest_tracking_email
 from resource_tracking.api import v1_api
 from tracking import urls as tracking_urls
+from tracking.harvest import harvest_tracking_email
 from tracking.geojsonviews import geojson_patterns
 from weather import urls as weather_urls
 

@@ -1,4 +1,4 @@
-from resource_tracking.harvest import harvest_tracking_email
+from tracking.harvest import harvest_tracking_email
 from django.core.management.base import BaseCommand
 
 
