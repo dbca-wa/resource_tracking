@@ -1,16 +1,9 @@
 from __future__ import unicode_literals, absolute_import
-import csv
 from datetime import timedelta
 from decimal import Decimal
-from django.conf import settings
 from django.utils import timezone
-from ftplib import FTP
 import logging
 import math
-import StringIO
-
-
-LOGGER = logging.getLogger('weather')
 
 
 def dew_point(T, RH=None):
@@ -112,60 +105,6 @@ def actual_rainfall(rainfall, station, timestamp=None):
         return Decimal('{:.1f}'.format(difference_corrected))
 
 
-def ftp_upload(observations):
-    """Utility function to upload weather data to the DAFWA FTP site in a
-    suitable format.
-    """
-    LOGGER.info('Connecting to {}'.format(settings.DAFWA_UPLOAD_HOST))
-
-    try:
-        ftp = FTP(settings.DAFWA_UPLOAD_HOST)
-        ftp.set_pasv(False)
-        ftp.login(settings.DAFWA_UPLOAD_USER, settings.DAFWA_UPLOAD_PASSWORD)
-        ftp.cwd(settings.DAFWA_UPLOAD_DIR)
-    except Exception as e:
-        LOGGER.error('Connection to {} failed'.format(settings.DAFWA_UPLOAD_HOST))
-        LOGGER.exception(e)
-        return False
-
-    output = StringIO.StringIO()
-    archive = StringIO.StringIO()
-    semaphore = StringIO.StringIO()
-
-    for observation in observations:
-        # Generate the CSV for transfer.
-        reading_date = timezone.localtime(observation.date)
-        writer = csv.writer(output)
-        writer.writerow(observation.get_dafwa_obs())
-        # Write to the log of observations uploaded to DAFWA.
-        writer = csv.writer(archive)
-        writer.writerow(observation.get_dafwa_obs())
-        archive.seek(0)
-        dafwa_log = logging.getLogger('dafwa')
-        dafwa_log.info(archive.read().strip())
-
-        output.seek(0)
-        name = 'DPAW{}'.format(reading_date.strftime('%Y%m%d%H%M%S'))
-        output.name = '{}.txt'.format(name)
-        semaphore.name = '{}.ok'.format(name)
-
-        LOGGER.info(output.name)
-        output.seek(0)
-
-        try:
-            # First write the data, then the semaphore file.
-            ftp.storlines('STOR ' + output.name, output)
-            ftp.storlines('STOR ' + semaphore.name, semaphore)
-        except Exception as e:
-            LOGGER.error('DAFWA upload failed for {}'.format(observation))
-            LOGGER.exception(e)
-            return False
-
-    ftp.quit()
-    LOGGER.info('Published to DAFWA successfully')
-    return True
-
-
 def download_data():
     """A utility function to check all active weather stations to see
     if a new weather observation needs to be downloaded from each.
@@ -175,9 +114,10 @@ def download_data():
     """
     from .models import WeatherStation
     observations = []
+    logger = logging.getLogger('weather')
 
     for station in WeatherStation.objects.filter(active=True):
-        LOGGER.info("Checking station {}".format(station))
+        logger.info("Checking station {}".format(station))
 
         now = timezone.now().replace(second=0, microsecond=0)
         last_scheduled = station.last_scheduled
@@ -185,23 +125,23 @@ def download_data():
         next_scheduled = last_scheduled + connect_every
         schedule = next_scheduled.utctimetuple() <= now.utctimetuple()
 
-        LOGGER.info("Last scheduled: {}, connect every: {} minutes".format(
+        logger.info("Last scheduled: {}, connect every: {} minutes".format(
             station.last_scheduled, station.connect_every))
-        LOGGER.info("Next: {}".format(next_scheduled))
-        LOGGER.info("Now: {}, schedule new: {}".format(now, schedule))
+        logger.info("Next: {}".format(next_scheduled))
+        logger.info("Now: {}, schedule new: {}".format(now, schedule))
 
         if schedule:
-            LOGGER.info("Scheduling {} for a new observation".format(station))
+            logger.info("Scheduling {} for a new observation".format(station))
             station.last_scheduled = now
             station.save()
             result = station.download_observation()
             if result:
-                LOGGER.info("Finished collecting observation for {}".format(station.name))
+                logger.info("Finished collecting observation for {}".format(station.name))
                 pk, response, retrieval_time = result
                 observations.append(station.save_observation(response, retrieval_time))
             else:
-                LOGGER.info("Observation failed for {}".format(station.name))
+                logger.info("Observation failed for {}".format(station.name))
         else:
-            LOGGER.info("Skipping {}".format(station))
+            logger.info("Skipping {}".format(station))
 
     return observations
