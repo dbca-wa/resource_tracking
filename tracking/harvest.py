@@ -195,7 +195,7 @@ def save_iriditrak(dimap, queueitem):
 def save_dplus(dimap, queueitem):
     msgid, msg = queueitem
     sbd = {"RAW": msg.get_payload().strip().split("|")}
-    #deviceid = sbd["ID"] = int(sbd["RAW"][0])
+    deviceid = sbd["ID"] = int(sbd["RAW"][0])
     try:
         sbd["LT"] = float(sbd["RAW"][4])
         sbd["LG"] = float(sbd["RAW"][5])
