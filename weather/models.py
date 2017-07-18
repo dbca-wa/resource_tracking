@@ -357,7 +357,7 @@ class WeatherObservation(models.Model):
         max_digits=4, decimal_places=1, blank=True, null=True)
 
     def __str__(self):
-        return 'Data for {} on {}'.format(self.station.name, self.date)
+        return '{} at {}'.format(self.station.name, self.date)
 
     class Meta:
         ordering = ['-date']
