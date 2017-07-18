@@ -113,7 +113,7 @@ def should_poll(station):
     now = datetime.now()
     if not station.last_poll or station.interval <= 1:
         return True
-    elif (now - station.last_poll).total_seconds() / 60 >= station.interval:
+    elif (now - station.last_poll).seconds / 60 >= station.interval:
         return True
     else:
         return False
@@ -159,10 +159,10 @@ def polling_loop(stations):
                     data = station.process.stdout.read(2048)
                 except Exception as e:
                     # No connection output; pass and try again next loop.
-                    if station.last_poll and (datetime.now() - station.last_poll).total_seconds() / 60 > station.interval + station.failures:
+                    if station.last_poll and (datetime.now() - station.last_poll).seconds / 60 > station.interval + station.failures:
                         # if data late, increment failures
                         station.failures += 1
-                        LOGGER.error("No data received from {} for {} seconds".format(station.ip, (datetime.now() - station.last_poll).total_seconds()))
+                        LOGGER.error("No data received from {} for {} seconds".format(station.ip, (datetime.now() - station.last_poll).seconds))
                     continue
                 # Split the lines of the response and find the observation.
                 for line in data.strip().split('\n'):
@@ -190,7 +190,7 @@ def polling_loop(stations):
                             # Terminate the process if interval >1 minute, it's finished with.
                             if station.process and station.interval > 1:
                                 if LOGGER:
-                                    age = (datetime.now() - station.process_start).total_seconds()
+                                    age = (datetime.now() - station.process_start).seconds
                                     LOGGER.info('Polling {} process PID {} ended at {} seconds old'.format(
                                         station.ip, station.process.pid, age))
                                 station.terminate_poll_process()
