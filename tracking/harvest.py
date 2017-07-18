@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 from django.conf import settings
 from django.http import HttpResponse
@@ -16,7 +16,7 @@ import requests
 from imaplib import IMAP4_SSL
 from datetime import datetime
 
-from tracking.models import Device, LoggedPoint
+from .models import Device, LoggedPoint
 
 LOGGER = logging.getLogger('tracking_points')
 BATCH_SIZE = 600
@@ -195,7 +195,7 @@ def save_iriditrak(dimap, queueitem):
 def save_dplus(dimap, queueitem):
     msgid, msg = queueitem
     sbd = {"RAW": msg.get_payload().strip().split("|")}
-    #deviceid = sbd["ID"] = int(sbd["RAW"][0])
+    deviceid = sbd["ID"] = int(sbd["RAW"][0])
     try:
         sbd["LT"] = float(sbd["RAW"][4])
         sbd["LG"] = float(sbd["RAW"][5])

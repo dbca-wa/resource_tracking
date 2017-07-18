@@ -16,7 +16,7 @@ from django.db.models.signals import pre_save, post_save
 from django.core.validators import MaxValueValidator
 from django.forms import ValidationError
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger('tracking_points')
 
 
 DISTRICT_PERTH_HILLS = 'PHD'
@@ -143,7 +143,7 @@ class BasePoint(models.Model):
         """
         if exclude is None:
             exclude = []
-        
+
         errors = {}
         for f in self._meta.fields:
             if f.name in exclude:
@@ -266,7 +266,7 @@ class LoggedPoint(BasePoint):
         """
         device = Device.objects.get_or_create(deviceid=sbd["ID"])[0]
         if sbd.get("LG", 0) == 0 or sbd.get("LT", 0) == 0:
-            logger.warn("Bad geometry for {}, discarding".format(device))
+            LOGGER.warn("Bad geometry for {}, discarding".format(device))
             return None
         seen = timezone.make_aware(datetime.fromtimestamp(float(sbd['TU'])), pytz.timezone("UTC"))
         self, created = cls.objects.get_or_create(device=device, seen=seen)
@@ -282,9 +282,9 @@ class LoggedPoint(BasePoint):
             self.source_device_type = str(sbd.get("TY", self.source_device_type))
             self.raw = json.dumps(sbd)
             self.save()
-            logger.info("LoggedPoint {} created.".format(self))
+            LOGGER.info("LoggedPoint {} created.".format(self))
         else:
-            logger.info("LoggedPoint {} found to be a duplicate.".format(self))
+            LOGGER.info("LoggedPoint {} found to be a duplicate.".format(self))
         if self.device.seen is None or self.seen > self.device.seen:
             self.device.seen = self.seen
             self.device.point = self.point
