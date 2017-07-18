@@ -24,7 +24,7 @@ class Command(BaseCommand):
             else:
                 self.stdout.write(self.style.WARNING('No observation recorded'))
         except:
-            raise CommandError('Error while parsing observation string: {}'.format(data))
+            raise CommandError('{} error parsing observation string: {}'.format(station, data))
 
         if obs and settings.DAFWA_UPLOAD and station.upload_data:  # Write observation to the upload cache dir.
             try:
