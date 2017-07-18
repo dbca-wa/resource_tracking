@@ -168,15 +168,16 @@ class BasePoint(models.Model):
 class Device(BasePoint):
     deviceid = models.CharField(max_length=32, unique=True)
     registration = models.CharField(max_length=32, default="No Rego", help_text="e.g. 1QBB157")
-    rin_number = models.PositiveIntegerField(validators=[MaxValueValidator(999)], verbose_name="Resource Identification Number (RIN)", null=True, blank=True, help_text="Heavy Duty, Gang Truck or Plant only (HD/GT/P automatically prefixed). e.g. Entering 123 for a Heavy Duty will display as HD123, 456 for Gang Truck as GT456 and 789 for Plant as P789.")
+    rin_number = models.PositiveIntegerField(validators=[MaxValueValidator(999)], verbose_name="Resource Identification Number (RIN)", null=True, blank=True, help_text="Heavy Duty, Gang Truck or Plant only (HD/GT/P automatically prefixed).")
     rin_display = models.CharField(max_length=5, null=True, blank=True, verbose_name="RIN")
     symbol = models.CharField(max_length=32, choices=SYMBOL_CHOICES, default="other")
     district = models.CharField(max_length=32, choices=DISTRICT_CHOICES, default=DISTRICT_OTHER, verbose_name="Region/District")
+    district_display = models.CharField(max_length=100, default='Other', verbose_name="District")
     usual_driver = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. John Jones")
-    usual_callsign = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. DON99")
     usual_location = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. Karijini National Park")
     current_driver = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. Jodie Jones")
-    current_callsign = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. FRK99")
+    callsign = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. 99 for Heavy Duty, Gang Truck or Plant, or free text for other devices")
+    callsign_display = models.CharField(max_length=50, null=True, blank=True, verbose_name="Callsign")
     contractor_details = models.CharField(max_length=50, null=True, blank=True, help_text="Person engaging contractor is responsible for maintaining contractor resource details")
     other_details = models.TextField(null=True, blank=True)
 
@@ -210,6 +211,22 @@ class Device(BasePoint):
     @property
     def icon(self):
         return "sss-{}".format(self.symbol.lower().replace(" ", "_"))
+
+    def clean_district(self):
+        if self.district:
+            self.district_display = self.get_district_display()
+
+    def clean_callsign(self):
+        if self.symbol in ("heavy duty", "gang truck", "dozer", "grader", "loader", "tender", "float") and not self.callsign:
+            raise ValidationError("Please enter a Callsign number.")
+        if self.callsign and self.symbol in ("heavy duty", "gang truck", "dozer", "grader", "loader", "tender", "float"):
+            try:
+                self.callsign = abs(int(str(self.callsign)))
+            except:
+                raise ValidationError("Callsign must be a number for the selected Symbol type")
+            self.callsign_display = self.get_district_display() + ' ' +  str(self.callsign)
+        else:
+            self.callsign_display = self.callsign
 
     def clean_rin_number(self):
         if self.symbol in ("heavy duty", "gang truck", "dozer", "grader", "loader", "tender", "float") and not self.rin_number:
