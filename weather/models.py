@@ -127,6 +127,13 @@ class WeatherStation(models.Model):
         """
         if timestamp is None:
             timestamp = timezone.now()
+
+        # Short-circuit: prevent this method being called multiple times in
+        # close succession and creating duplicates.
+        o = WeatherObservation.objects.filter(station=self).first()
+        if o and (timestamp - o.date).seconds < 30:  # Arbitrary time limit.
+            return None
+
         empty = Decimal('0.00')
         observation = WeatherObservation()
 

@@ -19,11 +19,14 @@ class Command(BaseCommand):
             (ip, data) = options['string'].split('::')
             station = WeatherStation.objects.get(ip_address=ip)
             obs = station.save_observation(data)
-            self.stdout.write(self.style.SUCCESS('Recorded observation {}'.format(obs)))
+            if obs:
+                self.stdout.write(self.style.SUCCESS('Recorded observation {}'.format(obs)))
+            else:
+                self.stdout.write(self.style.WARNING('No observation recorded'))
         except:
             raise CommandError('Error while parsing observation string: {}'.format(data))
 
-        if settings.DAFWA_UPLOAD and station.upload_data:  # Write observation to the upload cache dir.
+        if obs and settings.DAFWA_UPLOAD and station.upload_data:  # Write observation to the upload cache dir.
             try:
                 # Ensure that the upload_data_cache directory exists.
                 if not os.path.exists(os.path.join(settings.BASE_DIR, 'upload_data_cache')):
