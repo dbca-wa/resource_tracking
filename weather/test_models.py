@@ -1,6 +1,8 @@
 from __future__ import absolute_import, unicode_literals
+from datetime import timedelta
 from django.contrib.gis.geos import Point
 from django.test import TestCase
+from django.utils import timezone
 from mixer.backend.django import mixer
 import random
 
@@ -36,11 +38,13 @@ class WeatherStationTestCase(WeatherTestCase):
     def test_save_observation(self):
         """Test the WeatherStation save_observation method
         """
-        for data in TELVENT_DATA:
-            obs = self.telvent.save_observation(data)
+        for k, data in enumerate(TELVENT_DATA):
+            timestamp = timezone.now() - timedelta(hours=k)
+            obs = self.telvent.save_observation(data, timestamp)
             self.assertTrue(isinstance(obs, WeatherObservation))
-        for data in VAISALA_DATA:
-            obs = self.vaisala.save_observation(data)
+        for k, data in enumerate(VAISALA_DATA):
+            timestamp = timezone.now() - timedelta(hours=k)
+            obs = self.vaisala.save_observation(data, timestamp)
             self.assertTrue(isinstance(obs, WeatherObservation))
 
 
@@ -49,15 +53,17 @@ class WeatherObservationTestCase(WeatherTestCase):
     def test_get_dafwa_obs(self):
         """Test the WeatherObservation get_dafwa_obs method
         """
-        for data in TELVENT_DATA:
-            obs = self.telvent.save_observation(data)
+        for k, data in enumerate(TELVENT_DATA):
+            timestamp = timezone.now() - timedelta(hours=k)
+            obs = self.telvent.save_observation(data, timestamp)
             dafwa_obs = obs.get_dafwa_obs()
             self.assertTrue(isinstance(dafwa_obs, list))
             # Each element in the list should be a string.
             for i in dafwa_obs:
                 self.assertTrue(isinstance(i, unicode))
-        for data in VAISALA_DATA:
-            obs = self.vaisala.save_observation(data)
+        for k, data in enumerate(VAISALA_DATA):
+            timestamp = timezone.now() - timedelta(hours=k)
+            obs = self.vaisala.save_observation(data, timestamp)
             dafwa_obs = obs.get_dafwa_obs()
             self.assertTrue(isinstance(dafwa_obs, list))
             for i in dafwa_obs:

@@ -80,7 +80,7 @@ var n=String.fromCharCode,p;a:{try{document.createElement("$")}catch(q){p=q;brea
     var ractive = new Ractive({
       el: 'container',
       template: '#template',
-      data: {"meta": {"limit": 20, "offset": 0, "station": {{ station.id }}}, "objects": [] }
+      data: {"meta": {"limit": 20, "offset": 0, "station_id": {{ station.id }}}, "objects": [] }
     });
 
     var dataURL = "/api/v1/weatherobservation/?";
