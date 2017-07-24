@@ -9,11 +9,8 @@ services:
 addons:
     postgresql: 9.5
     apt:
-        sources:
-            - precise-pgdg-9.5
         packages:
-            - postgresql-9.5
-            - postgresql-contrib-9.5
+            - postgresql-9.5-postgis-2.3
 branches:
     only:
         - master
