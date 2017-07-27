@@ -8,7 +8,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('tracking', '0026_auto_20170616_1253'),
+        ('tracking', '0026_usual_callsign_to_current_callsign'),
     ]
 
     operations = [
