@@ -28,7 +28,7 @@ class DeviceAdmin(ModelAdmin):
             "fields": ("contractor_details",)
         }),
         ("Other Details", {
-            "fields": ("other_details",)
+            "fields": ("other_details","internal_only")
         })
     )
 

@@ -180,6 +180,7 @@ class Device(BasePoint):
     callsign_display = models.CharField(max_length=50, null=True, blank=True, verbose_name="Callsign")
     contractor_details = models.CharField(max_length=50, null=True, blank=True, help_text="Person engaging contractor is responsible for maintaining contractor resource details")
     other_details = models.TextField(null=True, blank=True)
+    internal_only = models.BooleanField(default=False, verbose_name="Internal to DBCA only")
 
     @property
     def age_minutes(self):
