@@ -127,6 +127,13 @@ class WeatherStation(models.Model):
         """
         if timestamp is None:
             timestamp = timezone.now()
+
+        # Short-circuit: prevent this method being called multiple times in
+        # close succession and creating duplicates.
+        o = WeatherObservation.objects.filter(station=self).first()
+        if o and (timestamp - o.date).seconds < 30:  # Arbitrary time limit.
+            return None
+
         empty = Decimal('0.00')
         observation = WeatherObservation()
 
@@ -196,13 +203,6 @@ class WeatherStation(models.Model):
             observation.wind_direction_min = data.get('DN') or empty
             observation.wind_direction_max = data.get('DX') or empty
             observation.wind_direction = data.get('D') or empty
-            # Temporary change: reverse the wind_direction for the Mitchell
-            # Plateau AWS only, until such time as it is rewired.
-            if self.bom_abbreviation == 'MIPL':
-                  adjust = float(observation.wind_direction) + 180
-                  if adjust >= 360:
-                      adjust -= 360
-                  observation.wind_direction = Decimal(adjust)
             observation.wind_direction_deviation = data.get('DS') or empty
             observation.wind_direction_outliers = data.get('DO') or 0
             if (data.get('SN')):
@@ -357,7 +357,7 @@ class WeatherObservation(models.Model):
         max_digits=4, decimal_places=1, blank=True, null=True)
 
     def __str__(self):
-        return 'Data for {} on {}'.format(self.station.name, self.date)
+        return '{} at {}'.format(self.station.name, self.date)
 
     class Meta:
         ordering = ['-date']

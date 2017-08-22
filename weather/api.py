@@ -1,6 +1,7 @@
 from tastypie import fields
 
 from tracking.api import APIResource, generate_meta
+from tastypie.resources import ALL_WITH_RELATIONS
 from weather.models import Location, WeatherStation, WeatherObservation
 
 
@@ -20,3 +21,6 @@ class WeatherObservationResource(APIResource):
     station_name = fields.CharField(attribute='station__name', readonly=True)
     station_bom_abbreviation = fields.CharField(attribute='station__bom_abbreviation', readonly=True)
     Meta = generate_meta(WeatherObservation)
+    Meta.filtering.update({
+        'station_id': ALL_WITH_RELATIONS,
+    })

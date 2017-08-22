@@ -118,24 +118,8 @@ def save_iriditrak(dimap, queueitem):
     else:
         LOGGER.info("Can't find date in " + str(msg.__dict__))
     sbd = {'ID': deviceid, 'TU': timestamp, 'TY': 'iriditrak'}
-    # Normal BEAM sbdtext message
-    if attachment.find(',') == 0:
-        # NOTE: the following lines will never work as the sbdfield function is
-        # note defined anywhere. Leaving it in at present for posterity's sake.
-        """
-        for field in ['SQ', 'FU', 'DD', 'LT', 'LG', 'TU', 'VL', 'DR', 'AL', 'EQ']:
-            try:
-                sbd[field] = sbdfield(attachment, field)
-            except:
-                pass
-        """
-        try:
-            sbd['LOCALTU'] = sbd['FU']
-            sbd['FU'] = None
-        except:
-            pass
     # BEAM binary message, 10byte or 20byte
-    elif len(attachment) <= 20:
+    if len(attachment) <= 20:
         try:
             raw = struct.unpack("<BBBBBBBBBBIHHH"[:len(attachment) + 1], attachment)
             # Byte 1 Equation byte, use to detect type of message
@@ -144,7 +128,6 @@ def save_iriditrak(dimap, queueitem):
             if sbd['EQ'] in [1, 2, 3, 4, 18, 19, 25, 26]:
                 # Byte 2: SSSS:GPS:Lat:Lng:Msd (SSSS = SQ, Msd = Most Significant Digit of Longitude)
                 sbd['SQ'] = int('0' + bin(raw[1])[2:][-8:-4], 2)
-                #GPS = int(bin(raw[1])[2:][-4])
                 Lat = int(bin(raw[1])[2:][-3]) * '-'
                 Lng = int(bin(raw[1])[2:][-2]) * '-'
                 LngH = bin(raw[1])[2:][-1]
@@ -185,9 +168,10 @@ def save_iriditrak(dimap, queueitem):
             dimap.flag(msgid)
             return
     else:
-        LOGGER.warning("Extra stuff")
+        LOGGER.warning("Flagging IridiTrak message {}".format(msgid))
         dimap.flag(msgid)
         return
+
     LoggedPoint.parse_sbd(sbd)
     dimap.delete(msgid)
 
@@ -195,7 +179,6 @@ def save_iriditrak(dimap, queueitem):
 def save_dplus(dimap, queueitem):
     msgid, msg = queueitem
     sbd = {"RAW": msg.get_payload().strip().split("|")}
-    deviceid = sbd["ID"] = int(sbd["RAW"][0])
     try:
         sbd["LT"] = float(sbd["RAW"][4])
         sbd["LG"] = float(sbd["RAW"][5])
@@ -207,10 +190,16 @@ def save_dplus(dimap, queueitem):
         sbd["AL"] = int(sbd["RAW"][9])
         sbd["TY"] = 'dplus'
     except ValueError, e:
-        LOGGER.warning(e)
+        LOGGER.error(e)
         dimap.flag(msgid)
         return
-    LoggedPoint.parse_sbd(sbd)
+    try:
+        LoggedPoint.parse_sbd(sbd)
+    except Exception as e:
+        LOGGER.error(e)
+        dimap.flag(msgid)
+        return
+
     dimap.delete(msgid)
 
 

@@ -23,7 +23,7 @@ class Command(BaseCommand):
                 # Use lftp to tranfer each file using SFTP.
                 try:
                     output = subprocess.check_output(
-                        ['lftp', connect_str, '-e', 'put -E {}; quit'.format(path)],
+                        ['timeout', '10', 'lftp', connect_str, '-e', 'put -E {}; quit'.format(path)],
                         stderr=subprocess.STDOUT)
                     logger.info('Uploaded {} to DAFWA'.format(f))
                 except subprocess.CalledProcessError:
