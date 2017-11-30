@@ -180,6 +180,7 @@ def save_dplus(dimap, queueitem):
     msgid, msg = queueitem
     sbd = {"RAW": msg.get_payload().strip().split("|")}
     try:
+        deviceid = sbd["ID"] = int(sbd["RAW"][0])
         sbd["LT"] = float(sbd["RAW"][4])
         sbd["LG"] = float(sbd["RAW"][5])
         if not lat_long_isvalid(sbd['LT'], sbd['LG']):
