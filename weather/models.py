@@ -122,116 +122,136 @@ class WeatherStation(models.Model):
         output = (self.pk, force_text(response), retrieval_time)
         return output
 
-    def save_observation(self, raw_data, timestamp=None):
+    def save_observation(self, raw_data):
         """Convert a raw observation and save it to the database.
         """
-        if timestamp is None:
-            timestamp = timezone.now()
+        observation = WeatherObservation(station=self, raw_data=raw_data)
+        data = {}
 
-        # Short-circuit: prevent this method being called multiple times in
-        # close succession and creating duplicates.
-        o = WeatherObservation.objects.filter(station=self).first()
-        if o and (timestamp - o.date).seconds < 30:  # Arbitrary time limit.
-            return None
-
-        empty = Decimal('0.00')
-        observation = WeatherObservation()
-
-        # Create a weather observation from the retrieved data.
+        # Parse the observation string into a dict.
         if self.manufacturer == 'vaisala':
-            # Vaisala data is a comma-separated NVP format.
             items = raw_data.split(',')
-            items.pop(0)  # Remove the first element of the raw data.
-            data = {}
-            for item in items:
-                k, v = item.split('=')
-                data[k] = v
-            pattern = '(\d+(\.\d+)?)(.+)'
-            observation.temperature = Decimal(re.search(pattern, data['Ta']).group(1))
-            observation.humidity = Decimal(re.search(pattern, data['Ua']).group(1))
-            observation.dew_point = dew_point(
-                float(observation.temperature), float(observation.humidity))
-            observation.pressure = Decimal(re.search(pattern, data['Pa']).group(1))
-            observation.wind_direction_min = Decimal(re.search(pattern, data['Dn']).group(1))
-            observation.wind_direction_max = Decimal(re.search(pattern, data['Dx']).group(1))
-            observation.wind_direction = Decimal(re.search(pattern, data['Dm']).group(1))
-            observation.wind_speed_min = Decimal(re.search(pattern, data['Sn']).group(1)) * KNOTS_TO_MS
-            observation.wind_speed_min_kn = Decimal(re.search(pattern, data['Sn']).group(1))
-            observation.wind_speed_max = Decimal(re.search(pattern, data['Sx']).group(1)) * KNOTS_TO_MS
-            observation.wind_speed_max_kn = Decimal(re.search(pattern, data['Sx']).group(1))
-            observation.wind_speed = Decimal(re.search(pattern, data['Sm']).group(1)) * KNOTS_TO_MS
-            observation.wind_speed_kn = Decimal(re.search(pattern, data['Sm']).group(1))
-            observation.rainfall = Decimal(re.search(pattern, data['Rc']).group(1))
-            observation.actual_rainfall = actual_rainfall(
-                Decimal(observation.rainfall), self, timestamp)
-            observation.actual_pressure = actual_pressure(
-                float(observation.temperature), float(observation.pressure),
-                float(self.location.height))
-            observation.raw_data = raw_data
-            observation.station = self
-            observation.save()
-            self.last_reading = timestamp
-            self.battery_voltage = Decimal(re.search(pattern, data['Vs']).group(1))
-            self.save()
-        else:  # Default to using the Telvent station format.
-            # Telvent data is stored in NVP format separated by the pipe symbol '|'.
-            #   |<NAME>=<VALUE>|
+        elif self.manufacturer == 'telvent':
             items = raw_data.split('|')
-            data = {}
-            for item in items:
-                if (item != ''):
-                    try:
-                        k, v = item.split('=')
-                        data[k] = v
-                    except:
-                        pass
-            observation.temperature_min = data.get('TN') or empty
-            observation.temperature_max = data.get('TX') or empty
-            observation.temperature = data.get('T') or empty
-            observation.temperature_deviation = data.get('TS') or empty
-            observation.temperature_outliers = data.get('TO') or 0
-            observation.pressure_min = data.get('QFEN') or empty
-            observation.pressure_max = data.get('QFEX') or empty
-            observation.pressure = data.get('QFE') or empty
-            observation.pressure_deviation = data.get('QFES') or empty
-            observation.pressure_outliers = data.get('QFEO') or 0
-            observation.humidity_min = data.get('HN') or empty
-            observation.humidity_max = data.get('HX') or empty
-            observation.humidity = data.get('H') or empty
-            observation.humidity_deviation = data.get('HS') or empty
-            observation.humidity_outliers = data.get('HO') or 0
-            observation.wind_direction_min = data.get('DN') or empty
-            observation.wind_direction_max = data.get('DX') or empty
-            observation.wind_direction = data.get('D') or empty
-            observation.wind_direction_deviation = data.get('DS') or empty
-            observation.wind_direction_outliers = data.get('DO') or 0
-            if (data.get('SN')):
-                observation.wind_speed_min = Decimal(data.get('SN')) * KNOTS_TO_MS or 0
-                observation.wind_speed_min_kn = Decimal(data.get('SN')) or 0
-                observation.wind_speed_deviation = Decimal(data.get('SS')) * KNOTS_TO_MS or 0
-                observation.wind_speed_outliers = data.get('SO') or 0
-                observation.wind_speed_deviation_kn = Decimal(data.get('SS')) or 0
-            if (data.get('SX')):
-                observation.wind_speed_max = Decimal(data.get('SX')) * KNOTS_TO_MS or 0
-                observation.wind_speed_max_kn = Decimal(data.get('SX')) or 0
-            if (data.get('S')):
-                observation.wind_speed = Decimal(data.get('S')) * KNOTS_TO_MS or 0
-                observation.wind_speed_kn = Decimal(data.get('S')) or 0
-            observation.rainfall = data.get('R') or empty
-            observation.dew_point = dew_point(
-                float(observation.temperature), float(observation.humidity))
-            observation.actual_rainfall = actual_rainfall(
-                Decimal(observation.rainfall), self, timestamp)
-            observation.actual_pressure = actual_pressure(
-                float(observation.temperature), float(observation.pressure),
-                float(self.location.height))
-            observation.raw_data = raw_data
-            observation.station = self
-            observation.save()
-            self.last_reading = timestamp
-            self.battery_voltage = data.get('BV', empty) or empty
-            self.save()
+        items.pop(0)  # Always remove the first element of the raw data (not a key-value pair).
+        for item in items:
+            k, v = item.split('=')
+            data[k] = v
 
+        # Parse the datestamp (if absent, observation will default to timezone.now())
+        if 'Date' in data and 'Time' in data:
+            ts = '{} {}'.format(data['Date'], data['Time'])
+            observation.date = timezone.make_aware(datetime.strptime(ts, '%Y-%m-%d %H:%M:%S'))
+
+        if self.manufacturer == 'vaisala':
+            pattern = '(\d+(\.\d+)?)(.+)'
+            if 'Ta' in data:
+                observation.temperature = Decimal(re.search(pattern, data['Ta']).group(1))
+            if 'Ua' in data:
+                observation.humidity = Decimal(re.search(pattern, data['Ua']).group(1))
+            if observation.temperature and observation.humidity:
+                observation.dew_point = dew_point(
+                    float(observation.temperature), float(observation.humidity))
+            if 'Pa' in data:
+                observation.pressure = Decimal(re.search(pattern, data['Pa']).group(1))
+            if observation.temperature and observation.pressure:
+                observation.actual_pressure = actual_pressure(
+                    float(observation.temperature), float(observation.pressure), float(self.location.height))
+            if 'Dn' in data:
+                observation.wind_direction_min = Decimal(re.search(pattern, data['Dn']).group(1))
+            if 'Dx' in data:
+                observation.wind_direction_max = Decimal(re.search(pattern, data['Dx']).group(1))
+            if 'Dm' in data:
+                observation.wind_direction = Decimal(re.search(pattern, data['Dm']).group(1))
+            if 'Sn' in data:
+                observation.wind_speed_min = Decimal(re.search(pattern, data['Sn']).group(1)) * KNOTS_TO_MS
+                observation.wind_speed_min_kn = Decimal(re.search(pattern, data['Sn']).group(1))
+            if 'Sx' in data:
+                observation.wind_speed_max = Decimal(re.search(pattern, data['Sx']).group(1)) * KNOTS_TO_MS
+                observation.wind_speed_max_kn = Decimal(re.search(pattern, data['Sx']).group(1))
+            if 'Sm' in data:
+                observation.wind_speed = Decimal(re.search(pattern, data['Sm']).group(1)) * KNOTS_TO_MS
+                observation.wind_speed_kn = Decimal(re.search(pattern, data['Sm']).group(1))
+            if 'Rc' in data:
+                observation.rainfall = Decimal(re.search(pattern, data['Rc']).group(1))
+            if observation.date and observation.rainfall:
+                observation.actual_rainfall = actual_rainfall(Decimal(observation.rainfall), self, observation.date)
+            else:
+                observation.actual_rainfall = 0.0
+            if 'Vs' in data:
+                self.battery_voltage = Decimal(re.search(pattern, data['Vs']).group(1))
+        elif self.manufacturer == 'telvent':
+            if 'T' in data:
+                observation.temperature = data['T']
+            if 'TN' in data:
+                observation.temperature_min = data['TN']
+            if 'TX' in data:
+                observation.temperature_max = data['TX']
+            if 'TS' in data:
+                observation.temperature_deviation = data['TS']
+            if 'TO' in data:
+                observation.temperature_outliers = data['TO']
+            if 'QFE' in data:
+                observation.pressure = data['QFE']
+            if 'QFEN' in data:
+                observation.pressure_min = data['QFEN']
+            if 'QFEX' in data:
+                observation.pressure_max = data['QFEX']
+            if 'QFES' in data:
+                observation.pressure_deviation = data['QFES']
+            if 'QFEO' in data:
+                observation.pressure_outliers = data['QFEO']
+            if 'H' in data:
+                observation.humidity = data['H']
+            if 'HN' in data:
+                observation.humidity_min = data['HN']
+            if 'HX' in data:
+                observation.humidity_max = data['HX']
+            if 'HS' in data:
+                observation.humidity_deviation = data['HS']
+            if 'HO' in data:
+                observation.humidity_outliers = data['HO']
+            if 'D' in data:
+                observation.wind_direction = data['D']
+            if 'DN' in data:
+                observation.wind_direction_min = data['DN']
+            if 'DX' in data:
+                observation.wind_direction_max = data['DX']
+            if 'DS' in data:
+                observation.wind_direction_deviation = data['DS']
+            if 'DO' in data:
+                observation.wind_direction_outliers = data['DO']
+            if 'S' in data:
+                observation.wind_speed = Decimal(data['S']) * KNOTS_TO_MS
+                observation.wind_speed_kn = Decimal(data['S'])
+            if 'SN' in data:
+                observation.wind_speed_min = Decimal(data['SN']) * KNOTS_TO_MS
+                observation.wind_speed_min_kn = Decimal(data['SN'])
+            if 'SS' in data:
+                observation.wind_speed_deviation = Decimal(data['SS']) * KNOTS_TO_MS
+                observation.wind_speed_deviation_kn = Decimal(data['SS'])
+            if 'SO' in data:
+                observation.wind_speed_outliers = data['SO']
+            if 'SX' in data:
+                observation.wind_speed_max = Decimal(data['SX']) * KNOTS_TO_MS
+                observation.wind_speed_max_kn = Decimal(data['SX'])
+            if 'R' in data:
+                observation.rainfall = data['R']
+                observation.actual_rainfall = actual_rainfall(Decimal(observation.rainfall), self, observation.date)
+            else:
+                observation.actual_rainfall = 0.0
+            if observation.temperature and observation.humidity:
+                observation.dew_point = dew_point(
+                    float(observation.temperature), float(observation.humidity))
+            if observation.temperature and observation.pressure:
+                observation.actual_pressure = actual_pressure(
+                    float(observation.temperature), float(observation.pressure), float(self.location.height))
+            if 'BV' in data:
+                self.battery_voltage = data['BV']
+
+        observation.save()
+        self.last_reading = observation.date
+        self.save()
         return observation
 
     def __str__(self):
