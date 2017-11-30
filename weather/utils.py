@@ -138,7 +138,7 @@ def download_data():
             if result:
                 logger.info("Finished collecting observation for {}".format(station.name))
                 pk, response, retrieval_time = result
-                observations.append(station.save_observation(response, retrieval_time))
+                observations.append(station.save_observation(response))
             else:
                 logger.info("Observation failed for {}".format(station.name))
         else:
