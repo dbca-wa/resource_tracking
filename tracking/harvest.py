@@ -265,6 +265,41 @@ def save_tracplus():
     LOGGER.info("Updated {} of {} scanned TracPLUS devices".format(updated, len(latest)))
 
 
+def save_dfes_avl():
+    latest = requests.get(url=settings.DFES_URL, auth=requests.auth.HTTPBasicAuth(settings.DFES_USER, settings.DFES_PASS)).json()['features']
+    updated = 0
+    for row in latest:
+		if row['type'] == 'Feature':
+			prop = row["properties"]
+			device = Device.objects.get_or_create(deviceid=prop["TrackerID"])[0]
+			device.callsign = prop["VehicleName"]
+			device.model = prop["Model"]
+			device.registration = 'DFES - ' + prop["Registration"][:32]
+			if device.registration.strip() == 'DFES -':
+			    device.registration = 'DFES - No Rego'
+			device.velocity = int(prop["Speed"])
+			device.heading = prop["Direction"]
+			device.seen = timezone.make_aware(datetime.strptime(prop["Time"], "%Y-%m-%dT%H:%M:%S.%fZ"), pytz.timezone("UTC"))
+			device.point = "POINT ({} {})".format(row['geometry']['coordinates'][0], row['geometry']['coordinates'][1])
+			device.source_device_type = 'dfes'
+			device.save()
+
+			lp, new = LoggedPoint.objects.get_or_create(device=device, seen=device.seen)
+			lp.velocity = device.velocity
+			lp.heading = device.heading
+			lp.point = device.point
+			lp.seen = device.seen
+			lp.source_device_type = device.source_device_type
+			lp.raw = json.dumps(row)
+			lp.save()
+			if new:
+				updated += 1
+			#print('Device ID: {}'.format(prop["TrackerID"]))
+    latest_seen = Device.objects.filter(source_device_type='dfes').latest('seen').seen
+    LOGGER.info("Updated {} of {} scanned DFES devices. Lastest seen {}".format(updated, len(latest), latest_seen))
+    return updated, len(latest)
+
+
 def harvest_tracking_email(request=None):
     """Download and save tracking point emails.
     """
@@ -296,9 +331,18 @@ def harvest_tracking_email(request=None):
     except Exception as e:
         LOGGER.error(e)
 
+    LOGGER.info('Harvesting DFES feed')
+    try:
+        save_dfes_avl()
+    except Exception as e:
+        LOGGER.error(e)
+
     delta = timezone.now() - start
     html = "<html><body>Tracking point email harvest run at {} for {}</body></html>".format(start, delta)
     if request:
         return HttpResponse(html)
     else:
         return
+
+
+

@@ -22,6 +22,10 @@ if not DEBUG:
         'resourcetracking.dpaw.wa.gov.au.',
         'resourcetracking-uat.dpaw.wa.gov.au',
         'resourcetracking-uat.dpaw.wa.gov.au.',
+        'resourcetracking.dbca.wa.gov.au',
+        'resourcetracking.dbca.wa.gov.au.',
+        'resourcetracking-uat.dbca.wa.gov.au',
+        'resourcetracking-uat.dbca.wa.gov.au.',
     ]
 else:  # In debug, allow all hosts to serve the application.
     ALLOWED_HOSTS = ['*']
@@ -35,6 +39,9 @@ KMI_VEHICLE_BASE_URL = env('KMI_VEHICLE_BASE_URL', '')
 JQUERY_SOURCE = env('JQUERY_SOURCE', '')
 JQUERYUI_SOURCE = env('JQUERYUI_SOURCE', '')
 
+DFES_URL = env('DFES_URL', False)
+DFES_USER = env('DFES_USER', False)
+DFES_PASS = env('DFES_PASS', False)
 # add scary warning on device edit page for prod
 PROD_SCARY_WARNING = env('PROD_SCARY_WARNING', False)
 
