@@ -121,6 +121,7 @@ SOURCE_DEVICE_TYPE_CHOICES = (
     ("iriditrak", "Iriditrak"),
     ("dplus", "DPlus"),
     ("spot", "Spot"),
+    ("dfes", "DFES"),
     ("other", "Other")
 )
 
