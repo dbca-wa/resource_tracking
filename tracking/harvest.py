@@ -243,6 +243,7 @@ def save_tracplus():
     for row in latest:
         device = Device.objects.get_or_create(deviceid=row["Device IMEI"])[0]
         device.callsign = row["Asset Name"]
+        device.callsign_display = row["Asset Name"]
         device.model = row["Asset Model"]
         device.registration = row["Asset Regn"][:32]
         device.velocity = int(row["Speed"]) * 1000
@@ -274,6 +275,7 @@ def save_dfes_avl():
 			prop = row["properties"]
 			device = Device.objects.get_or_create(deviceid=prop["TrackerID"])[0]
 			device.callsign = prop["VehicleName"]
+			device.callsign_display = prop["VehicleName"]
 			device.model = prop["Model"]
 			device.registration = 'DFES - ' + prop["Registration"][:32]
 			if device.registration.strip() == 'DFES -':
