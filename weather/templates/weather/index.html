@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>DPaW Weather Stations</title>
+    <title>DBCA Weather Stations</title>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="//static.dpaw.wa.gov.au/static/libs/leaflet/0.7.7/leaflet.css" />
-    <script src="//static.dpaw.wa.gov.au/static/libs/leaflet/0.7.7/leaflet.js"></script>
+    <link rel="stylesheet" href="//static.dbca.wa.gov.au/static/libs/leaflet/1.2.0/leaflet.css" />
+    <script src="//static.dbca.wa.gov.au/static/libs/leaflet/1.2.0/leaflet.js"></script>
 
     <style>
         body {
@@ -19,7 +19,7 @@
 </head>
 <body>
     <div id='legend' class='leaflet-control-attribution'>
-    <strong style="float:right;">DPaW Weather Stations</strong>
+    <strong style="float:right;">DBCA Weather Stations</strong>
         {% for station in stations %}
         <br><a class="leaflet-control-locate" href="#{{ station.abbreviation }}" onclick="map.panTo(stations['{{ station.abbreviation }}'].getLatLng());">&#9906;</a> {{ station }} (updated {{ station.last_reading_local }}) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a style="float:right;" href="{% url 'weather_station' station_id=station.pk %}">View Data</a>
         {% endfor %}
