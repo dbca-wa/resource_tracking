@@ -14,7 +14,7 @@ import struct
 import logging
 import requests
 from imaplib import IMAP4_SSL
-from datetime import datetime
+from datetime import datetime,timedelta
 
 from .models import Device, LoggedPoint
 
@@ -268,39 +268,66 @@ def save_tracplus():
 
 
 def save_dfes_avl():
+    LOGGER.info('Begin to harvest the data from dfes, out of order buffer is {} seconds'.format(settings.DFES_OUT_OF_ORDER_BUFFER))
     latest = requests.get(url=settings.DFES_URL, auth=requests.auth.HTTPBasicAuth(settings.DFES_USER, settings.DFES_PASS)).json()['features']
-    updated = 0
-    for row in latest:
-		if row['type'] == 'Feature':
-			prop = row["properties"]
-			device = Device.objects.get_or_create(deviceid=prop["TrackerID"])[0]
-			device.callsign = prop["VehicleName"]
-			device.callsign_display = prop["VehicleName"]
-			device.model = prop["Model"]
-			device.registration = 'DFES - ' + prop["Registration"][:32]
-			if device.registration.strip() == 'DFES -':
-			    device.registration = 'DFES - No Rego'
-			device.velocity = int(prop["Speed"])
-			device.heading = prop["Direction"]
-			device.seen = timezone.make_aware(datetime.strptime(prop["Time"], "%Y-%m-%dT%H:%M:%S.%fZ"), pytz.timezone("UTC"))
-			device.point = "POINT ({} {})".format(row['geometry']['coordinates'][0], row['geometry']['coordinates'][1])
-			device.source_device_type = 'dfes'
-			device.save()
+    LOGGER.info('End to harvest the data from dfes')
 
-			lp, new = LoggedPoint.objects.get_or_create(device=device, seen=device.seen)
-			lp.velocity = device.velocity
-			lp.heading = device.heading
-			lp.point = device.point
-			lp.seen = device.seen
-			lp.source_device_type = device.source_device_type
-			lp.raw = json.dumps(row)
-			lp.save()
-			if new:
-				updated += 1
-			#print('Device ID: {}'.format(prop["TrackerID"]))
     latest_seen = Device.objects.filter(source_device_type='dfes').latest('seen').seen
-    LOGGER.info("Updated {} of {} scanned DFES devices. Lastest seen {}".format(updated, len(latest), latest_seen))
-    return updated, len(latest)
+    #Can't gurantee that messages send by the vechicle will enter into the database in order,
+    #so add 5 minutes to allow disordered message will not be ignored within 5 minutes
+    earliest_seen = latest_seen - timedelta(seconds=settings.DFES_OUT_OF_ORDER_BUFFER)
+    ignored = 0
+    updated = 0
+    created = 0
+    harvested = 0
+    for row in latest:
+        if row['type'] == 'Feature':
+            harvested += 1
+            prop = row["properties"]
+            seen = timezone.make_aware(datetime.strptime(prop["Time"], "%Y-%m-%dT%H:%M:%S.%fZ"), pytz.timezone("UTC"))
+            if seen < earliest_seen:
+                #already havested
+                ignored += 1
+                continue
+            elif seen > latest_seen:
+                latest_seen = seen
+            deviceid = str(prop["TrackerID"]).strip()
+            try:
+                device = Device.objects.get(deviceid = deviceid)
+                if seen == device.seen:
+                    #already havested
+                    ignored += 1
+                    continue
+                updated += 1
+            except ObjectDoesNotExist:
+                device = Device(deviceid=deviceid)
+                created += 1
+    
+            device.callsign = prop["VehicleName"]
+            device.callsign_display = prop["VehicleName"]
+            device.model = prop["Model"]
+            device.registration = 'DFES - ' + prop["Registration"][:32]
+            if device.registration.strip() == 'DFES -':
+                device.registration = 'DFES - No Rego'
+            device.velocity = int(prop["Speed"])
+            device.heading = prop["Direction"]
+            device.seen = seen
+            device.point = "POINT ({} {})".format(row['geometry']['coordinates'][0], row['geometry']['coordinates'][1])
+            device.source_device_type = 'dfes'
+            device.save()
+
+            LoggedPoint.objects.create(
+                device=device, 
+                seen=device.seen,
+                velocity = device.velocity,
+                heading = device.heading,
+                point = device.point,
+                source_device_type = device.source_device_type,
+                raw = json.dumps(row)
+            )
+            #print('Device ID: {}'.format(prop["TrackerID"]))
+    LOGGER.info("Harvested {} from DFES; created {}, updated {}, ingored {}; Earliest Seen {}, Latest seen {}.".format(harvested,created,updated,ignored,earliest_seen,latest_seen))
+    return harvested,created,updated,ignored,earliest_seen,latest_seen
 
 
 def harvest_tracking_email(request=None):
