@@ -284,6 +284,10 @@ def save_dfes_avl():
         if row['type'] == 'Feature':
             harvested += 1
             prop = row["properties"]
+            if not prop["Time"]:
+                #time is null, should be a illegal value, ignore it
+                ignored += 1
+                continue
             seen = timezone.make_aware(datetime.strptime(prop["Time"], "%Y-%m-%dT%H:%M:%S.%fZ"), pytz.timezone("UTC"))
             if seen < earliest_seen:
                 #already havested
