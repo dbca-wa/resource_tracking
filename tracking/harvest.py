@@ -272,7 +272,7 @@ def save_dfes_avl():
     latest = requests.get(url=settings.DFES_URL, auth=requests.auth.HTTPBasicAuth(settings.DFES_USER, settings.DFES_PASS)).json()['features']
     LOGGER.info('End to harvest the data from dfes')
 
-    latest_seen = Device.objects.filter(source_device_type='dfes').latest('seen').seen
+    latest_seen = Device.objects.filter(source_device_type='dfes',seen__lt=timezone.now()).latest('seen').seen
     #Can't gurantee that messages send by the vechicle will enter into the database in order,
     #so add 5 minutes to allow disordered message will not be ignored within 5 minutes
     earliest_seen = latest_seen - timedelta(seconds=settings.DFES_OUT_OF_ORDER_BUFFER)
