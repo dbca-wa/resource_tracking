@@ -1,6 +1,7 @@
 from __future__ import absolute_import, unicode_literals
 
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.encoding import force_text
@@ -272,10 +273,17 @@ def save_dfes_avl():
     latest = requests.get(url=settings.DFES_URL, auth=requests.auth.HTTPBasicAuth(settings.DFES_USER, settings.DFES_PASS)).json()['features']
     LOGGER.info('End to harvest the data from dfes')
 
-    latest_seen = Device.objects.filter(source_device_type='dfes',seen__lt=timezone.now()).latest('seen').seen
+    latest_seen = None
+    try:
+        latest_seen = Device.objects.filter(source_device_type='dfes',seen__lt=timezone.now()).latest('seen').seen
+    except ObjectDoesNotExist: 
+        pass
     #Can't gurantee that messages send by the vechicle will enter into the database in order,
     #so add 5 minutes to allow disordered message will not be ignored within 5 minutes
-    earliest_seen = latest_seen - timedelta(seconds=settings.DFES_OUT_OF_ORDER_BUFFER)
+    earliest_seen = None
+    if latest_seen:
+        earliest_seen = latest_seen - timedelta(seconds=settings.DFES_OUT_OF_ORDER_BUFFER)
+
     ignored = 0
     updated = 0
     created = 0
@@ -289,10 +297,12 @@ def save_dfes_avl():
                 ignored += 1
                 continue
             seen = timezone.make_aware(datetime.strptime(prop["Time"], "%Y-%m-%dT%H:%M:%S.%fZ"), pytz.timezone("UTC"))
-            if seen < earliest_seen:
+            if earliest_seen and seen < earliest_seen:
                 #already havested
                 ignored += 1
                 continue
+            elif latest_seen is None:
+                latest_seen = seen
             elif seen > latest_seen:
                 latest_seen = seen
             deviceid = str(prop["TrackerID"]).strip()
