@@ -60,7 +60,7 @@ READONLY_COLUMNS = {
 SYNC_DEVICE_COLUMNS = ["deviceid","source_device_type","callsign","registration","velocity","altitude","heading","seen","point","message"]
 READ_DEVICE_SQL = """
     SELECT {}
-""".format(",".join(SYNC_DEVICE_COLUMNS)) + """
+""".format(",".join(SYNC_DEVICE_COLUMNS)) + ",(seen <= now()) as is_valid" + """
     FROM tracking_device 
     ORDER BY seen,deviceid
     LIMIT {0}
@@ -68,7 +68,7 @@ READ_DEVICE_SQL = """
 
 READ_DEVICE_WITH_CONDITION_SQL = """
     SELECT {}
-""".format(",".join(SYNC_DEVICE_COLUMNS)) + """
+""".format(",".join(SYNC_DEVICE_COLUMNS)) + ",(seen <= now()) as is_valid" + """
     FROM tracking_device 
     WHERE seen > '{seen}' OR (seen = '{seen}' AND deviceid > '{deviceid}')
     ORDER BY seen,deviceid
@@ -78,7 +78,7 @@ READ_DEVICE_WITH_CONDITION_SQL = """
 SYNC_LOGGEDPOINT_COLUMNS = ["source_device_type","point","heading","velocity","altitude","seen","message","raw"]
 READ_LOGGEDPOINT_SQL = """
     SELECT {}
-""".format(",".join(["a.{}".format(col) for col in SYNC_LOGGEDPOINT_COLUMNS])) + ",a.id,b.deviceid"  + """
+""".format(",".join(["a.{}".format(col) for col in SYNC_LOGGEDPOINT_COLUMNS])) + ",a.id,b.deviceid,(a.seen <= now()) as is_valid"  + """
     FROM tracking_loggedpoint a join tracking_device b on a.device_id = b.id
     ORDER BY a.id
     LIMIT {0}
@@ -86,7 +86,7 @@ READ_LOGGEDPOINT_SQL = """
 
 READ_LOGGEDPOINT_WITH_CONDITION_SQL = """
     SELECT {}
-""".format(",".join(["a.{}".format(col) for col in SYNC_LOGGEDPOINT_COLUMNS])) + ",a.id,b.deviceid"  + """
+""".format(",".join(["a.{}".format(col) for col in SYNC_LOGGEDPOINT_COLUMNS])) + ",a.id,b.deviceid,(a.seen <= now()) as is_valid"  + """
     FROM tracking_loggedpoint a join tracking_device b on a.device_id = b.id
     WHERE a.id > {id}
     ORDER BY a.id
@@ -111,8 +111,8 @@ class Command(BaseCommand):
         loaded_object = {}
         insert_rows = 0
         update_rows = 0
+        invalid_rows = 0
         deviceid = None
-        end = False
         last_sync_sql = None
         try:
             while True:
@@ -124,8 +124,6 @@ class Command(BaseCommand):
                 with connections["source_database"].cursor() as cursor:
                     cursor.execute(last_sync_sql)
                     rows = cursor.fetchall()
-                if len(rows) == 0:
-                    break
                 for row in rows:
                     index = 0
                     loaded_object.clear()
@@ -138,6 +136,11 @@ class Command(BaseCommand):
                             loaded_object[column] = row[index]
                         index += 1
     
+                    is_valid = row[index]
+                    index += 1
+                    if not is_valid:
+                        invalid_rows += 1
+                        continue;
                     device ,created = Device.objects.update_or_create(deviceid=deviceid,defaults=loaded_object)
                     cond["deviceid"] = deviceid
                     cond["seen"] = loaded_object["seen"]
@@ -148,8 +151,12 @@ class Command(BaseCommand):
                     else:
                         update_rows += 1
                         #print "update device {}".format(deviceid)
-                end = len(rows) < max_reading_rows
                 #print "{} : synchronized {} rows (insert {} rows, update {} rows)".format(tablename,(insert_rows + update_rows),insert_rows,update_rows)
+                if invalid_rows:
+                    cond["invalid_rows"] = invalid_rows
+                elif "invalid_rows" in cond:
+                    del cond["invalid_rows"]
+
                 with connection.cursor() as cursor:
                     cursor.execute(UPDATE_SYNC_SQL.format(tablename,self.pid,json.dumps(cond,default=json_serial),(insert_rows + update_rows)))
 
@@ -169,6 +176,7 @@ class Command(BaseCommand):
         loaded_object = {}
         insert_rows = 0
         ignored_rows = 0
+        invalid_rows = 0
         last_sync_sql = None
         try:
             while True:
@@ -180,8 +188,6 @@ class Command(BaseCommand):
                 with connections["source_database"].cursor() as cursor:
                     cursor.execute(last_sync_sql)
                     rows = cursor.fetchall()
-                if len(rows) == 0:
-                    break
                 for row in rows:
                     index = 0
                     for column in SYNC_LOGGEDPOINT_COLUMNS:
@@ -191,6 +197,12 @@ class Command(BaseCommand):
                     rowid = row[index]
                     index += 1
                     deviceid = row[index]
+                    index += 1
+                    is_valid = row[index]
+                    index += 1
+                    if not is_valid:
+                        invalid_rows = 0
+                        continue;
                     try:
                         if deviceid not in devices:
                             devices[deviceid] = Device.objects.get(deviceid = deviceid)
@@ -207,12 +219,18 @@ class Command(BaseCommand):
                     cond["seen"]=loaded_object["seen"]
                     if created:
                         insert_rows += 1
-                    else:
-                        ignored_rows += 1
     
+                if invalid_rows:
+                    cond["invalid_rows"] = invalid_rows
+                elif "invalid_rows" in cond:
+                    del cond["invalid_rows"]
+                if ignored_rows:
+                    cond["ignored_rows"] = ignored_rows
+                elif "ignored_rows" in cond:
+                    del cond["ignored_rows"]
                 #print "{} : synchronized {} rows (insert {} rows, ignored {} rows)".format(tablename,(insert_rows + ignored_rows),insert_rows,ignored_rows)
                 with connection.cursor() as cursor:
-                    cursor.execute(UPDATE_SYNC_SQL.format(tablename,self.pid,json.dumps(cond,default=json_serial),(insert_rows + ignored_rows)))
+                    cursor.execute(UPDATE_SYNC_SQL.format(tablename,self.pid,json.dumps(cond,default=json_serial),(insert_rows)))
 
                 if len(rows) < max_reading_rows:
                     break
