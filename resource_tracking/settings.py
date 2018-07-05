@@ -42,6 +42,7 @@ JQUERYUI_SOURCE = env('JQUERYUI_SOURCE', '')
 DFES_URL = env('DFES_URL', False)
 DFES_USER = env('DFES_USER', False)
 DFES_PASS = env('DFES_PASS', False)
+DFES_OUT_OF_ORDER_BUFFER = int(env('DFES_OUT_OF_ORDER_BUFFER') or 300)
 # add scary warning on device edit page for prod
 PROD_SCARY_WARNING = env('PROD_SCARY_WARNING', False)
 

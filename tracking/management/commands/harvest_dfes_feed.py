@@ -12,8 +12,7 @@ class Command(BaseCommand):
 
         LOGGER.info('Harvesting DFES feed')
         try:
-            updated, num_records = save_dfes_avl()
-            print("Updated {} of {} scanned DFES devices".format(updated, num_records))
+            print("Harvested {} from DFES; created {}, updated {}, ingored {}; Earliest seen {}, Lastest seen {}.".format(*save_dfes_avl()))
             #LOGGER.info("Updated {} of {} scanned DFES devices".format(updated, num_records))
         except Exception as e:
             LOGGER.error(e)
