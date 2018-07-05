@@ -216,8 +216,8 @@ def save_spot(dimap, queueitem):
     try:
         sbd = {
             'ID': msg['X-SPOT-Messenger'],
-            'LT': msg['X-SPOT-Latitude'],
-            'LG': msg['X-SPOT-Longitude'],
+            'LT': float(msg['X-SPOT-Latitude']),
+            'LG': float(msg['X-SPOT-Longitude']),
             'Type': msg['X-SPOT-Type'],
             'LOCALTU': msg['X-Spot-Time'],
             'TU': timestamp,
