@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.contrib.admin import ModelAdmin, register, AdminSite
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.http import HttpResponseRedirect
 from .models import Device, LoggedPoint
 

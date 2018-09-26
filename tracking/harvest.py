@@ -77,7 +77,7 @@ class DeferredIMAP(object):
 
 
 def retrieve_emails(dimap, search):
-    textids = dimap.search(None, search)[1][0].split(' ')
+    textids = dimap.search(None, search)[1][0].decode("utf-8").split(' ')
     # If no emails just return
     if textids == ['']:
         return []
@@ -88,8 +88,10 @@ def retrieve_emails(dimap, search):
     messages = []
     for response in responses:
         if isinstance(response, tuple):
-            msgid = int(response[0].split(' ')[0])
-            msg = email.message_from_string(response[1])
+            resp_decoded_msgid = response[0].decode("utf-8")
+            resp_decoded_msg = response[1].decode("utf-8")
+            msgid = int(resp_decoded_msgid.split(' ')[0])
+            msg = email.message_from_string(resp_decoded_msg)
             messages.append((msgid, msg))
     LOGGER.info("Fetched {}/{} messages for {}.".format(len(messages), len(textids), search))
     return messages
@@ -122,7 +124,7 @@ def save_iriditrak(dimap, queueitem):
     # BEAM binary message, 10byte or 20byte
     if len(attachment) <= 20:
         try:
-            raw = struct.unpack("<BBBBBBBBBBIHHH"[:len(attachment) + 1], attachment)
+            raw = struct.unpack("<BBBBBBBBBBIHHH"[:len(attachment) + 1], bytes(attachment, encoding='latin-1'))
             # Byte 1 Equation byte, use to detect type of message
             sbd['EQ'] = raw[0]
             # BEAM 10byte and 20byte binary messages
@@ -191,7 +193,7 @@ def save_dplus(dimap, queueitem):
         sbd["DR"] = int(sbd["RAW"][7])
         sbd["AL"] = int(sbd["RAW"][9])
         sbd["TY"] = 'dplus'
-    except ValueError, e:
+    except ValueError as e:
         LOGGER.error(e)
         dimap.flag(msgid)
         return
@@ -373,7 +375,7 @@ def harvest_tracking_email(request=None):
     try:
         save_tracplus()
     except Exception as e:
-        LOGGER.error(e)
+         error(e)
 
 #    LOGGER.info('Harvesting DFES feed')
 #    try:
@@ -387,6 +389,5 @@ def harvest_tracking_email(request=None):
         return HttpResponse(html)
     else:
         return
-
 
 
