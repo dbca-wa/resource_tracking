@@ -375,7 +375,7 @@ def harvest_tracking_email(request=None):
     try:
         save_tracplus()
     except Exception as e:
-         error(e)
+        LOGGER.error(e)
 
 #    LOGGER.info('Harvesting DFES feed')
 #    try:
