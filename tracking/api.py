@@ -3,7 +3,7 @@ from django.conf import settings
 from django.conf.urls import url
 from django.core.exceptions import FieldError
 from django.utils import timezone
-import StringIO
+from io import StringIO
 from tastypie import fields
 from tastypie.cache import NoCache
 from tastypie.http import HttpBadRequest
@@ -18,7 +18,7 @@ class CSVSerializer(Serializer):
     formats = settings.TASTYPIE_DEFAULT_FORMATS + ['csv']
 
     content_types = dict(
-        Serializer.content_types.items() +
+        Serializer.content_types.items() |
         [('csv', 'text/csv')])
 
     def to_csv(self, data, options=None):
@@ -65,8 +65,6 @@ def generate_meta(klass, overrides={}):
 
 
 class APIResource(ModelResource):
-    class Meta:
-        pass
 
     def prepend_urls(self):
         return [

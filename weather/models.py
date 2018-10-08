@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
+from __future__ import absolute_import, unicode_literals, division
 from decimal import Decimal
 from datetime import timedelta, time, datetime
 from django.conf import settings
@@ -44,7 +44,7 @@ class WeatherStation(models.Model):
         ('vaisala', 'Vaisala'),
     )
     name = models.CharField(max_length=100)
-    location = models.ForeignKey(Location, null=True, blank=True)
+    location = models.ForeignKey(Location, null=True, blank=True, on_delete=models.PROTECT)
     abbreviation = models.CharField(max_length=20, unique=True, help_text='Internal abbreviation code')
     bom_abbreviation = models.CharField(
         max_length=4, unique=True, verbose_name='BoM abbreviation',
@@ -287,7 +287,7 @@ class WeatherObservation(models.Model):
         Rainfall in millimetres
             - total (R)
     """
-    station = models.ForeignKey(WeatherStation, related_name='readings')
+    station = models.ForeignKey(WeatherStation, related_name='readings', on_delete=models.PROTECT)
     date = models.DateTimeField(default=timezone.now)
     raw_data = models.TextField()
 
@@ -441,6 +441,10 @@ class WeatherObservation(models.Model):
             temp / (temp + (lapse_rate * height)),
             (g0 * M) / (R * lapse_rate)) / 100)
 
+    def __str__(self):
+        return self.station.bom_abbreviation
+        
+
     def get_dafwa_obs(self):
         """Return a list of observation information that is compatible with
         being transmitted to DAFWA (typically as a CSV).
@@ -448,9 +452,9 @@ class WeatherObservation(models.Model):
         """
         reading_date = timezone.localtime(self.date)
         return [
-            unicode(self.station.bom_abbreviation),
-            unicode(reading_date.strftime('%Y-%m-%d')),
-            unicode(reading_date.strftime('%H:%M:%S')),
+            (self.station.bom_abbreviation),
+            (reading_date.strftime('%Y-%m-%d')),
+            (reading_date.strftime('%H:%M:%S')),
             '{:.1f}'.format(float(self.temperature)),
             '{:.1f}'.format(float(self.humidity)),
             '{:.1f}'.format(float(self.wind_speed)),

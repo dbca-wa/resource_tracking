@@ -254,7 +254,7 @@ class Device(BasePoint):
 
 @python_2_unicode_compatible
 class LoggedPoint(BasePoint):
-    device = models.ForeignKey(Device, editable=False)
+    device = models.ForeignKey(Device, on_delete=models.PROTECT)
     raw = models.TextField(editable=False)
 
     def __str__(self):
@@ -263,6 +263,7 @@ class LoggedPoint(BasePoint):
     @classmethod
     def parse_sbd(cls, sbd):
         """
+        
         parses an sbd into a persisted LoggedPoint object
         handles duplicates
         """

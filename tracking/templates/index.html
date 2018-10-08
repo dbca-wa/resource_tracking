@@ -1,4 +1,3 @@
-{% load autoversion %}
 <!DOCTYPE html>
 <html>
 <head>
@@ -14,7 +13,6 @@
     <link rel="stylesheet" href="/static/sss/leaflet.awesome-markers.css" />
     <link rel="stylesheet" href="/static/sss/leaflet.label.css" />
     <link rel="stylesheet" href="/static/sss/L.SimpleGraticule.css" />
-    <link rel="stylesheet" href="/static/sss/{{"sss.css"|autoversion}}" />
     <script>
         var csw_url = "{{ settings.CSW_URL }}";
     </script>
@@ -35,8 +33,6 @@
     <script src="/static/sss/leaflet.label.js" defer></script>
     <script src="/static/sss/Ractive-decorators-sortable.js" defer></script>
     <script src="/static/sss/L.SimpleGraticule.js" defer></script>
-    <script src="/static/sss/{{"leaflet.dump.js"|autoversion}}" defer></script>
-    <script src="/static/sss/{{"sss.js"|autoversion}}" defer></script>
     <script type="text/javascript">
         var login_user = {"name":"{{user.username}}"};
     </script>

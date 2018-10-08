@@ -1,8 +1,8 @@
 from __future__ import absolute_import, unicode_literals
 from django.conf import settings
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.http import HttpResponse
-from django.shortcuts import render_to_response
+from django.shortcuts import render
 from datetime import datetime, timedelta
 from tracking.models import LoggedPoint
 import requests
@@ -14,20 +14,14 @@ from tracking.models import Device
 
 
 def index(request):
-    return render_to_response("index.html", {
+    return render(request, "index.html", {
         "settings": settings,
         "user": request.user
     })
 
 
-def print_map(request):
-    return render_to_response("print.html", {
-        "settings": settings
-    })
-
-
 def device(request, device_id):
-    return render_to_response("device.html", {
+    return render(request, "device.html", {
         "device": Device.objects.get(pk=device_id)
     })
 
