@@ -17,7 +17,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         try:
             (ip, data) = options['string'].split('::')
-            station = WeatherStation.objects.get(ip_address=ip)
+            station = WeatherStation.objects.get(ip_address=ip, active=True)
             try:
                 obs = station.save_observation(data)
             except:
@@ -27,7 +27,7 @@ class Command(BaseCommand):
             else:
                 self.stdout.write(self.style.WARNING('No observation recorded'))
         except:
-            raise CommandError('{} {} error parsing observation string: {}'.format(station, ip, data))
+            raise CommandError('Error parsing observation string: {}'.format(options['string']))
 
         if obs and settings.DAFWA_UPLOAD and station.upload_data:  # Write observation to the upload cache dir.
             try:
