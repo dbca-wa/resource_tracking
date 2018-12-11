@@ -1,4 +1,3 @@
-from __future__ import unicode_literals, absolute_import
 from datetime import timedelta
 from decimal import Decimal
 from django.utils import timezone

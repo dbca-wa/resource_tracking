@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals, division
 from decimal import Decimal
 from datetime import timedelta, time, datetime
 from django.conf import settings
@@ -443,7 +442,7 @@ class WeatherObservation(models.Model):
 
     def __str__(self):
         return self.station.bom_abbreviation
-        
+
 
     def get_dafwa_obs(self):
         """Return a list of observation information that is compatible with

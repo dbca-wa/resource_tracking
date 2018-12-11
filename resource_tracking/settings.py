@@ -61,7 +61,6 @@ INSTALLED_APPS = [
     'django_uwsgi',
     'djgeojson',
     # Sub-app definitions
-    #'resource_tracking',
     'tracking',
     'weather',
 ]
