@@ -59,12 +59,10 @@ INSTALLED_APPS = [
     'tastypie',
     'django_extensions',
     'django_uwsgi',
-    'resource_tracking',
+    'djgeojson',
     # Sub-app definitions
     'tracking',
     'weather',
-    'djgeojson',
-    'dpaw_utils'
 ]
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

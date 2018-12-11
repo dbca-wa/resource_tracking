@@ -3,11 +3,11 @@ from django.contrib import admin
 
 from resource_tracking.api import v1_api
 from tracking import urls as tracking_urls
+from tracking.admin import tracking_admin_site
 from tracking.harvest import harvest_tracking_email
 from tracking.geojsonviews import geojson_patterns
 from weather import urls as weather_urls
 
-from tracking.admin import tracking_admin_site
 
 urlpatterns = [
     path('admin/', admin.site.urls),

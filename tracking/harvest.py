@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse
@@ -278,7 +276,7 @@ def save_dfes_avl():
     latest_seen = None
     try:
         latest_seen = Device.objects.filter(source_device_type='dfes',seen__lt=timezone.now()).latest('seen').seen
-    except ObjectDoesNotExist: 
+    except ObjectDoesNotExist:
         pass
     #Can't gurantee that messages send by the vechicle will enter into the database in order,
     #so add 5 minutes to allow disordered message will not be ignored within 5 minutes
@@ -318,7 +316,7 @@ def save_dfes_avl():
             except ObjectDoesNotExist:
                 device = Device(deviceid=deviceid)
                 created += 1
-    
+
             device.callsign = prop["VehicleName"]
             device.callsign_display = prop["VehicleName"]
             device.model = prop["Model"]
@@ -333,7 +331,7 @@ def save_dfes_avl():
             device.save()
 
             LoggedPoint.objects.create(
-                device=device, 
+                device=device,
                 seen=device.seen,
                 velocity = device.velocity,
                 heading = device.heading,

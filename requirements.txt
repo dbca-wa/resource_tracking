@@ -1,4 +1,6 @@
 Django==2.0.7
+psycopg2-binary==2.7.5
+gunicorn==19.9.0
 git+git://github.com/dbca-wa/dpaw-utils@minimal
 django-tastypie==0.14.1
 django-geojson==2.10.0
@@ -7,13 +9,6 @@ dj-static==0.0.6
 slimit==0.8.1
 unicodecsv==0.14.1
 mixer==6.0.1
-psycopg2-binary==2.7.5
 django-confy==1.0.4
 django-extensions==2.1.0
-django-uwsgi==0.2.1
 requests==2.20.0
-gunicorn==19.9.0
-
-
-
-
