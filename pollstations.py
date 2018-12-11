@@ -88,7 +88,7 @@ def configure_stations():
         # separated list of IP:PORT:INTERVAL, e.g.:
         # 10.3.15.100:43000:1,10.3.26.254:43000:1,10.3.25.254:43000:1
         station_string = subprocess.check_output(
-            ['venv/bin/python', 'manage.py', 'station_metadata'], stderr=STDOUT)
+            ['python', 'manage.py', 'station_metadata'], stderr=STDOUT)
         # Instantiate the list of weather stations.
         for i in [s for s in station_string.strip().split(",")]:
             ip, port, interval = i.split(':')
@@ -174,7 +174,7 @@ def polling_loop(stations):
                             # database and to the upload_data_cache directory.
                             try:
                                 output = subprocess.check_output(
-                                    ['venv/bin/python', 'manage.py', 'write_observation', obs],
+                                    ['python', 'manage.py', 'write_observation', obs],
                                     stderr=STDOUT)
                                 station.failures = 0
                                 if LOGGER:
