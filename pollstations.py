@@ -11,10 +11,6 @@ from subprocess import PIPE, STDOUT
 
 """
 Standalone daemon meant to be run to poll weather stations in parallel.
-Example to run using uwsgi:
-
-    attach-daemon2  = exec=venv/bin/python pollstations.py
-
 Should be run from dir with venv and manage.py available.
 """
 

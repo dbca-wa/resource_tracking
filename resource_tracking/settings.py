@@ -1,33 +1,19 @@
-"""
-Django settings for resource_tracking project.
-"""
 from confy import env, database
 import os
+from pathlib import Path
 
-
+# Project paths
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+BASE_DIR = str(Path(__file__).resolve().parents[1])
 
 # Application definition
 DEBUG = env('DEBUG', False)
-SECRET_KEY = env('SECRET_KEY')
+SECRET_KEY = env('SECRET_KEY', 'PlaceholderSecretKey')
 CSRF_COOKIE_SECURE = env('CSRF_COOKIE_SECURE', False)
 SESSION_COOKIE_SECURE = env('SESSION_COOKIE_SECURE', False)
 if not DEBUG:
-    # Localhost, UAT and Production hosts:
-    ALLOWED_HOSTS = [
-        'localhost',
-        '127.0.0.1',
-        'resourcetracking.dpaw.wa.gov.au',
-        'resourcetracking.dpaw.wa.gov.au.',
-        'resourcetracking-uat.dpaw.wa.gov.au',
-        'resourcetracking-uat.dpaw.wa.gov.au.',
-        'resourcetracking.dbca.wa.gov.au',
-        'resourcetracking.dbca.wa.gov.au.',
-        'resourcetracking-uat.dbca.wa.gov.au',
-        'resourcetracking-uat.dbca.wa.gov.au.',
-    ]
-else:  # In debug, allow all hosts to serve the application.
+    ALLOWED_HOSTS = env('ALLOWED_DOMAINS', 'localhost').split(',')
+else:
     ALLOWED_HOSTS = ['*']
 INTERNAL_IPS = ['127.0.0.1', '::1']
 ROOT_URLCONF = 'resource_tracking.urls'
@@ -38,14 +24,12 @@ TRACPLUS_URL = env('TRACPLUS_URL', False)
 KMI_VEHICLE_BASE_URL = env('KMI_VEHICLE_BASE_URL', '')
 JQUERY_SOURCE = env('JQUERY_SOURCE', '')
 JQUERYUI_SOURCE = env('JQUERYUI_SOURCE', '')
-
 DFES_URL = env('DFES_URL', False)
 DFES_USER = env('DFES_USER', False)
 DFES_PASS = env('DFES_PASS', False)
 DFES_OUT_OF_ORDER_BUFFER = int(env('DFES_OUT_OF_ORDER_BUFFER') or 300)
-# add scary warning on device edit page for prod
+# Add scary warning on device edit page for prod
 PROD_SCARY_WARNING = env('PROD_SCARY_WARNING', False)
-
 DEVICE_HTTP_CACHE_TIMEOUT = env('DEVICE_HTTP_CACHE_TIMEOUT', 60)
 HISTORY_HTTP_CACHE_TIMEOUT = env('HISTORY_HTTP_CACHE_TIMEOUT', 60)
 INSTALLED_APPS = [
@@ -56,9 +40,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.gis',
+    'raven.contrib.django.raven_compat',
     'tastypie',
     'django_extensions',
-    'django_uwsgi',
     'djgeojson',
     # Sub-app definitions
     'tracking',
@@ -91,7 +75,7 @@ TEMPLATES = [
 ]
 
 # Email settings
-ADMINS = ('asi@dpaw.wa.gov.au',)
+ADMINS = ('asi@dbca.wa.gov.au',)
 EMAIL_HOST = env('EMAIL_HOST', 'email.host')
 EMAIL_PORT = env('EMAIL_PORT', 25)
 EMAIL_USER = env('EMAIL_USER', 'username')
@@ -127,87 +111,48 @@ STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 
-# Logging settings
-# Ensure that the logs directory exists:
-if not os.path.exists(os.path.join(BASE_DIR, 'logs')):
-    os.mkdir(os.path.join(BASE_DIR, 'logs'))
+# Logging settings - log to stdout/stderr
 LOGGING = {
     'version': 1,
+    'disable_existing_loggers': False,
     'formatters': {
-        'verbose': {
-            'format': '%(levelname)s %(asctime)s %(module)s %(message)s'
-        },
-        'minimal': {
-            'format': '%(asctime)s %(message)s'
-        }
+        'console': {'format': '%(asctime)s %(levelname)-8s %(message)s'},
     },
     'handlers': {
-        'file': {
+        'console': {
             'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'resourcetracking.log'),
-            'formatter': 'verbose',
-            'maxBytes': 1024 * 1024 * 5,
-            'backupCount': 5,
+            'class': 'logging.StreamHandler',
+            'formatter': 'console'
         },
-        'weather': {
-            'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'weather.log'),
-            'formatter': 'verbose',
-            'maxBytes': 1024 * 1024 * 5,
-            'backupCount': 5,
-        },
-        # This log records weather observation data that is written to the
-        # cache for upload to DAFWA (to verify correct format, etc.)
-        'dafwa': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'dafwa.log'),
-            'formatter': 'minimal',
-            'maxBytes': 1024 * 1024 * 5,
-            'backupCount': 5,
-        },
-        # This log records the timestamp for upload of each individual cached
-        # observation to the DAFWA FTP site.
-        'dafwa_uploads': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'dafwa_uploads.log'),
-            'formatter': 'minimal',
-            'maxBytes': 1024 * 1024 * 5,
-            'backupCount': 5,
-        },
-        # This log records detail about the download of tracking point device emails.
-        'tracking_points': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'tracking_points.log'),
-            'formatter': 'minimal',
-            'maxBytes': 1024 * 1024 * 5,
-            'backupCount': 5,
+		'sentry': {
+            'level': 'WARNING',
+            'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
         },
     },
     'loggers': {
-        'django.request': {
-            'handlers': ['file'],
-            'level': 'INFO'
+        'django': {
+            'handlers': ['console'],
+			'propagate': True,
         },
-        'log': {
-            'handlers': ['file'],
-            'level': 'INFO'
+        'django.request': {
+            'handlers': ['console', 'sentry'],
+            'level': 'WARNING',
+			'propagate': False,
         },
         'weather': {
-            'handlers': ['weather'],
+            'handlers': ['console'],
             'level': 'INFO'
         },
         'dafwa': {
-            'handlers': ['dafwa'],
+            'handlers': ['console'],
             'level': 'INFO'
         },
         'dafwa_uploads': {
-            'handlers': ['dafwa_uploads'],
+            'handlers': ['console'],
             'level': 'INFO'
         },
         'tracking_points': {
-            'handlers': ['tracking_points'],
+            'handlers': ['console'],
             'level': 'INFO'
         },
     }
@@ -229,3 +174,7 @@ DAFWA_UPLOAD_HOST = env('DAFWA_UPLOAD_HOST', 'host')
 DAFWA_UPLOAD_USER = env('DAFWA_UPLOAD_USER', 'username')
 DAFWA_UPLOAD_PASSWORD = env('DAFWA_UPLOAD_PASSWORD', 'password')
 DAFWA_UPLOAD_DIR = env('DAFWA_UPLOAD_DIR', '/inbound')
+
+# Sentry configuration
+if env('RAVEN_DSN', False):
+    RAVEN_CONFIG = {'dsn': env('RAVEN_DSN')}
