@@ -11,5 +11,8 @@ psycopg2-binary==2.7.5
 django-confy==1.0.4
 django-extensions==2.1.0
 django-uwsgi==0.2.1
+gunicorn==19.9.0
+requests==2.20.0
+
 
 
