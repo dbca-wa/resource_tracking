@@ -13,7 +13,7 @@ import struct
 import logging
 import requests
 from imaplib import IMAP4_SSL
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta
 
 from .models import Device, LoggedPoint
 
@@ -122,7 +122,7 @@ def save_iriditrak(dimap, queueitem):
     # BEAM binary message, 10byte or 20byte
     if len(attachment) <= 20:
         try:
-            raw = struct.unpack("<BBBBBBBBBBIHHH"[:len(attachment) + 1], bytes(attachment, encoding='latin-1'))
+            raw = struct.unpack("<BBBBBBBBBBIHHH"[:len(attachment) + 1], attachment)
             # Byte 1 Equation byte, use to detect type of message
             sbd['EQ'] = raw[0]
             # BEAM 10byte and 20byte binary messages
@@ -165,7 +165,7 @@ def save_iriditrak(dimap, queueitem):
                 dimap.flag(msgid)
                 return
         except Exception as e:
-            LOGGER.warning("error: " + force_text(e))
+            LOGGER.error(force_text(e))
             dimap.flag(msgid)
             return
     else:
@@ -229,7 +229,7 @@ def save_spot(dimap, queueitem):
         if not lat_long_isvalid(sbd['LT'], sbd['LG']):
             raise ValueError('Lon/Lat {},{} is not valid.'.format(sbd['LG'], sbd['LT']))
     except ValueError as e:
-        LOGGER.warning("Couldn't parse {}, error: {}".format(sbd, e))
+        LOGGER.error("Couldn't parse {}, error: {}".format(sbd, e))
         dimap.flag(msgid)
         return
     LoggedPoint.parse_sbd(sbd)
@@ -239,7 +239,8 @@ def save_spot(dimap, queueitem):
 def save_tracplus():
     if not settings.TRACPLUS_URL:
         return
-    latest = list(csv.DictReader(requests.get(settings.TRACPLUS_URL).content.split("\r\n")))
+    content = requests.get(settings.TRACPLUS_URL).content.decode('utf-8')
+    latest = list(csv.DictReader(content.split('\r\n')))
     updated = 0
     for row in latest:
         device = Device.objects.get_or_create(deviceid=row["Device IMEI"])[0]
@@ -275,11 +276,11 @@ def save_dfes_avl():
 
     latest_seen = None
     try:
-        latest_seen = Device.objects.filter(source_device_type='dfes',seen__lt=timezone.now()).latest('seen').seen
+        latest_seen = Device.objects.filter(source_device_type='dfes', seen__lt=timezone.now()).latest('seen').seen
     except ObjectDoesNotExist:
         pass
-    #Can't gurantee that messages send by the vechicle will enter into the database in order,
-    #so add 5 minutes to allow disordered message will not be ignored within 5 minutes
+    # Can't gurantee that messages send by the vechicle will enter into the database in order,
+    # so add 5 minutes to allow disordered message will not be ignored within 5 minutes
     earliest_seen = None
     if latest_seen:
         earliest_seen = latest_seen - timedelta(seconds=settings.DFES_OUT_OF_ORDER_BUFFER)
@@ -293,12 +294,12 @@ def save_dfes_avl():
             harvested += 1
             prop = row["properties"]
             if not prop["Time"]:
-                #time is null, should be a illegal value, ignore it
+                # Time is null, should be a illegal value, ignore it
                 ignored += 1
                 continue
             seen = timezone.make_aware(datetime.strptime(prop["Time"], "%Y-%m-%dT%H:%M:%S.%fZ"), pytz.timezone("UTC"))
             if earliest_seen and seen < earliest_seen:
-                #already havested
+                # Already harvested.
                 ignored += 1
                 continue
             elif latest_seen is None:
@@ -307,9 +308,9 @@ def save_dfes_avl():
                 latest_seen = seen
             deviceid = str(prop["TrackerID"]).strip()
             try:
-                device = Device.objects.get(deviceid = deviceid)
+                device = Device.objects.get(deviceid=deviceid)
                 if seen == device.seen:
-                    #already havested
+                    # Already harvested.
                     ignored += 1
                     continue
                 updated += 1
@@ -333,15 +334,15 @@ def save_dfes_avl():
             LoggedPoint.objects.create(
                 device=device,
                 seen=device.seen,
-                velocity = device.velocity,
-                heading = device.heading,
-                point = device.point,
-                source_device_type = device.source_device_type,
-                raw = json.dumps(row)
+                velocity=device.velocity,
+                heading=device.heading,
+                point=device.point,
+                source_device_type=device.source_device_type,
+                raw=json.dumps(row)
             )
-            #print('Device ID: {}'.format(prop["TrackerID"]))
-    LOGGER.info("Harvested {} from DFES; created {}, updated {}, ingored {}; Earliest Seen {}, Latest seen {}.".format(harvested,created,updated,ignored,earliest_seen,latest_seen))
-    return harvested,created,updated,ignored,earliest_seen,latest_seen
+    LOGGER.info("Harvested {} from DFES; created {}, updated {}, ingored {}; Earliest Seen {}, Latest seen {}.".format(
+        harvested, created, updated, ignored, earliest_seen, latest_seen))
+    return harvested, created, updated, ignored, earliest_seen, latest_seen
 
 
 def harvest_tracking_email(request=None):
@@ -375,11 +376,11 @@ def harvest_tracking_email(request=None):
     except Exception as e:
         LOGGER.error(e)
 
-#    LOGGER.info('Harvesting DFES feed')
-#    try:
-#        save_dfes_avl()
-#    except Exception as e:
-#        LOGGER.error(e)
+    #LOGGER.info('Harvesting DFES feed')
+    #try:
+    #    save_dfes_avl()
+    #except Exception as e:
+    #    LOGGER.error(e)
 
     delta = timezone.now() - start
     html = "<html><body>Tracking point email harvest run at {} for {}</body></html>".format(start, delta)
@@ -387,5 +388,3 @@ def harvest_tracking_email(request=None):
         return HttpResponse(html)
     else:
         return
-
-

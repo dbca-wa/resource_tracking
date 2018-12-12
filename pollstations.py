@@ -1,8 +1,6 @@
 #!/usr/bin/python
 from datetime import datetime
 from fcntl import fcntl, F_GETFL, F_SETFL
-import logging
-from logging import handlers
 from os import O_NONBLOCK
 import re
 import subprocess
@@ -11,10 +9,6 @@ from subprocess import PIPE, STDOUT
 
 """
 Standalone daemon meant to be run to poll weather stations in parallel.
-Example to run using uwsgi:
-
-    attach-daemon2  = exec=venv/bin/python pollstations.py
-
 Should be run from dir with venv and manage.py available.
 """
 
@@ -45,11 +39,8 @@ class Station:
         """Connect to a weather station via Telnet using subprocess in a
         non-blocking manner.
         """
-        if LOGGER:
-            LOGGER.info("Connecting to station {}:{}".format(self.ip, self.port))
-        p = subprocess.Popen(
-            ["/usr/bin/telnet", self.ip, self.port], stdin=PIPE, stdout=PIPE,
-            stderr=PIPE)
+        print("Connecting to station {}:{}".format(self.ip, self.port))
+        p = subprocess.Popen(['telnet', self.ip, self.port], stdin=PIPE, stdout=PIPE, stderr=PIPE)
         flags = fcntl(p.stdout, F_GETFL)
         fcntl(p.stdout, F_SETFL, flags | O_NONBLOCK)
         self.process = p
@@ -64,22 +55,8 @@ class Station:
             self.process.terminate()
             time.sleep(1)
             exitcode = self.process.poll()
-            if LOGGER:
-                LOGGER.info("Killed pid {} exitcode {}".format(pid, exitcode))
+            print("Killed pid {} exitcode {}".format(pid, exitcode))
             self.process = None
-
-
-def configure_logging():
-    # Ensure that the logs dir is present.
-    subprocess.call(['mkdir', '-p', 'logs'])
-    LOGGER = logging.getLogger('pollstations')
-    LOGGER.setLevel(logging.INFO)
-    fh = handlers.RotatingFileHandler(
-        'logs/pollstations.log', maxBytes=5 * 1024 * 1024, backupCount=5)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    fh.setFormatter(formatter)
-    LOGGER.addHandler(fh)
-    return LOGGER
 
 
 def configure_stations():
@@ -92,15 +69,15 @@ def configure_stations():
         # separated list of IP:PORT:INTERVAL, e.g.:
         # 10.3.15.100:43000:1,10.3.26.254:43000:1,10.3.25.254:43000:1
         station_string = subprocess.check_output(
-            ['venv/bin/python', 'manage.py', 'station_metadata'], stderr=STDOUT)
+            ['python', 'manage.py', 'station_metadata'], stderr=STDOUT)
+        station_string = station_string.decode('utf-8')
         # Instantiate the list of weather stations.
-        for i in [s for s in station_string.strip().split(",")]:
+        for i in [s for s in station_string.strip().split(',')]:
             ip, port, interval = i.split(':')
             stations.append(Station(ip, port, int(interval)))
     except subprocess.CalledProcessError as e:
         # We can't do anything without this list, so abort.
-        if LOGGER:
-            LOGGER.error(e.output)
+        print(e.output)
         return []
     return stations
 
@@ -143,13 +120,12 @@ def polling_loop(stations):
             # process, so let's do so now.
             if station.failures > 2:
                 station.last_poll = None
-                if LOGGER:
-                    LOGGER.warning('Polling {} process failed {} times, killing'.format(station.ip, station.failures))
+                print('Polling {} process failed {} times, killing'.format(station.ip, station.failures))
                 station.terminate_poll_process()
                 station.failures = 0
 
             if should_poll(station):
-                if not (station.process and station.process.poll() is None): # check for process or exit code
+                if not (station.process and station.process.poll() is None):  # Check for process or exit code
                     # If no existing process exist or process is terminated, start one now.
                     station.connect_station()
                     station.process_start = datetime.now()
@@ -162,38 +138,35 @@ def polling_loop(stations):
                     if station.last_poll and (datetime.now() - station.last_poll).seconds / 60 > station.interval + station.failures:
                         # if data late, increment failures
                         station.failures += 1
-                        LOGGER.error("No data received from {} for {} seconds".format(station.ip, (datetime.now() - station.last_poll).seconds))
+                        print("No data received from {} for {} seconds".format(station.ip, (datetime.now() - station.last_poll).seconds))
                     continue
                 # Split the lines of the response and find the observation.
-                for line in data.strip().split('\n'):
-                    line = line.strip()
-                    for pattern in station.patterns:
-                        if re.search(pattern, line):  # Found a matching pattern in the output.
-                            station.last_poll = datetime.now()
-                            # Looks like an observation string; save it.
-                            obs = '{}::{}'.format(station.ip, line).encode('string_escape')
-                            if LOGGER:
-                                LOGGER.info('Observation data: {}'.format(obs))
-                            # This mgmt command will write the observation to the
-                            # database and to the upload_data_cache directory.
-                            try:
-                                output = subprocess.check_output(
-                                    ['venv/bin/python', 'manage.py', 'write_observation', obs],
-                                    stderr=STDOUT)
-                                station.failures = 0
-                                if LOGGER:
-                                    LOGGER.info(output.strip())
-                            except subprocess.CalledProcessError as e:
-                                if LOGGER:
-                                    LOGGER.error(e.output)
+                if data:
+                    for line in data.strip().split(b'\n'):
+                        line = line.strip().decode('utf-8')
+                        for pattern in station.patterns:
+                            if re.search(pattern, line):  # Found a matching pattern in the output.
+                                station.last_poll = datetime.now()
+                                # Looks like an observation string; save it.
+                                obs = '{}::{}'.format(station.ip, line).encode('utf-8')
+                                print('Observation data: {}'.format(obs))
+                                # This mgmt command will write the observation to the
+                                # database and to the upload_data_cache directory.
+                                try:
+                                    output = subprocess.check_output(
+                                        ['python', 'manage.py', 'write_observation', obs],
+                                        stderr=STDOUT)
+                                    station.failures = 0
+                                    print(output.strip())
+                                except subprocess.CalledProcessError as e:
+                                    print(e.output)
 
-                            # Terminate the process if interval >1 minute, it's finished with.
-                            if station.process and station.interval > 1:
-                                if LOGGER:
+                                # Terminate the process if interval >1 minute, it's finished with.
+                                if station.process and station.interval > 1:
                                     age = (datetime.now() - station.process_start).seconds
-                                    LOGGER.info('Polling {} process PID {} ended at {} seconds old'.format(
+                                    print('Polling {} process PID {} ended at {} seconds old'.format(
                                         station.ip, station.process.pid, age))
-                                station.terminate_poll_process()
+                                    station.terminate_poll_process()
 
         # Every ten polling loops, review the list of active weather stations.
         # Compare against the current list of polled stations, and add/remove
@@ -207,23 +180,20 @@ def polling_loop(stations):
                 # If a Station with this IP is not being polled, append it.
                 if station.ip not in [s.ip for s in stations]:
                     stations.append(station)
-                    if LOGGER:
-                        LOGGER.info('{} was added to the station pool'.format(station.ip))
+                    print('{} was added to the station pool'.format(station.ip))
                 else:  # Station is currently being polled.
                     cur_station = next(s for s in stations if s.ip == station.ip)
                     # Check/update the station polling interval.
                     if cur_station.interval != station.interval:
                         cur_station.interval = station.interval
                         cur_station.last_poll = None  # Reset.
-                        if LOGGER:
-                            LOGGER.info('{} polling interval was updated'.format(cur_station.ip))
+                        print('{} polling interval was updated'.format(cur_station.ip))
             # If the currently-polled stations include any that aren't active,
             # remove those from the list.
             for cur_station in list(stations):
                 if cur_station.ip not in [s.ip for s in stations_update]:
                     stations.remove(cur_station)
-                    if LOGGER:
-                        LOGGER.info('{} was removed from the station pool'.format(cur_station.ip))
+                    print('{} was removed from the station pool'.format(cur_station.ip))
 
             # Reset the loop counter.
             loop_count = 0
@@ -232,6 +202,5 @@ def polling_loop(stations):
 
 
 if __name__ == "__main__":
-    LOGGER = configure_logging()
     stations = configure_stations()
     polling_loop(stations)
