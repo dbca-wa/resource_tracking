@@ -287,7 +287,7 @@ class WeatherObservation(models.Model):
             - total (R)
     """
     station = models.ForeignKey(WeatherStation, related_name='readings', on_delete=models.PROTECT)
-    date = models.DateTimeField(default=timezone.now)
+    date = models.DateTimeField(default=timezone.now, db_index=True)
     raw_data = models.TextField()
 
     temperature_min = models.DecimalField(
