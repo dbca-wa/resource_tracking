@@ -3,8 +3,8 @@
 <head>
     <title>DBCA Weather Stations</title>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="//static.dbca.wa.gov.au/static/libs/leaflet/1.2.0/leaflet.css" />
-    <script src="//static.dbca.wa.gov.au/static/libs/leaflet/1.2.0/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.4/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.4/leaflet.js"></script>
 
     <style>
         body {
@@ -42,7 +42,7 @@
         var stations = {};
         var group = new L.featureGroup();
         {% for station in stations %}
-        stations["{{ station.abbreviation }}"] = L.marker([{{ station.location.point.get_y }}, {{ station.location.point.get_x }}]).addTo(group);
+        stations["{{ station.abbreviation }}"] = L.marker([{{ station.location.point.y }}, {{ station.location.point.x }}]).addTo(group);
         stations["{{ station.abbreviation }}"].bindPopup('{{ station }} (updated {{ station.last_reading_local }}) - <a href="{% url 'weather_station' station_id=station.pk %}">View Data</a>');
         {% endfor %}
         group.addTo(map)
