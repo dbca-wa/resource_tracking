@@ -26,7 +26,7 @@ def observations_health(request):
             'ip_address': i.ip_address,
             'port': i.port,
             'interval_minutes': i.connect_every,
-            'last_reading': i.last_reading,
+            'last_reading': i.last_reading_local(),
             'observations_expected_hr': exp_obs,
             'observations_actual_hr': 0,
             'observations_health': 'healthy'
