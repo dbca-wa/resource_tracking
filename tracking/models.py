@@ -120,6 +120,7 @@ SOURCE_DEVICE_TYPE_CHOICES = (
     ("dplus", "DPlus"),
     ("spot", "Spot"),
     ("dfes", "DFES"),
+    ("mp70", "MP70"),
     ("other", "Other")
 )
 
