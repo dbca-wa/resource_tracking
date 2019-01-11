@@ -1,4 +1,3 @@
-from __future__ import absolute_import, unicode_literals
 from django.contrib.gis.geos import Point
 from django.test import TestCase
 from mixer.backend.django import mixer
@@ -59,10 +58,10 @@ class WeatherObservationTestCase(WeatherTestCase):
             self.assertTrue(isinstance(dafwa_obs, list))
             # Each element in the list should be a string.
             for i in dafwa_obs:
-                self.assertTrue(isinstance(i, unicode))
+                self.assertTrue(isinstance(i, str))
         for k, data in enumerate(VAISALA_DATA):
             obs = self.vaisala.save_observation(data)
             dafwa_obs = obs.get_dafwa_obs()
             self.assertTrue(isinstance(dafwa_obs, list))
             for i in dafwa_obs:
-                self.assertTrue(isinstance(i, unicode))
+                self.assertTrue(isinstance(i, str))

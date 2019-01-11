@@ -5,7 +5,6 @@ from weather.models import WeatherStation, Location
 
 @register(Location)
 class LocationAdmin(GeoModelAdmin):
-    openlayers_url = '//static.dpaw.wa.gov.au/static/libs/openlayers/2.13.1/OpenLayers.js'
     list_display = ('pk', 'title', 'point', 'height')
 
 

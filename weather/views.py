@@ -1,19 +1,18 @@
-from __future__ import absolute_import, unicode_literals
 from datetime import datetime, timedelta
 from django.http import JsonResponse
-from django.shortcuts import render_to_response
+from django.shortcuts import render
 from weather.models import WeatherStation, WeatherObservation
 import pytz
 
 
 def index(request):
-    return render_to_response('weather/index.html', {
+    return render(request, 'weather/index.html', {
         'stations': WeatherStation.objects.filter(active=True)
     })
 
 
 def weatherstation(request, station_id):
-    return render_to_response('weather/station.html', {
+    return render(request, 'weather/station.html', {
         'station': WeatherStation.objects.get(pk=station_id)
     })
 
@@ -27,7 +26,7 @@ def observations_health(request):
             'ip_address': i.ip_address,
             'port': i.port,
             'interval_minutes': i.connect_every,
-            'last_reading': i.last_reading,
+            'last_reading': i.last_reading_local(),
             'observations_expected_hr': exp_obs,
             'observations_actual_hr': 0,
             'observations_health': 'healthy'
