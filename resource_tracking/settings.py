@@ -1,4 +1,5 @@
-from confy import env, database
+from dbca_utils.utils import env
+import dj_database_url
 import os
 from pathlib import Path
 
@@ -50,13 +51,14 @@ INSTALLED_APPS = [
 ]
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'dpaw_utils.middleware.SSOLoginMiddleware',
+    'dbca_utils.middleware.SSOLoginMiddleware',
 ]
 TEMPLATES = [
     {
@@ -90,7 +92,7 @@ SERIALIZATION_MODULES = {
 # Database
 DATABASES = {
     # Defined in the DATABASE_URL env variable.
-    'default': database.config(),
+    'default': dj_database_url.config(),
 }
 
 # Project authentication settings
@@ -124,7 +126,7 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'console'
         },
-		'sentry': {
+        'sentry': {
             'level': 'WARNING',
             'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
         },
@@ -132,12 +134,12 @@ LOGGING = {
     'loggers': {
         'django': {
             'handlers': ['console'],
-			'propagate': True,
+            'propagate': True,
         },
         'django.request': {
             'handlers': ['console', 'sentry'],
             'level': 'WARNING',
-			'propagate': False,
+            'propagate': False,
         },
         'weather': {
             'handlers': ['console'],
