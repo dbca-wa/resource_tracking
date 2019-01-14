@@ -414,11 +414,7 @@ def harvest_tracking_email(request=None):
     except Exception as e:
         LOGGER.error(e)
 
-    #LOGGER.info('Harvesting DFES feed')
-    #try:
-    #    save_dfes_avl()
-    #except Exception as e:
-    #    LOGGER.error(e)
+    #DFES feed handled by separate management command
 
     delta = timezone.now() - start
     html = "<html><body>Tracking point email harvest run at {} for {}</body></html>".format(start, delta)
