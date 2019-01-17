@@ -360,7 +360,7 @@ def save_mp70(dimap, queueitem):
         sbd["LG"] = float(sbd["RAW"][3])
         if not lat_long_isvalid(sbd['LT'], sbd['LG']):
             raise ValueError('Lon/Lat {},{} is not valid.'.format(sbd['LG'], sbd['LT']))
-        sbd["TU"] = time.mktime(datetime.strptime(sbd["RAW"][6], "%d/%m/%Y %H:%M:%S").timetuple())
+        sbd["TU"] = time.mktime(datetime.strptime(sbd["RAW"][6], "%m/%d/%Y %H:%M:%S").timetuple())
         sbd["VL"] = int(sbd["RAW"][4])
         sbd["DR"] = int(sbd["RAW"][5])
         sbd["TY"] = 'mp70'
