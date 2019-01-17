@@ -363,7 +363,7 @@ def save_mp70(dimap, queueitem):
         sbd["TU"] = time.mktime(datetime.strptime(sbd["RAW"][6], "%m/%d/%Y %H:%M:%S").timetuple())
         sbd["VL"] = int(sbd["RAW"][4])
         sbd["DR"] = int(sbd["RAW"][5])
-        sbd["TY"] = 'mp70'
+        sbd["TY"] = 'other'
     except ValueError as e:
         LOGGER.error(e)
         dimap.flag(msgid)
