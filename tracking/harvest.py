@@ -324,7 +324,7 @@ def save_dfes_avl():
             device.registration = 'DFES - ' + prop["Registration"][:32]
             if device.registration.strip() == 'DFES -':
                 device.registration = 'DFES - No Rego'
-            device.velocity = int(prop["Speed"])
+            device.velocity = int(prop["Speed"]) * 1000
             device.heading = prop["Direction"]
             device.seen = seen
             device.point = "POINT ({} {})".format(row['geometry']['coordinates'][0], row['geometry']['coordinates'][1])
@@ -343,6 +343,38 @@ def save_dfes_avl():
     LOGGER.info("Harvested {} from DFES; created {}, updated {}, ingored {}; Earliest Seen {}, Latest seen {}.".format(
         harvested, created, updated, ignored, earliest_seen, latest_seen))
     return harvested, created, updated, ignored, earliest_seen, latest_seen
+
+
+def save_mp70(dimap, queueitem):
+    '''
+    mp70/rv50 device type using comma separated output
+    Sample email content and associated fields:
+        Device_ID, Battery_Voltage, Latitude, Longitude, Speed_km/h, Heading, Time_UTC
+        N681260193011034,12.09,-031.99275,+115.88458,0,0,01/11/2019 06:57:40
+    '''
+    msgid, msg = queueitem
+    sbd = {"RAW": msg.get_payload().strip().split(",")}
+    try:
+        sbd["ID"] = sbd["RAW"][0]
+        sbd["LT"] = float(sbd["RAW"][2])
+        sbd["LG"] = float(sbd["RAW"][3])
+        if not lat_long_isvalid(sbd['LT'], sbd['LG']):
+            raise ValueError('Lon/Lat {},{} is not valid.'.format(sbd['LG'], sbd['LT']))
+        sbd["TU"] = time.mktime(datetime.strptime(sbd["RAW"][6], "%m/%d/%Y %H:%M:%S").timetuple())
+        sbd["VL"] = int(sbd["RAW"][4])
+        sbd["DR"] = int(sbd["RAW"][5])
+        sbd["TY"] = 'other'
+    except ValueError as e:
+        LOGGER.error(e)
+        dimap.flag(msgid)
+        return
+    try:
+        LoggedPoint.parse_sbd(sbd)
+    except Exception as e:
+        LOGGER.error(e)
+        dimap.flag(msgid)
+        return
+    dimap.delete(msgid)
 
 
 def harvest_tracking_email(request=None):
@@ -370,17 +402,19 @@ def harvest_tracking_email(request=None):
         save_spot(dimap, message)
     dimap.flush()
 
+    LOGGER.info('Harvesting MP70 emails')
+    emails = retrieve_emails(dimap, '(FROM "sierrawireless_v1@dbca.wa.gov.au" UNFLAGGED)')
+    for message in emails:
+        save_mp70(dimap, message)
+    dimap.flush()
+
     LOGGER.info('Harvesting TracPlus emails')
     try:
         save_tracplus()
     except Exception as e:
         LOGGER.error(e)
 
-    #LOGGER.info('Harvesting DFES feed')
-    #try:
-    #    save_dfes_avl()
-    #except Exception as e:
-    #    LOGGER.error(e)
+    #DFES feed handled by separate management command
 
     delta = timezone.now() - start
     html = "<html><body>Tracking point email harvest run at {} for {}</body></html>".format(start, delta)

@@ -36,6 +36,7 @@ DISTRICT_PILBARA_REGION = 'PIL'
 DISTRICT_EXMOUTH = 'EXM'
 DISTRICT_GOLDFIELDS_REGION = 'GLD'
 DISTRICT_GERALDTON = 'GER'
+DISTRICT_KALBARRI = 'KLB'
 DISTRICT_MOORA = 'MOR'
 DISTRICT_SHARK_BAY = 'SHB'
 DISTRICT_MIDWEST_REGION = 'MWR'
@@ -66,6 +67,7 @@ DISTRICT_CHOICES = (
     (DISTRICT_GOLDFIELDS_REGION, "Goldfields Region"),
     (DISTRICT_MIDWEST_REGION, "Midwest Region"),
     (DISTRICT_GERALDTON, "Geraldton"),
+    (DISTRICT_KALBARRI, "Kalbarri"),
     (DISTRICT_MOORA, "Moora"),
     (DISTRICT_SHARK_BAY, "Shark Bay"),
     (DISTRICT_WHEATBELT_REGION, "Wheatbelt Region"),
@@ -120,6 +122,7 @@ SOURCE_DEVICE_TYPE_CHOICES = (
     ("dplus", "DPlus"),
     ("spot", "Spot"),
     ("dfes", "DFES"),
+    ("mp70", "MP70"),
     ("other", "Other")
 )
 
