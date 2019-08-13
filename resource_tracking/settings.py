@@ -41,7 +41,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.gis',
-    'raven.contrib.django.raven_compat',
     'tastypie',
     'django_extensions',
     'djgeojson',
@@ -51,7 +50,6 @@ INSTALLED_APPS = [
 ]
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -126,10 +124,6 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'console'
         },
-        'sentry': {
-            'level': 'WARNING',
-            'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
-        },
     },
     'loggers': {
         'django': {
@@ -137,7 +131,7 @@ LOGGING = {
             'propagate': True,
         },
         'django.request': {
-            'handlers': ['console', 'sentry'],
+            'handlers': ['console'],
             'level': 'WARNING',
             'propagate': False,
         },
@@ -178,5 +172,5 @@ DAFWA_UPLOAD_PASSWORD = env('DAFWA_UPLOAD_PASSWORD', 'password')
 DAFWA_UPLOAD_DIR = env('DAFWA_UPLOAD_DIR', '/inbound')
 
 # Sentry configuration
-if env('RAVEN_DSN', False):
-    RAVEN_CONFIG = {'dsn': env('RAVEN_DSN')}
+if env('SENTRY_DSN', False):
+    SENTRY_CONFIG = {'dsn': env('SENTRY_DSN')}
