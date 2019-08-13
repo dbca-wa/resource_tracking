@@ -3,11 +3,11 @@ from django.conf import settings
 from django.conf.urls import url
 from django.core.exceptions import FieldError
 from django.utils import timezone
-from io import StringIO
+from io import BytesIO
 from tastypie import fields
 from tastypie.cache import NoCache
 from tastypie.http import HttpBadRequest
-from tastypie.resources import ModelResource, ALL, ALL_WITH_RELATIONS
+from tastypie.resources import ModelResource, ALL_WITH_RELATIONS
 from tastypie.serializers import Serializer
 import unicodecsv as csv
 
@@ -24,11 +24,10 @@ class CSVSerializer(Serializer):
     def to_csv(self, data, options=None):
         options = options or {}
         data = self.to_simple(data, options)
-        raw_data = StringIO.StringIO()
-        if data['objects']:
+        raw_data = BytesIO()
+        if 'objects' in data and data['objects']:
             fields = data['objects'][0].keys()
-            writer = csv.DictWriter(
-                raw_data, fields, dialect='excel', extrasaction='ignore')
+            writer = csv.DictWriter(raw_data, fields, dialect='excel', extrasaction='ignore')
             header = dict(zip(fields, fields))
             writer.writerow(header)
             for item in data['objects']:
@@ -37,7 +36,7 @@ class CSVSerializer(Serializer):
         return raw_data.getvalue()
 
     def from_csv(self, content):
-        raw_data = StringIO.StringIO(content)
+        raw_data = BytesIO(content)
         data = []
         for item in csv.DictReader(raw_data):
             data.append(item)
