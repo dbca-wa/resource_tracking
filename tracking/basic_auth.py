@@ -1,11 +1,9 @@
 import base64
-
 from django.http import HttpResponse
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate
 
-#############################################################################
-#
-def view_or_basicauth(view, request, test_func, realm = "", *args, **kwargs):
+
+def view_or_basicauth(view, request, test_func, realm="", *args, **kwargs):
     """
     This is a helper function used by both 'logged_in_or_basicauth' and
     'has_perm_or_basicauth' that does the nitty of determining if they
@@ -29,7 +27,6 @@ def view_or_basicauth(view, request, test_func, realm = "", *args, **kwargs):
                 user = authenticate(username=uname, password=passwd)
                 if user is not None:
                     if user.is_active:
-                        #login(request, user)
                         request.user = user
                         if test_func(request.user):
                             return view(request, *args, **kwargs)
@@ -42,10 +39,9 @@ def view_or_basicauth(view, request, test_func, realm = "", *args, **kwargs):
     response.status_code = 401
     response['WWW-Authenticate'] = 'Basic realm="%s"' % realm
     return response
-    
-#############################################################################
-#
-def logged_in_or_basicauth(realm = ""):
+
+
+def logged_in_or_basicauth(realm=""):
     """
     A simple decorator that requires a user to be logged in. If they are not
     logged in the request is examined for a 'authorization' header.
@@ -82,9 +78,8 @@ def logged_in_or_basicauth(realm = ""):
         return wrapper
     return view_decorator
 
-#############################################################################
-#
-def has_perm_or_basicauth(perm, realm = ""):
+
+def has_perm_or_basicauth(perm, realm=""):
     """
     This is similar to the above decorator 'logged_in_or_basicauth'
     except that it requires the logged in user to have a specific
@@ -104,4 +99,3 @@ def has_perm_or_basicauth(perm, realm = ""):
                                      realm, *args, **kwargs)
         return wrapper
     return view_decorator
-

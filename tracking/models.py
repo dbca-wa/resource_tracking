@@ -126,6 +126,7 @@ SOURCE_DEVICE_TYPE_CHOICES = (
     ("other", "Other")
 )
 
+
 class BasePoint(models.Model):
     point = models.PointField(null=True, editable=False)
     heading = models.PositiveIntegerField(default=0, help_text="Heading in degrees", editable=False)
@@ -308,6 +309,7 @@ class LoggedPoint(BasePoint):
 def user_pre_save(sender, instance, **kwargs):
     # Set is_staff to True so users can edit Device details
     instance.is_staff = True
+
 
 @receiver(post_save, sender=User)
 def user_post_save(sender, instance, **kwargs):

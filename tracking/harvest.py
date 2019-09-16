@@ -15,7 +15,7 @@ import requests
 from imaplib import IMAP4_SSL
 from datetime import datetime, timedelta
 
-from .models import Device, LoggedPoint
+from tracking.models import Device, LoggedPoint
 
 LOGGER = logging.getLogger('tracking_points')
 BATCH_SIZE = 600
@@ -414,7 +414,7 @@ def harvest_tracking_email(request=None):
     except Exception as e:
         LOGGER.error(e)
 
-    #DFES feed handled by separate management command
+    # DFES feed handled by separate management command
 
     delta = timezone.now() - start
     html = "<html><body>Tracking point email harvest run at {} for {}</body></html>".format(start, delta)

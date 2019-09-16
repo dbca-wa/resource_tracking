@@ -9,14 +9,14 @@ from .models import Device, LoggedPoint
 class DeviceAdmin(ModelAdmin):
     actions = None
     date_hierarchy = "seen"
-    list_display = ("deviceid", "registration", "callsign_display",  "rin_display", "symbol", "district_display", "seen")
+    list_display = ("deviceid", "registration", "callsign_display", "rin_display", "symbol", "district_display", "seen")
     list_filter = ("symbol", "district")
     search_fields = ("deviceid", "registration", "callsign_display", "rin_display", "symbol", "district_display")
     readonly_fields = ("deviceid",)
     fieldsets = (
         ("Vehicle/Device details", {
-            "description": """<p class="errornote">This is the live tracking database; 
-            changes made to these fields will apply to the Device Tracking map in all 
+            "description": """<p class="errornote">This is the live tracking database;
+            changes made to these fields will apply to the Device Tracking map in all
             variants of the Spatial Support System.</p>
             """ if settings.PROD_SCARY_WARNING else "",
             "fields": ("deviceid", "district", ("symbol", "callsign", "rin_number"), "registration")
@@ -28,7 +28,7 @@ class DeviceAdmin(ModelAdmin):
             "fields": ("contractor_details",)
         }),
         ("Other Details", {
-            "fields": ("other_details","internal_only")
+            "fields": ("other_details", "internal_only")
         })
     )
 
@@ -49,6 +49,7 @@ class DeviceAdmin(ModelAdmin):
             settings.JQUERY_SOURCE,
             settings.JQUERYUI_SOURCE,
         )
+
 
 class DeviceSSSAdmin(DeviceAdmin):
 
@@ -76,4 +77,3 @@ class TrackingAdminSite(AdminSite):
 
 tracking_admin_site = TrackingAdminSite(name='sss_admin')
 tracking_admin_site.register(Device, DeviceSSSAdmin)
-
