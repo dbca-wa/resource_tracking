@@ -44,12 +44,6 @@ class DeviceAdmin(ModelAdmin):
         else:
             return super(DeviceAdmin, self).has_change_permission(request, obj=obj)
 
-    class Media:
-        js = (
-            settings.JQUERY_SOURCE,
-            settings.JQUERYUI_SOURCE,
-        )
-
 
 class DeviceSSSAdmin(DeviceAdmin):
 
