@@ -85,13 +85,11 @@ SYMBOL_CHOICES = (
     ("heavy duty", "Heavy Duty"),
     ("gang truck", "Gang Truck"),
     ("snorkel", "Snorkel"),
-    (None, ""),
     ("dozer", "Dozer"),
     ("grader", "Grader"),
     ("loader", "Loader"),
     ("tender", "Tender"),
     ("float", "Float"),
-    (None, ""),
     ("fixed wing aircraft", "Waterbomber"),
     ("rotary aircraft", "Rotary"),
     ("spotter aircraft", "Spotter"),
@@ -102,7 +100,8 @@ SYMBOL_CHOICES = (
     ("comms bus", "Communications Bus"),
     ("boat", "Boat"),
     ("person", "Person"),
-    ("other", "Other")
+    ("other", "Other"),
+    ("unknown", "Unknown")
 )
 
 RAW_EQ_CHOICES = (
