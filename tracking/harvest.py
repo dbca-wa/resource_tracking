@@ -357,8 +357,10 @@ def save_dfes_avl():
                 source_device_type=device.source_device_type,
                 raw=json.dumps(row)
             )
-            LOGGER.info("Harvested {} from DFES: created {}, updated {}, ignored {}, earliest seen {}, latest seen {}.".format(
-                harvested, created, updated, ignored, earliest_seen, latest_seen))
+
+        LOGGER.info("Harvested {} from DFES: created {}, updated {}, ignored {}, earliest seen {}, latest seen {}.".format(
+            harvested, created, updated, ignored, earliest_seen, latest_seen))
+
     return harvested, created, updated, ignored, earliest_seen, latest_seen
 
 
