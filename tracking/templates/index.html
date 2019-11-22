@@ -1,54 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Department of Parks and Wildlife</title>
+    <title>Department of Biodiversity, Conservation and Attractions</title>
     <meta charset="utf-8" />
-    {% comment %}
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="//cdn.jsdelivr.net/pure/0.5.0/pure-min.css" />
-    <link rel="stylesheet" href="//api.tiles.mapbox.com/mapbox.js/v2.1.4/mapbox.css" />
-    <link rel="stylesheet" href="//cdn.jsdelivr.net/fontawesome/4.2.0/css/font-awesome.min.css" />
-    <link rel="stylesheet" href="/static/sss/leaflet-sidebar.css" />
-    <link rel="stylesheet" href="/static/sss/leaflet-coordinates.css" />
-    <link rel="stylesheet" href="/static/sss/leaflet.awesome-markers.css" />
-    <link rel="stylesheet" href="/static/sss/leaflet.label.css" />
-    <link rel="stylesheet" href="/static/sss/L.SimpleGraticule.css" />
-    <script>
-        var csw_url = "{{ settings.CSW_URL }}";
-    </script>
-    <script src="//maps.googleapis.com/maps/api/js?libraries=places&sensor=false"></script>
-    <script src="//cdn.jsdelivr.net/localforage/1.2.0/localforage.min.js" ></script>
-    <script src="//cdn.jsdelivr.net/underscorejs/1.7.0/underscore-min.js" ></script>
-    <script src="//cdn.jsdelivr.net/ractive/0.6.0/ractive.min.js" defer></script>
-    <script src="//cdn.jsdelivr.net/jquery/2.1.1/jquery.min.js" ></script>
-    <script src="//cdn.jsdelivr.net/jquery.geocomplete/1.6.4/jquery.geocomplete.min.js" defer></script>
-    <script src="//cdn.jsdelivr.net/lunr/0.5.3/lunr.min.js" defer></script>
-    <script src="//api.tiles.mapbox.com/mapbox.js/v2.1.4/mapbox.js" defer></script>
-    <script src='//api.tiles.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.2.0/leaflet-omnivore.min.js' defer></script>
-    <script src='//api.tiles.mapbox.com/mapbox.js/plugins/leaflet-hash/v0.2.1/leaflet-hash.js' defer></script>
-    <script src="/static/sss/leaflet-sidebar.js" defer></script>
-    <script src="/static/sss/leaflet-betterwms.js" defer></script>
-    <script src="/static/sss/leaflet-coordinates.js" defer></script>
-    <script src="/static/sss/leaflet.awesome-markers.js" defer></script>
-    <script src="/static/sss/leaflet.label.js" defer></script>
-    <script src="/static/sss/Ractive-decorators-sortable.js" defer></script>
-    <script src="/static/sss/L.SimpleGraticule.js" defer></script>
-    <script type="text/javascript">
-        var login_user = {"name":"{{user.username}}"};
-    </script>
-    {% endcomment %}
 </head>
     <body>
-        {% comment %}
-        <div id="sidebar" class="sidebar"></div>
-        <div id="map"></div>
-        <div id="layer-preview"></div>
-        <script id='template' type='text/ractive'>{% include 'sidebar.html' %}</script>
-        <form id="print-form" enctype="multipart/form-data" action="{{settings.PRINTING_URL}}/sss/png" target="_blank" method="post">
-            <input id="print-metadata" type="hidden" name="metadata" value=""/>
-        </form>
-        {% endcomment %}
-        <h1>Department of Parks and Wildlife</h1>
+        <h1>Department of Biodiversity, Conservation and Attractions</h1>
         <p>For access to the Parks and Wildlife Spatial Support System, please visit <b><a href="https://sss.dpaw.wa.gov.au/">https://sss.dpaw.wa.gov.au/</a></b>.</p>
     </body>
 </html>

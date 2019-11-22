@@ -19,12 +19,8 @@ else:
 INTERNAL_IPS = ['127.0.0.1', '::1']
 ROOT_URLCONF = 'resource_tracking.urls'
 WSGI_APPLICATION = 'resource_tracking.wsgi.application'
-CSW_URL = env('CSW_URL', '')
-PRINTING_URL = env('PRINTING_URL', '')
 TRACPLUS_URL = env('TRACPLUS_URL', False)
 KMI_VEHICLE_BASE_URL = env('KMI_VEHICLE_BASE_URL', '')
-JQUERY_SOURCE = env('JQUERY_SOURCE', '')
-JQUERYUI_SOURCE = env('JQUERYUI_SOURCE', '')
 DFES_URL = env('DFES_URL', False)
 DFES_USER = env('DFES_USER', False)
 DFES_PASS = env('DFES_PASS', False)

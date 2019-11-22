@@ -15,7 +15,7 @@ import requests
 from imaplib import IMAP4_SSL
 from datetime import datetime, timedelta
 
-from .models import Device, LoggedPoint
+from tracking.models import Device, LoggedPoint
 
 LOGGER = logging.getLogger('tracking_points')
 BATCH_SIZE = 600
@@ -270,9 +270,9 @@ def save_tracplus():
 
 
 def save_dfes_avl():
-    LOGGER.info('Begin to harvest the data from dfes, out of order buffer is {} seconds'.format(settings.DFES_OUT_OF_ORDER_BUFFER))
+    LOGGER.info('Harvest DFES API started, out of order buffer is {} seconds'.format(settings.DFES_OUT_OF_ORDER_BUFFER))
     latest = requests.get(url=settings.DFES_URL, auth=requests.auth.HTTPBasicAuth(settings.DFES_USER, settings.DFES_PASS)).json()['features']
-    LOGGER.info('End to harvest the data from dfes')
+    LOGGER.info('Harvest DFES API complete')
 
     latest_seen = None
     try:
@@ -323,25 +323,22 @@ def save_dfes_avl():
             device.model = prop["Model"]
             device.registration = 'DFES - ' + prop["Registration"][:32]
             device.symbol = (prop["VehicleType"]).strip()
-            #print("SYMBOL", device.symbol)
             if device.symbol in ['2.4 BROADACRE', '2.4 RURAL', '3.4', '4.4', '1.4 RURAL', '2.4 URBAN', '3.4 RURAL', '3.4 SSSBFT', '3.4 URBAN', '4.4 BROADACRE', '4.4 RURAL']:
                 device.symbol = 'gang truck'
-             #   print("GANG",  device.symbol)
             elif device.symbol == 'LIGHT TANKER':
                 device.symbol = 'light unit'
-              #  print("LIGHT  ", device.symbol)
             elif device.symbol in ['BUS 10 SEATER', 'BUS 21 SEATER', 'BUS 22 SEATER', 'INCIDENT CONTROL VEHICLE', 'MINI BUS 12 SEATER']:
-                  device.symbol = 'comms bus'
+                device.symbol = 'comms bus'
             elif device.symbol in ['GENERAL RESCUE TRUCK', 'HAZMAT STRUCTURAL RESCUE', 'RESCUE VEHICLE', 'ROAD CRASH RESCUE TRUCK', 'SPECIALIST EQUIPMENT TENDER', 'TRUCK']:
-                  device.symbol = 'tender'
+                device.symbol = 'tender'
             elif device.symbol in ['Crew Cab Utility w canopy', 'FIRST RESPONSE UNIT', 'FIRST RESPONSE VEHICLE', 'UTILITY', 'Utility']:
-                  device.symbol = '4 wheel drive ute'
+                device.symbol = '4 wheel drive ute'
             elif device.symbol in ['CAR (4WD)', 'PERSONNEL CARRIER', 'PERSONNEL CARRIER 11 SEATER', 'PERSONNEL CARRIER 5 SEATER', 'PERSONNEL CARRIER 6 SEATER']:
-                  device.symbol = '4 wheel drive passenger'
+                device.symbol = '4 wheel drive passenger'
             elif device.symbol == 'CAR':
-                  device.symbol = '2 wheel drive'
+                device.symbol = '2 wheel drive'
             else:
-                  device.symbol = 'unknown'
+                device.symbol = 'unknown'
             if device.registration.strip() == 'DFES -':
                 device.registration = 'DFES - No Rego'
             device.velocity = int(prop["Speed"]) * 1000
@@ -349,7 +346,6 @@ def save_dfes_avl():
             device.seen = seen
             device.point = "POINT ({} {})".format(row['geometry']['coordinates'][0], row['geometry']['coordinates'][1])
             device.source_device_type = 'dfes'
-	     
             device.save()
 
             LoggedPoint.objects.create(
@@ -361,8 +357,10 @@ def save_dfes_avl():
                 source_device_type=device.source_device_type,
                 raw=json.dumps(row)
             )
-    LOGGER.info("Harvested {} from DFES; created {}, updated {}, ingored {}; Earliest Seen {}, Latest seen {}.".format(
+
+    LOGGER.info("Harvested {} from DFES: created {}, updated {}, ignored {}, earliest seen {}, latest seen {}.".format(
         harvested, created, updated, ignored, earliest_seen, latest_seen))
+
     return harvested, created, updated, ignored, earliest_seen, latest_seen
 
 
@@ -435,7 +433,7 @@ def harvest_tracking_email(request=None):
     except Exception as e:
         LOGGER.error(e)
 
-    #DFES feed handled by separate management command
+    # DFES feed handled by separate management command
 
     delta = timezone.now() - start
     html = "<html><body>Tracking point email harvest run at {} for {}</body></html>".format(start, delta)
