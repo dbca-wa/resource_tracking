@@ -105,10 +105,10 @@ SYMBOL_CHOICES = (
 )
 
 RAW_EQ_CHOICES = (
-    (1,  "Accessories Turned ON Message"),
-    (2,  "Accessories Turned OFF Message"),
-    (3,  "Tracking Message"),
-    (5,  "Remote Polling Message"),
+    (1, "Accessories Turned ON Message"),
+    (2, "Accessories Turned OFF Message"),
+    (3, "Tracking Message"),
+    (5, "Remote Polling Message"),
     (18, "Emergency Message"),
     (19, "Remote Command Acknowledge for Emergency Turn Off"),
     (25, "Start Moving"),
@@ -227,7 +227,7 @@ class Device(BasePoint):
                 self.callsign = abs(int(str(self.callsign)))
             except:
                 raise ValidationError("Callsign must be a number for the selected Symbol type")
-            self.callsign_display = self.get_district_display() + ' ' +  str(self.callsign)
+            self.callsign_display = self.get_district_display() + ' ' + str(self.callsign)
         else:
             self.callsign_display = self.callsign
 
@@ -264,16 +264,19 @@ class LoggedPoint(BasePoint):
     @classmethod
     def parse_sbd(cls, sbd):
         """
-
-        parses an sbd into a persisted LoggedPoint object
-        handles duplicates
+        Parses an sbd into a persisted LoggedPoint object, also handles duplicates.
         """
         device = Device.objects.get_or_create(deviceid=sbd["ID"])[0]
         if sbd.get("LG", 0) == 0 or sbd.get("LT", 0) == 0:
             LOGGER.warn("Bad geometry for {}, discarding".format(device))
             return None
         seen = timezone.make_aware(datetime.fromtimestamp(float(sbd['TU'])), pytz.timezone("UTC"))
-        self, created = cls.objects.get_or_create(device=device, seen=seen)
+        # Ignore any duplicate LoggedPoint objects (should only be for accidental duplicate harvests or historical devices).
+        try:
+            self, created = cls.objects.get_or_create(device=device, seen=seen)
+        except Exception:
+            LOGGER.exception("ERROR during get_or_create of LoggedPoint: device {}, seen {}".format(device, seen))
+            return None
         if created:
             self.point = 'POINT({LG} {LT})'.format(**sbd)
             self.heading = abs(sbd.get("DR", self.heading))
@@ -286,7 +289,6 @@ class LoggedPoint(BasePoint):
             self.source_device_type = str(sbd.get("TY", self.source_device_type))
             self.raw = json.dumps(sbd)
             self.save()
-            LOGGER.info("LoggedPoint {} created.".format(self))
         else:
             LOGGER.info("LoggedPoint {} found to be a duplicate.".format(self))
         if self.device.seen is None or self.seen > self.device.seen:
@@ -294,7 +296,7 @@ class LoggedPoint(BasePoint):
             self.device.point = self.point
             self.device.heading = self.heading
             self.device.velocity = self.velocity
-            self.device.altiitude = self.altitude
+            self.device.altitude = self.altitude
             self.device.message = self.message
             self.device.source_device_type = self.source_device_type
             self.device.save()
