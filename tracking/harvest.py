@@ -239,6 +239,10 @@ def save_spot(dimap, queueitem):
 def save_tracplus():
     if not settings.TRACPLUS_URL:
         return
+    symbol_map = {
+        'Aircraft': 'spotter aircraft',
+        'Helicopter': 'rotary aircraft',
+    }
     content = requests.get(settings.TRACPLUS_URL).content.decode('utf-8')
     latest = list(csv.DictReader(content.split('\r\n')))
     updated = 0
@@ -254,6 +258,8 @@ def save_tracplus():
         device.seen = timezone.make_aware(datetime.strptime(row["Transmitted"], "%Y-%m-%d %H:%M:%S"), pytz.timezone("UTC"))
         device.point = "POINT ({} {})".format(row["Longitude"], row["Latitude"])
         device.source_device_type = 'tracplus'
+        if row['Asset Type'] in symbol_map:
+            device.symbol = symbol_map[row['Asset Type']]
         device.save()
         lp, new = LoggedPoint.objects.get_or_create(device=device, seen=device.seen)
         lp.velocity = device.velocity
