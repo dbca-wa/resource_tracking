@@ -82,6 +82,8 @@ def actual_rainfall(rainfall, station, timestamp=None):
         return Decimal('0.0')
 
     previous_obs = WeatherObservation.objects.filter(station=station).latest('date')
+    if not previous_obs.rainfall:  # If there was no previous rainfall value, return zero.
+        return Decimal('0.0')
     counter_diff = rainfall - previous_obs.rainfall  # Rainfall counter.
     if counter_diff < 0:  # Less than 0 implies a counter reset (return zero)
         return Decimal('0.0')
