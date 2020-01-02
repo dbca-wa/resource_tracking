@@ -401,6 +401,9 @@ class WeatherObservation(models.Model):
              Buck, A. L. (1981), "New equations for computing vapor pressure
              and enhancement factor", J. Appl. Meteorol. 20: 1527-1532
         """
+        if not self.temperature or not self.humidity:
+            return None
+
         T = float(self.temperature)
         RH = float(self.humidity)
 
