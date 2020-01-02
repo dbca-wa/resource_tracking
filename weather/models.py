@@ -367,7 +367,7 @@ class WeatherObservation(models.Model):
     # previous one minute (normalised where observations occur less often
     # than once/minute).
     actual_rainfall = models.DecimalField(
-        max_digits=4, decimal_places=1, blank=True, null=True)
+        max_digits=9, decimal_places=1, blank=True, null=True)
     # actual_pressure represents the calculated sea-level adjusted atmospheric
     # pressure for the observation (based on the station altitude).
     actual_pressure = models.DecimalField(
@@ -401,6 +401,9 @@ class WeatherObservation(models.Model):
              Buck, A. L. (1981), "New equations for computing vapor pressure
              and enhancement factor", J. Appl. Meteorol. 20: 1527-1532
         """
+        if not self.temperature or not self.humidity:
+            return None
+
         T = float(self.temperature)
         RH = float(self.humidity)
 
