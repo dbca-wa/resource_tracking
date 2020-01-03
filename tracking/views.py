@@ -3,17 +3,17 @@ from django.urls import reverse
 from django.http import HttpResponse
 from django.shortcuts import render
 from datetime import datetime, timedelta
-from tracking.models import LoggedPoint
 import requests
 import json
 import unicodecsv
 import pytz
 
-from tracking.models import Device
+from tracking.models import Device, LoggedPoint
 
 
 def index(request):
     return render(request, "index.html", {
+        "logged_point_count": LoggedPoint.objects.count(),
         "settings": settings,
         "user": request.user
     })
