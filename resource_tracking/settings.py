@@ -40,9 +40,8 @@ INSTALLED_APPS = [
     'tastypie',
     'django_extensions',
     'djgeojson',
-    # Sub-app definitions
     'tracking',
-    'weather',
+    #'weather',
 ]
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -149,13 +148,6 @@ LOGGING = {
         },
     }
 }
-
-JS_MINIFY = False
-RESOURCE_FILES_WITH_AUTO_VERSION = [
-    os.path.join(BASE_DIR, "tracking", "static", "sss", "sss.js"),
-    os.path.join(BASE_DIR, "tracking", "static", "sss", "leaflet.dump.js"),
-    os.path.join(BASE_DIR, "tracking", "static", "sss", "sss.css"),
-]
 
 # Tastypie settings
 TASTYPIE_DEFAULT_FORMATS = ['json']
