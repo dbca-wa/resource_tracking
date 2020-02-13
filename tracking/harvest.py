@@ -275,6 +275,15 @@ def save_tracplus():
     LOGGER.info("Updated {} of {} scanned TracPLUS devices".format(updated, len(latest)))
 
 
+def save_fleetcare_db():
+    latest_seen = None
+    try:
+        latest_seen = Device.objects.filter(source_device_type='fleetcare', seen__lt=timezone.now()).latest('seen').seen
+    except ObjectDoesNotExist:
+        pass
+    # TODO
+
+
 def save_dfes_avl():
     LOGGER.info('Harvest DFES API started, out of order buffer is {} seconds'.format(settings.DFES_OUT_OF_ORDER_BUFFER))
     latest = requests.get(url=settings.DFES_URL, auth=requests.auth.HTTPBasicAuth(settings.DFES_USER, settings.DFES_PASS)).json()['features']

@@ -122,6 +122,7 @@ SOURCE_DEVICE_TYPE_CHOICES = (
     ("spot", "Spot"),
     ("dfes", "DFES"),
     ("mp70", "MP70"),
+    ("fleetcare", "fleetcare"),
     ("other", "Other")
 )
 
