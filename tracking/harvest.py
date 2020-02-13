@@ -291,7 +291,7 @@ def save_fleetcare_db():
             LOGGER.error("{}: {}".format(rowid, e))
             continue
         harvested += 1
-        seen = timezone.make_aware(parse(data['timestamp']))
+        seen = timezone.make_aware(parse(data['timestamp'], dayfirst=True))
         device, isnew = Device.objects.get_or_create(deviceid=deviceid)
         if isnew: created += 1
         updated += 1
