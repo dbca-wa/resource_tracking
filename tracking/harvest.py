@@ -3,6 +3,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.encoding import force_text
+from django.db import connections
 
 import csv
 import time
@@ -14,6 +15,7 @@ import logging
 import requests
 from imaplib import IMAP4_SSL
 from datetime import datetime, timedelta
+from dateutil.parser import parse
 
 from tracking.models import Device, LoggedPoint
 
@@ -281,7 +283,43 @@ def save_fleetcare_db():
         latest_seen = Device.objects.filter(source_device_type='fleetcare', seen__lt=timezone.now()).latest('seen').seen
     except ObjectDoesNotExist:
         pass
-    # TODO
+    cursor = connections['fcare'].cursor()
+    cursor.execute("select * from logentry")
+    harvested, ignored, updated, created = 0, 0, 0, 0
+    rows = cursor.fetchall()
+    for rowid, filename, blobtime, jsondata in rows[:20000]:
+        try:
+            data = json.loads(jsondata)
+            assert data["format"] == "dynamics"
+            deviceid = "fc_" + data["vehicleID"]
+        except Exception as e:
+            LOGGER.error("{}: {}".format(rowid, e))
+            continue
+        harvested += 1
+        seen = timezone.make_aware(parse(data['timestamp']))
+        device, isnew = Device.objects.get_or_create(deviceid=deviceid)
+        if isnew: created += 1
+        updated += 1
+        device.point = "POINT ({} {})".format(*data['GPS']['coordinates'])
+        device.seen = seen
+        device.registration = data["vehicleRego"]
+        device.velocity = int(float(data["readings"]["vehicleSpeed"]) * 1000)
+        device.altitude = int(float(data["readings"]["vehicleAltitude"]))
+        device.heading = int(float(data["readings"]["vehicleHeading"]))
+        device.source_device_type = 'fleetcare'
+        device.save()
+        lp, new = LoggedPoint.objects.get_or_create(device=device, seen=device.seen)
+        if not new: ignored += 1 # Already harvested, save anyway
+        lp.velocity = device.velocity
+        lp.heading = device.heading
+        lp.altitude = device.altitude
+        lp.point = device.point
+        lp.seen = device.seen
+        lp.source_device_type = device.source_device_type
+        lp.raw = jsondata
+        lp.save()
+        cursor.execute("delete from logentry where id = %s", [rowid])
+    return harvested, created, updated, ignored
 
 
 def save_dfes_avl():

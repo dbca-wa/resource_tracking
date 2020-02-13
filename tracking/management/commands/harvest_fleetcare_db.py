@@ -12,7 +12,7 @@ class Command(BaseCommand):
 
         LOGGER.info('Harvesting fleetcare database')
         try:
-            print("Harvested {} from Fleetcare; created {}, updated {}, ingored {}; Earliest seen {}, Lastest seen {}.".format(*save_dfes_avl()))
+            print("Harvested {} from Fleetcare; created {}, updated {}, ignored {}".format(*save_fleetcare_db()))
             #LOGGER.info("Updated {} of {} scanned DFES devices".format(updated, num_records))
         except Exception as e:
             LOGGER.error(e)

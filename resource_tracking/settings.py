@@ -86,6 +86,7 @@ SERIALIZATION_MODULES = {
 DATABASES = {
     # Defined in the DATABASE_URL env variable.
     'default': dj_database_url.config(),
+    'fcare': dj_database_url.parse(env('FCARE_URL'))
 }
 
 # Project authentication settings
