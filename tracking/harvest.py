@@ -293,7 +293,10 @@ def save_fleetcare_db():
         harvested += 1
         seen = timezone.make_aware(parse(data['timestamp'], dayfirst=True))
         device, isnew = Device.objects.get_or_create(deviceid=deviceid)
-        if isnew: created += 1
+        if isnew: # default to hiding and restricting to dbca new vehicles
+            device.hidden = True
+            device.internal_only = True
+            created += 1
         updated += 1
         device.point = "POINT ({} {})".format(*data['GPS']['coordinates'])
         if device.seen and seen > device.seen:

@@ -184,7 +184,7 @@ class Device(BasePoint):
     contractor_details = models.CharField(max_length=50, null=True, blank=True, help_text="Person engaging contractor is responsible for maintaining contractor resource details")
     other_details = models.TextField(null=True, blank=True)
     internal_only = models.BooleanField(default=False, verbose_name="Internal to DBCA only")
-    hidden = models.BooleanField(default=True, verbose_name="Hidden/private use")
+    hidden = models.BooleanField(default=False, verbose_name="Hidden/private use")
 
     @property
     def age_minutes(self):
