@@ -278,16 +278,11 @@ def save_tracplus():
 
 
 def save_fleetcare_db():
-    latest_seen = None
-    try:
-        latest_seen = Device.objects.filter(source_device_type='fleetcare', seen__lt=timezone.now()).latest('seen').seen
-    except ObjectDoesNotExist:
-        pass
     cursor = connections['fcare'].cursor()
-    cursor.execute("select * from logentry")
+    cursor.execute("select * from logentry limit 20000")
     harvested, ignored, updated, created = 0, 0, 0, 0
     rows = cursor.fetchall()
-    for rowid, filename, blobtime, jsondata in rows[:20000]:
+    for rowid, filename, blobtime, jsondata in rows:
         try:
             data = json.loads(jsondata)
             assert data["format"] == "dynamics"
@@ -301,7 +296,8 @@ def save_fleetcare_db():
         if isnew: created += 1
         updated += 1
         device.point = "POINT ({} {})".format(*data['GPS']['coordinates'])
-        device.seen = seen
+        if device.seen and seen > device.seen:
+            device.seen = seen
         device.registration = data["vehicleRego"]
         device.velocity = int(float(data["readings"]["vehicleSpeed"]) * 1000)
         device.altitude = int(float(data["readings"]["vehicleAltitude"]))
