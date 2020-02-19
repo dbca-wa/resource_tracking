@@ -10,7 +10,7 @@ class DeviceAdmin(ModelAdmin):
     actions = None
     date_hierarchy = "seen"
     list_display = ("deviceid", "registration", "callsign_display", "rin_display", "symbol", "district_display", "seen")
-    list_filter = ("symbol", "district")
+    list_filter = ("symbol", "district", "source_device_type", "hidden")
     search_fields = ("deviceid", "registration", "callsign_display", "rin_display", "symbol", "district_display")
     readonly_fields = ("deviceid",)
     fieldsets = (
@@ -28,7 +28,7 @@ class DeviceAdmin(ModelAdmin):
             "fields": ("contractor_details",)
         }),
         ("Other Details", {
-            "fields": ("other_details", "internal_only")
+            "fields": ("other_details", "internal_only", "hidden")
         })
     )
 
