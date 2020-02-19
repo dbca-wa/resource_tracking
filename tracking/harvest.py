@@ -479,11 +479,11 @@ def harvest_tracking_email(request=None):
         save_mp70(dimap, message)
     dimap.flush()
 
-    LOGGER.info('Harvesting TracPlus emails')
-    try:
-        save_tracplus()
-    except Exception as e:
-        LOGGER.error(e)
+   # LOGGER.info('Harvesting TracPlus emails')
+   # try:
+    #    save_tracplus()
+    #except Exception as e:
+     #   LOGGER.error(e)
 
     # DFES feed handled by separate management command
 

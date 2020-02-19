@@ -5,7 +5,7 @@ from django.conf import settings
 from django.contrib.gis.db import models
 from django.db.models import Max, Min
 from django.utils import timezone
-from django.utils.encoding import force_text, python_2_unicode_compatible
+from django.utils.encoding import force_text
 import logging
 import math
 import pytz
@@ -21,7 +21,6 @@ KNOTS_TO_KS = Decimal('1.85166')
 TIMEZONE = pytz.timezone(settings.TIME_ZONE)
 
 
-@python_2_unicode_compatible
 class Location(models.Model):
     """Represents the location of a weather station.
     """
@@ -34,7 +33,6 @@ class Location(models.Model):
         return force_text('{} {}'.format(self.title, self.point.tuple))
 
 
-@python_2_unicode_compatible
 class WeatherStation(models.Model):
     """Represents an automatic weather station (AWS) installation.
     """
@@ -257,7 +255,6 @@ class WeatherStation(models.Model):
         return self.name
 
 
-@python_2_unicode_compatible
 class WeatherObservation(models.Model):
     """Represents an observation of weather from an AWS.
 

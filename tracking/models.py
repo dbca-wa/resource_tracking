@@ -7,7 +7,7 @@ import logging
 from django.contrib.auth.models import Group, User
 from django.contrib.gis.db import models
 from django.utils import timezone
-from django.utils.encoding import force_text, python_2_unicode_compatible
+from django.utils.encoding import force_text 
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.dispatch import receiver
 from django.db.models.signals import pre_save, post_save
@@ -167,7 +167,6 @@ class BasePoint(models.Model):
             raise ValidationError(errors)
 
 
-@python_2_unicode_compatible
 class Device(BasePoint):
     deviceid = models.CharField(max_length=32, unique=True)
     registration = models.CharField(max_length=32, default="No Rego", help_text="e.g. 1QBB157")
@@ -255,7 +254,6 @@ class Device(BasePoint):
         return force_text("{} {}".format(self.registration, self.deviceid))
 
 
-@python_2_unicode_compatible
 class LoggedPoint(BasePoint):
     device = models.ForeignKey(Device, on_delete=models.PROTECT)
     raw = models.TextField(editable=False)
