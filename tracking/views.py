@@ -13,7 +13,6 @@ from tracking.models import Device, LoggedPoint
 
 def index(request):
     return render(request, "index.html", {
-        "logged_point_count": LoggedPoint.objects.count(),
         "settings": settings,
         "user": request.user
     })

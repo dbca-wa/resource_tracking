@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Install the project.
 FROM python_libs_rt
-COPY gunicorn.ini manage.py pollstations.py ./
+COPY gunicorn.py manage.py pollstations.py ./
 COPY resource_tracking ./resource_tracking
 COPY tracking ./tracking
 COPY weather ./weather
@@ -23,4 +23,4 @@ RUN python manage.py collectstatic --noinput
 # Run the application as the www-data user.
 USER www-data
 EXPOSE 8080
-CMD ["gunicorn", "resource_tracking.wsgi", "--config", "gunicorn.ini"]
+CMD ["gunicorn", "resource_tracking.wsgi", "--config", "gunicorn.py"]
