@@ -32,3 +32,6 @@ local_settings.py
 # Vim swap files
 [._]*.s[a-w][a-z]
 [._]s[a-w][a-z]
+
+#start server shell script
+start_server

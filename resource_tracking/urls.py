@@ -1,5 +1,7 @@
 from django.urls import include, path
 from django.contrib import admin
+from django.conf import settings
+from django.conf.urls.static import static
 
 from resource_tracking.api import v1_api
 from tracking import urls as tracking_urls
@@ -18,3 +20,4 @@ urlpatterns = [
     path('', include(tracking_urls)),
     path('', include(geojson_patterns)),
 ]
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

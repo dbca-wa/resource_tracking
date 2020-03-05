@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'djgeojson',
     'tracking',
     #'weather',
+    'radio'
 ]
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -116,7 +117,7 @@ LOGGING = {
     },
     'handlers': {
         'console': {
-            'level': 'INFO',
+            'level': 'DEBUG' if DEBUG else 'WARNING',
             'class': 'logging.StreamHandler',
             'formatter': 'console'
         },
@@ -147,6 +148,10 @@ LOGGING = {
             'handlers': ['console'],
             'level': 'INFO'
         },
+        'radio': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'WARNING',
+        }
     }
 }
 
@@ -163,3 +168,6 @@ DAFWA_UPLOAD_DIR = env('DAFWA_UPLOAD_DIR', '/inbound')
 # Sentry configuration
 if env('SENTRY_DSN', False):
     SENTRY_CONFIG = {'dsn': env('SENTRY_DSN')}
+
+MEDIA_ROOT = os.path.join(BASE_DIR,"media")
+MEDIA_URL = "/media/"
