@@ -73,7 +73,8 @@ class NetworkEditForm(forms.ModelForm):
         super().__init__(*args,**kwargs)
         if self.instance and self.instance.pk:
             self.initial["repeaters"] = models.Repeater.objects.filter(network=self.instance)
-
+            if "name" in self.fields :
+                self.fields["name"].widget = text_readonly_widget
 
     def save(self,*args,**kwargs):
         obj = super().save(*args,**kwargs)
