@@ -116,8 +116,8 @@ class NetworkAdmin(AnalysisFieldsMixin,admin.ModelAdmin):
     inlines = (RepeaterInline,)
     readonly_fields = ("tx_last_analysed","tx_bbox","tx_raster_4326","rx_last_analysed","rx_bbox","rx_raster_4326")
 
-    #actions = ('analysis','reanalysis')
-    actions = ('analysis',)
+    #actions = ('analyse_coverage','reanalyse_coverage')
+    actions = ('analyse_coverage',)
 
     def tx_analyse_result(self,obj):
         return mark_safe("<pre>{}</pre>".format((obj.tx_analysis.analyse_result or "") if obj else ""))
@@ -160,29 +160,29 @@ class NetworkAdmin(AnalysisFieldsMixin,admin.ModelAdmin):
         super().save_model(request,obj,form,change)
         form.save_repeaters()
         
-    def analysis(self, request, queryset):
+    def analyse_coverage(self, request, queryset):
         for network in queryset:
             try:
                 options = {}
-                analysis.network_analysis(network=network,options=options)
+                analysis.analyse_network_coverage(network=network,options=options)
                 self.message_user(request, 'Network({}) have been analysed.'.format(network))
             except Exception as ex:
                 traceback.print_exc()
                 self.message_user(request, 'Failed to analyse the network({}).{}'.format(network,str(ex)),level=messages.ERROR)
 
-    analysis.short_description = 'Analysis'
+    analyse_coverage.short_description = 'Analyse Coverage'
 
-    def reanalysis(self, request, queryset):
+    def reanalyse_coverage(self, request, queryset):
         for network in queryset:
             try:
                 options = {}
-                analysis.network_analysis(network=network,options=options,force=True)
+                analysis.analyse_network_coverage(network=network,options=options,force=True)
                 self.message_user(request, 'Network({}) have been analysed.'.format(network))
             except Exception as ex:
                 traceback.print_exc()
                 self.message_user(request, 'Failed to analyse the network({}).{}'.format(network,str(ex)),level=messages.ERROR)
 
-    reanalysis.short_description = 'Reanalysis'
+    reanalyse_coverage.short_description = 'Reanalyse Coverage'
 
 @admin.register(Repeater)
 class RepeaterAdmin(RepeaterFieldsMixin,AnalysisFieldsMixin,admin.ModelAdmin):

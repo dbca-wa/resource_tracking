@@ -789,7 +789,7 @@ def mesh_site(queryset=None,network=None,force=False,scope=TX | RX,options={},de
         t.join()
 
 
-def network_analysis(queryset=None,network=None,force=False,scope=TX | RX,options={},verify_ssl=None):
+def analyse_network_coverage(queryset=None,network=None,force=False,scope=TX | RX,options={},verify_ssl=None):
     if verify_ssl is None:
         verify_ssl = get_verify_ssl()
     if options is None:
