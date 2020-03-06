@@ -530,7 +530,12 @@ class RepeaterPostAnalysisThread(_Thread):
 
     def _run(self):
         _download_repeater_file(self.analysis,force=self.force,verify_ssl=self.verify_ssl)
-        _process_spatial_data(self.analysis,force=self.force)
+        try:
+            _process_spatial_data(self.analysis,force=self.force)
+        except:
+            self.analysis.analyse_requested = timezone.now()
+            self.analysis.save(update_fields=["analyse_requested"])
+            raise
 
 class NetworkAnalysisThread(_Thread):
     def __init__(self,options,del_options,scope,network,analysis,endpoint,del_endpoint,verify_ssl):
@@ -580,7 +585,13 @@ class NetworkPostAnalysisThread(_Thread):
 
     def _run(self):
         _download_network_file(self.analysis,force=self.force,verify_ssl=self.verify_ssl)
-        _process_spatial_data(self.analysis,force=self.force)
+        try:
+            _process_spatial_data(self.analysis,force=self.force)
+        except:
+            self.analysis.analyse_requested = timezone.now()
+            self.analysis.save(update_fields=["analyse_requested"])
+            raise
+
 
 def area_coverage(queryset=None,network=None,repeater=None,force=False,scope=TX | RX,options={},del_options={},verify_ssl=None):
     """
