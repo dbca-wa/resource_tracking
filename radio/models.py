@@ -273,7 +273,7 @@ COMPRESS_FILE_SETTINGS = [
 ]
 
 class RepeaterAnalysis(models.Model):
-    network = models.ForeignKey(Network,on_delete=models.SET_NULL,null=True,blank=True,editable=False,related_name="+")
+    network = models.CharField(max_length=64,null=True,editable=False)
     analyse_requested = models.DateTimeField(editable=False)
     last_analysed = models.DateTimeField(editable=False,null=True)
     last_downloaded = models.DateTimeField(editable=False,null=True)
@@ -328,6 +328,20 @@ class AnalysisListener(object):
             now = timezone.now()
             NetworkTXAnalysis(network=instance,analyse_requested=now).save()
             NetworkRXAnalysis(network=instance,analyse_requested=now).save()
+
+    @staticmethod
+    @receiver(pre_save, sender=Network)
+    def create_network_analysis(sender,instance,**kwargs):
+        if not instance.pk:
+            #new network
+            return
+        existing_network = Network.objects.get(pk=instance.pk)
+        if instance.name != existing_network.name:
+            #network name changed.
+            now = timezone.now()
+            for rep in Repeater.objects.filter(network=instance):
+                RepeaterTXAnalysis.objects.update_or_create(repeater=r,defaults={"analyse_requested":now})
+                RepeaterRXAnalysis.objects.update_or_create(repeater=r,defaults={"analyse_requested":now})
 
     @staticmethod
     def _update_analysis(existing_repeater,repeater):

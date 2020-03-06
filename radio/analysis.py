@@ -414,6 +414,7 @@ def _del_analysis_calculation(analysis,options={},endpoint=None,verify_ssl=True)
     """
     if not analysis or not analysis.analyse_result or not analysis.analyse_result.get("id") or analysis.analyse_result.get("deleted"):
         return
+
     try:
         _del_calculation(analysis.analyse_result["id"],options=options,endpoint=endpoint,verify_ssl=verify_ssl)
         analysis.analyse_result["deleted"] = True
@@ -514,7 +515,7 @@ class RepeaterAnalysisThread(_Thread):
         if "error" in res:
             raise Exception(res["error"])
         logger.debug("The area coverage analysis result({}) for repeater({})".format(res,self.rep))
-        self.analysis.network = self.rep.network
+        self.analysis.network = self.rep.network.name
         self.analysis.analyse_result = res
         self.analysis.last_analysed = timezone.now()
         self.analysis.save(update_fields=["analyse_result","last_analysed","network"])
@@ -805,9 +806,11 @@ def analyse_network_coverage(queryset=None,network=None,force=False,scope=TX | R
 
     for net in ([network ]if network else queryset):
         #delete the calculation of the repeaters which are removed from the network
-        for rep_analysis_qs in [m.objects.filter(network=net).exclude(repeater__network=net) for s,m in [(scope & TX,RepeaterTXAnalysis),(scope & RX,RepeaterRXAnalysis)] if s ]:
+        for rep_analysis_qs in [m.objects.filter(network=net.name).exclude(repeater__network=net) for s,m in [(scope & TX,RepeaterTXAnalysis),(scope & RX,RepeaterRXAnalysis)] if s ]:
             for rep_analysis in rep_analysis_qs:
                 _del_analysis_calculation(rep_analysis,options["del_calculation"],endpoint=del_endpoint,verify_ssl=verify_ssl)
+                rep_analysis.network=None
+                rep_analysis.save(update_fields=["network"])
 
         area_coverage(network=net,force=force,scope=scope,options=options["area_coverage"],del_options=options["del_calculation"],verify_ssl=verify_ssl)
         mesh_site(network=net,force=force,scope=scope,options=options["mesh_site"],del_options=["del_calculation"],verify_ssl=verify_ssl)
