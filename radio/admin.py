@@ -161,9 +161,9 @@ class NetworkAdmin(AnalysisFieldsMixin,admin.ModelAdmin):
         form.save_repeaters()
         
     def analyse_coverage(self, request, queryset):
+        options = {}
         for network in queryset:
             try:
-                options = {}
                 analysis.analyse_network_coverage(network=network,options=options)
                 self.message_user(request, 'Network({}) have been analysed.'.format(network))
             except Exception as ex:
@@ -173,9 +173,9 @@ class NetworkAdmin(AnalysisFieldsMixin,admin.ModelAdmin):
     analyse_coverage.short_description = 'Analyse Coverage'
 
     def reanalyse_coverage(self, request, queryset):
+        options = {}
         for network in queryset:
             try:
-                options = {}
                 analysis.analyse_network_coverage(network=network,options=options,force=True)
                 self.message_user(request, 'Network({}) have been analysed.'.format(network))
             except Exception as ex:
@@ -186,7 +186,7 @@ class NetworkAdmin(AnalysisFieldsMixin,admin.ModelAdmin):
 
 @admin.register(Repeater)
 class RepeaterAdmin(RepeaterFieldsMixin,AnalysisFieldsMixin,admin.ModelAdmin):
-    list_display = ('site_name', 'network','district','channel_number','sss_display',"_tx_frequency",'_ctcss_tx','_rx_frequency','_ctcss_rx','last_inspected')
+    list_display = ('site_name', 'network','district','channel_number',"_tx_frequency",'_ctcss_tx','_rx_frequency','_ctcss_rx',"tx_analyse_up2date","rx_analyse_up2date")
     ordering = ('site_name',)
     list_filter = ('district','network')
     readonly_fields = ("network","tx_last_analysed","tx_bbox","tx_raster_4326","tx_shp_file","rx_last_analysed","rx_bbox","rx_raster_4326","rx_shp_file")
@@ -196,11 +196,67 @@ class RepeaterAdmin(RepeaterFieldsMixin,AnalysisFieldsMixin,admin.ModelAdmin):
             "output_color","output_radius","output_clutter","last_inspected",
             "tx_last_analysed","tx_bbox","tx_raster_4326","tx_shp_file","rx_last_analysed","rx_bbox","rx_raster_4326","rx_shp_file"]
     form = RepeaterEditForm
+    actions = ('analyse_coverage','reanalyse_coverage')
 
     def info_completed(self,obj):
         return obj.is_complete if obj else False
     info_completed.boolean = True
     info_completed.short_description = 'Info Completed?'
+
+    def tx_analyse_up2date(self,obj):
+        if not obj:
+            return True
+        elif not obj.tx_analysis:
+            return False
+        elif not obj.tx_analysis.last_analysed:
+            return False
+        else:
+            return obj.tx_analysis.last_analysed >= obj.tx_analysis.analyse_requested
+    tx_analyse_up2date.short_description = 'TX Analyse Up to Date?'
+    tx_analyse_up2date.boolean = True
+
+    def rx_analyse_up2date(self,obj):
+        if not obj:
+            return True
+        elif not obj.rx_analysis:
+            return False
+        elif not obj.rx_analysis.last_analysed:
+            return False
+        else:
+            return obj.rx_analysis.last_analysed >= obj.rx_analysis.analyse_requested
+    rx_analyse_up2date.short_description = 'RX Analyse Up to Date?'
+    rx_analyse_up2date.boolean = True
+
+
+    def analyse_coverage(self, request, queryset):
+        del_endpoint = Option.objects.get(name="del_calculation_endpoint").value
+        options = {}
+        del_options = {}
+        verify_ssl = analysis.get_verify_ssl()
+        for rep in queryset:
+            try:
+                analysis.area_coverage(repeater=rep,force=False,scope=analysis.TX | analysis.RX,options=options,del_options=del_options,verify_ssl=verify_ssl)
+                self.message_user(request, 'Repeater({}) have been analysed.'.format(rep))
+            except Exception as ex:
+                traceback.print_exc()
+                self.message_user(request, 'Failed to analyse the repeater({}).{}'.format(rep,str(ex)),level=messages.ERROR)
+
+    analyse_coverage.short_description = 'Analyse Coverage'
+
+    def reanalyse_coverage(self, request, queryset):
+        del_endpoint = Option.objects.get(name="del_calculation_endpoint").value
+        options = {}
+        del_options = {}
+        verify_ssl = analysis.get_verify_ssl()
+        for rep in queryset:
+            try:
+                analysis.area_coverage(repeater=rep,force=True,scope=analysis.TX | analysis.RX,options=options,del_options=del_options,verify_ssl=verify_ssl)
+                self.message_user(request, 'Repeater({}) have been analysed.'.format(rep))
+            except Exception as ex:
+                traceback.print_exc()
+                self.message_user(request, 'Failed to analyse the repeater({}).{}'.format(rep,str(ex)),level=messages.ERROR)
+
+    reanalyse_coverage.short_description = 'Reanalyse Coverage'
 
 @admin.register(Option)
 class OptionAdmin(admin.ModelAdmin):

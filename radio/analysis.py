@@ -41,7 +41,7 @@ network_options = [
 ]
 
 repeater_name = lambda scope,repeater:"{}_{}".format(repeater.site_name.lower().replace(" ","_"),"tx" if scope == TX else "rx")
-network_name = lambda scope,net:"{}_{}".format(net.name.lower().replace(" ","_"),"tx" if scope == TX else "rx")
+network_name = lambda scope,net:("{}_{}".format(net.name.lower().replace(" ","_"),"tx" if scope == TX else "rx")) if net else None
 
 repeater_options = [
     ("nam",lambda options,scope,obj: repeater_name(scope,obj)),
