@@ -427,15 +427,14 @@ def _del_analysis_calculation(analysis,options={},endpoint=None,verify_ssl=True)
     """
     if not analysis or not analysis.analyse_result or not analysis.analyse_result.get("id") or analysis.analyse_result.get("deleted"):
         return
-
     try:
         _del_calculation(analysis.analyse_result["id"],options=options,endpoint=endpoint,verify_ssl=verify_ssl)
         analysis.analyse_result["deleted"] = True
         if "delete_msg" in analysis.analyse_result:
             del analysis.analyse_result["delete_msg"]
-    except Exception as ex:
-        logger.error("delete calculation({}) failed.{}".format(analysis.analyse_result["id"],str(ex)))
-        analysis.analyse_result["delete_msg"] = str(ex)
+    except :
+        logger.error("delete calculation({}) failed,options={}.{}".format(analysis.analyse_result["id"],["{}={}".format(k,'******' if k in credential_options else v) for k,v in options.items()],traceback.format_exc()))
+        analysis.analyse_result["delete_msg"] = traceback.format_exc()
 
     analysis.save(update_fields = ["analyse_result"])
 
@@ -840,7 +839,7 @@ def analyse_network_coverage(queryset=None,network=None,force=False,scope=TX | R
                 rep_analysis.save(update_fields=["network"])
 
         area_coverage(network=net,force=force,scope=scope,options=options["area_coverage"],del_options=options["del_calculation"],verify_ssl=verify_ssl)
-        mesh_site(network=net,force=force,scope=scope,options=options["mesh_site"],del_options=["del_calculation"],verify_ssl=verify_ssl)
+        mesh_site(network=net,force=force,scope=scope,options=options["mesh_site"],del_options=options["del_calculation"],verify_ssl=verify_ssl)
 
 
         
