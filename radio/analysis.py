@@ -5,6 +5,8 @@ import json
 import subprocess
 import threading
 import shutil
+import traceback
+import tempfile
 from PIL import Image
 
 
@@ -350,35 +352,44 @@ def _process_spatial_data(analysis,force=False):
         #decompress file
         file_name = analysis.shp_file.name.lower()
         file_path = os.path.join(settings.MEDIA_ROOT,analysis.shp_file.name)
-        shp_file_folder = os.path.splitext(file_path)[0]
-        if os.path.exists(shp_file_folder):
-            shutil.rmtree(shp_file_folder)
-        os.mkdir(shp_file_folder)
-        for fileext,cmd in COMPRESS_FILE_SETTINGS:
-            if file_name.endswith(fileext):
-                subprocess.check_call(cmd(file_path,shp_file_folder))
-                break
-        shp_file_path = None
-        for f in os.listdir(shp_file_folder):
-            if f.endswith(".shp"):
-                shp_file_path = os.path.join(shp_file_folder,f)
-                break
-        if not shp_file_path:
-            raise Exception("Can't find shape file in folder ''".format(shp_file_folder))
+        shp_file_folder = None
+        try:
+            shp_file_folder = tempfile.mkdtemp(prefix="radio",suffix=".shp")
+
+            for fileext,cmd in COMPRESS_FILE_SETTINGS:
+                if file_name.endswith(fileext):
+                    subprocess.check_call(cmd(file_path,shp_file_folder))
+                    break
+            shp_file_path = None
+            for f in os.listdir(shp_file_folder):
+                if f.endswith(".shp"):
+                    shp_file_path = os.path.join(shp_file_folder,f)
+                    break
+            if not shp_file_path:
+                raise Exception("Can't find shape file in folder ''".format(shp_file_folder))
     
-        ds = gdal.DataSource(shp_file_path)
-        layer = ds[0]
-        polygons = []
-        for feat in layer:
-            if isinstance(feat.geom,gdal.geometries.Polygon):
-                polygons.append(feat.geom.geos)
-            elif isinstance(feat.geom,gdal.geometries.MultiPolygon):
-                for g in feat.geom.geos.geom:
-                    polygons.append(g)
-            else:
-                raise Exception("Geometry({}) Not Support, only support Polygon and MultiPolygon".format(feat.geom.__class__))
-        analysis.geom = MultiPolygon(polygons)
-        update_fields.append("geom")
+            ds = gdal.DataSource(shp_file_path)
+            layer = ds[0]
+            polygons = []
+            for feat in layer:
+                if isinstance(feat.geom,gdal.geometries.Polygon):
+                    polygons.append(feat.geom.geos)
+                elif isinstance(feat.geom,gdal.geometries.MultiPolygon):
+                    for g in feat.geom.geos.geom:
+                        polygons.append(g)
+                else:
+                    raise Exception("Geometry({}) Not Support, only support Polygon and MultiPolygon".format(feat.geom.__class__))
+            analysis.geom = MultiPolygon(polygons)
+            update_fields.append("geom")
+        finally:
+            if shp_file_folder:
+                #remove the temporary folder
+                try:
+                    shutil.rmtree(shp_file_folder)
+                except :
+                    logger.error(traceback.format_exc())
+
+
 
     analysis.save(update_fields = update_fields)
 
