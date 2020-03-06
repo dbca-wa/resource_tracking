@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 TX = 1
 RX = 2
 
+credential_options = ["uid","key"]
+
 # options for area coverage
 fixed_options = [
     ("file","shp"),
@@ -400,9 +402,9 @@ def _del_calculation(cid,options={},endpoint=None,verify_ssl=True):
 
     if not endpoint:
         endpoint = Option.objects.get(name="del_calculation_endpoint").value
-
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug("Delete calculation,options = {}".format(["{}={}".format(k,'******' if k in credential_options else v) for k,v in options.items()]))
     url = "{}?{}".format(endpoint,"&".join(["{}={}".format(k,v) for k,v in options.items()]))
-    logger.debug("delete calculation url = {}".format(url))
     res = requests.get(url,verify=verify_ssl)
     res.raise_for_status()
     if "error" in res:
@@ -421,7 +423,9 @@ def _del_analysis_calculation(analysis,options={},endpoint=None,verify_ssl=True)
         if "delete_msg" in analysis.analyse_result:
             del analysis.analyse_result["delete_msg"]
     except Exception as ex:
+        logger.error("delete calculation({}) failed.{}".format(analysis.analyse_result["id"],str(ex)))
         analysis.analyse_result["delete_msg"] = str(ex)
+
     analysis.save(update_fields = ["analyse_result"])
 
 def del_outdated_repeater_calculation(network):
@@ -503,7 +507,8 @@ class RepeaterAnalysisThread(_Thread):
             _set_object_option(self.scope,self.options,option,self.rep,force=True)
 
         #print the option
-        logger.debug("The area coverage analysis options({}) for repeater({})".format(self.options,self.rep))
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("The area coverage analysis options({}) for repeater({})".format(["{}={}".format(k,'******' if k in credential_options else v) for k,v in self.options.items()],self.rep))
 
         #analysis the area coverage
         res = requests.post(self.endpoint, data=self.options,verify=self.verify_ssl)
@@ -515,7 +520,7 @@ class RepeaterAnalysisThread(_Thread):
         if "error" in res:
             raise Exception(res["error"])
         logger.debug("The area coverage analysis result({}) for repeater({})".format(res,self.rep))
-        self.analysis.network = self.rep.network.name
+        self.analysis.network = self.rep.network.name if self.rep.network else None
         self.analysis.analyse_result = res
         self.analysis.last_analysed = timezone.now()
         self.analysis.save(update_fields=["analyse_result","last_analysed","network"])
@@ -558,10 +563,10 @@ class NetworkAnalysisThread(_Thread):
             _set_object_option(self.scope,self.options,option,self.network,force=True)
 
         #print the option
-        logger.debug("The mesh site analysis options({}) for network({})".format(self.options,self.network))
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("The mesh site analysis options({}) for network({})".format(["{}={}".format(k,'******' if k in credential_options else v) for k,v in self.options.items()],self.network))
         #analysis the area coverage
         url = "{}?{}".format(self.endpoint,"&".join(["{}={}".format(k,v) for k,v in self.options.items()]))
-        logger.debug("mesh site url = {}".format(url))
         res = requests.get(url,verify=self.verify_ssl)
         res.raise_for_status()
         try:
