@@ -515,11 +515,14 @@ def _del_analysis_calculation(analysis,options={},endpoint=None,verify_ssl=None,
         if not analysis or not analysis.analyse_result or not analysis.analyse_result.get("id") :
             #data incorrect
             raise Exception("Can't find calculation id in analyse result")
-        _del_calculation(analysis.analyse_result["id"],options=options,endpoint=endpoint,verify_ssl=verify_ssl)
-        if hasattr(analysis,"network"):
-            #analysis has network field, reset it
-            analysis.network=None
-            update_fields.append("network")
+        if not analysis.analyse_result.get("deleted"):
+            _del_calculation(analysis.analyse_result["id"],options=options,endpoint=endpoint,verify_ssl=verify_ssl)
+            if hasattr(analysis,"network"):
+                #analysis has network field, reset it
+                analysis.network=None
+                update_fields.append("network")
+            analysis.analyse_result["deleted"] = True
+            update_fields.append("analyse_result")
         end_processing(analysis,target_status,update_fields=update_fields)
     except :
         logger.error("delete calculation({}) failed,options={}.{}".format(analysis.analyse_result["id"],["{}={}".format(k,'******' if k in credential_options else v) for k,v in options.items()],traceback.format_exc()))
@@ -560,6 +563,10 @@ def del_outdated_repeater_calculation(network):
 
         for cid in calculations:
             _del_calculation(cid,options=options,endpoint=endpoint,verify_ssl=verify_ssl)
+
+def _wait_threads(threads):
+    for t in threads:
+        t.join()
 
 class _Thread(threading.Thread):
     """
@@ -648,7 +655,7 @@ class RepeaterPostAnalysisThread(_Thread):
         _process_spatial_data(self.analysis,self.coverage_model)
 
 class NetworkAnalysisThread(_Thread):
-    def __init__(self,options,del_options,scope,network,analysis,endpoint,del_endpoint,verify_ssl):
+    def __init__(self,options,del_options,scope,network,analysis,repeater_analysis_model,endpoint,del_endpoint,verify_ssl):
         super().__init__()
         self.options = options
         self.del_options = del_options
@@ -658,6 +665,7 @@ class NetworkAnalysisThread(_Thread):
         self.endpoint = endpoint
         self.del_endpoint = del_endpoint
         self.verify_ssl = verify_ssl
+        self.repeater_analysis_model = repeater_analysis_model
 
     def _run(self):
         if abs(self.analysis.process_status) >= self.analysis.ANALYSED:
@@ -674,17 +682,17 @@ class NetworkAnalysisThread(_Thread):
             start_processing(self.analysis,self.analysis.ANALYSING)
 
             times = 0
-            while repeater_analysis_model.objects.filter(repeater__network = net).exclude(process_status__gt=repeater_analysis_model.IDLE).exists():
+            while self.repeater_analysis_model.objects.filter(repeater__network = self.network).exclude(process_status__gt=self.repeater_analysis_model.IDLE).exists():
                 time.sleep(60)
                 times += 60
                 if times > 1800:
                     #half an hour,timeout
                     raise Exception("Some repeaters are still under processing.")
 
-            if repeater_analysis_model.objects.filter(repeater__network = net).exclude(process_status__lt=repeater_analysis_model.IDLE).exists():
+            if self.repeater_analysis_model.objects.filter(repeater__network = self.network).exclude(process_status__lt=sekf.repeater_analysis_model.IDLE).exists():
                 raise Exception("Some repeaters are processed failed")
 
-            if repeater_analysis_model.objects.filter(repeater__network = net).filter(Q(last_analysed__isnull=True) | Q(last_analysed__lt=F("analyse_requested"))).exists():
+            if self.repeater_analysis_model.objects.filter(repeater__network = self.network).filter(Q(last_analysed__isnull=True) | Q(last_analysed__lt=F("analyse_requested"))).exists():
                 raise Exception("Some repeaters are outdated, please analyse the network again.")
 
             #set the network option
@@ -706,9 +714,7 @@ class NetworkAnalysisThread(_Thread):
                 raise Exception(res["error"])
             logger.debug("The mesh site analysis result({}) for network({})".format(res,self.network))
             self.analysis.analyse_result = res
-            self.analysis.last_analysed = timezone.now()
-            self.analysis.save(update_fields=["analyse_result","last_analysed"])
-            end_processing(self.analysis,self.analysis.ANALYSED,update_fields=["analyse_result","last_analysed","network"])
+            end_processing(self.analysis,self.analysis.ANALYSED,update_fields=["analyse_result"])
         except :
             end_processing(self.analysis,self.analysis.ANALYSE_FAILED,msg=traceback.format_exc())
 
@@ -753,7 +759,7 @@ def get_repeater_list(queryset=None,network=None,repeater=None,force=False,scope
             ).filter(
                 Q(tx_analysis__process_status=RepeaterTXAnalysis.IDLE)|
                 Q(tx_analysis__process_status__lt=0)|
-                (Q(tx_analysis__process_status__gt=RepeaterTXAnalysis.MIN_PROCESSING) &  Q(tx_analysis__process_status__lt=RepeaterTXAnalysis.MIN_PROCESSING) & Q(tx_analysis__process_start__lt=timezone.now() - RepeaterTXAnalysis.PROCESS_TIMEOUT))
+                (Q(tx_analysis__process_status__gt=RepeaterTXAnalysis.IDLE) & Q(tx_analysis__process_start__lt=timezone.now() - RepeaterTXAnalysis.PROCESS_TIMEOUT))
             )
         else:
             tx_qs = base_qs.all()
@@ -769,7 +775,7 @@ def get_repeater_list(queryset=None,network=None,repeater=None,force=False,scope
             ).filter(
                 Q(rx_analysis__process_status=RepeaterRXAnalysis.IDLE)|
                 Q(rx_analysis__process_status__lt=0)|
-                (Q(rx_analysis__process_status__gt=RepeaterRXAnalysis.MIN_PROCESSING) &  Q(rx_analysis__process_status__lt=RepeaterRXAnalysis.MIN_PROCESSING) & Q(rx_analysis__process_start__lt=timezone.now() - RepeaterRXAnalysis.PROCESS_TIMEOUT))
+                (Q(rx_analysis__process_status__gt=RepeaterRXAnalysis.IDLE) & Q(rx_analysis__process_start__lt=timezone.now() - RepeaterRXAnalysis.PROCESS_TIMEOUT))
             )
         else:
             rx_qs = base_qs.all()
@@ -789,11 +795,14 @@ class _AreaCoverage(object):
         self.rx_repeaters = rx_repeaters
 
     def run(self):
-        del_endpoint = Option.objects.get(name="del_calculation_endpoint").tvalue
+        del_endpoint = Option.get_option("del_calculation_endpoint")
     
-        endpoint = Option.objects.get(name="area_coverage_endpoint").tvalue
+        endpoint = Option.get_option("area_coverage_endpoint")
 
         verify_ssl = get_verify_ssl()
+
+        max_analyse_tasks = Option.get_option("max_analyse_tasks",1)
+        max_download_tasks = Option.get_option("max_download_tasks",5)
 
         options = {}
         del_options = {}
@@ -825,17 +834,18 @@ class _AreaCoverage(object):
                     _set_object_option(s,options,option,rep.network,force=(previous_network ==  rep.network))
 
                 analysis = get_analysis(rep)
-                #thread = RepeaterAnalysisThread(dict(options),dict(del_options),s,rep,analysis,endpoint,del_endpoint,verify_ssl)
-                thread = RepeaterAnalysisThread(options,del_options,s,rep,analysis,endpoint,del_endpoint,verify_ssl)
-                #threads.append(thread)
+                thread = RepeaterAnalysisThread(dict(options),dict(del_options),s,rep,analysis,endpoint,del_endpoint,verify_ssl)
+                threads.append(thread)
                 thread.start()
-                #current account plan doesn't support call webservice multipe times at the same time.
-                thread.join()
+                if len(threads) >= max_analyse_tasks:
+                    _wait_threads(threads)
+                    threads.clear()
 
                 previous_network = rep.network
 
-        for t in threads:
-            t.join()
+        if threads:
+            _wait_threads(threads)
+            threads.clear()
 
         #post analyse
         threads.clear()
@@ -847,9 +857,13 @@ class _AreaCoverage(object):
                 thread = RepeaterPostAnalysisThread(analysis,coverage_model,verify_ssl)
                 threads.append(thread)
                 thread.start()
+                if len(threads) >= max_download_tasks:
+                    _wait_threads(threads)
+                    threads.clear()
 
-        for t in threads:
-            t.join()
+        if threads:
+            _wait_threads(threads)
+            threads.clear()
 
 def get_network_list(queryset=None,network=None,force=False,scope=TX | RX):
     if scope & (TX|RX) == 0:
@@ -874,7 +888,7 @@ def get_network_list(queryset=None,network=None,force=False,scope=TX | RX):
             ).filter(
                 Q(tx_analysis__process_status=NetworkTXAnalysis.IDLE)|
                 Q(tx_analysis__process_status__lt=0)|
-                (Q(tx_analysis__process_status__gt=NetworkTXAnalysis.MIN_PROCESSING) &  Q(tx_analysis__process_status__lt=NetworkTXAnalysis.MIN_PROCESSING) & Q(tx_analysis__process_start__lt=timezone.now() - NetworkTXAnalysis.PROCESS_TIMEOUT))
+                (Q(tx_analysis__process_status__gt=NetworkTXAnalysis.IDLE) & Q(tx_analysis__process_start__lt=timezone.now() - NetworkTXAnalysis.PROCESS_TIMEOUT))
             )
         else:
             tx_qs = base_qs.all()
@@ -890,7 +904,7 @@ def get_network_list(queryset=None,network=None,force=False,scope=TX | RX):
             ).filter(
                 Q(rx_analysis__process_status=NetworkRXAnalysis.IDLE)|
                 Q(rx_analysis__process_status__lt=0)|
-                (Q(rx_analysis__process_status__gt=NetworkRXAnalysis.MIN_PROCESSING) &  Q(rx_analysis__process_status__lt=NetworkRXAnalysis.MIN_PROCESSING) & Q(rx_analysis__process_start__lt=timezone.now() - NetworkRXAnalysis.PROCESS_TIMEOUT))
+                (Q(rx_analysis__process_status__gt=NetworkRXAnalysis.IDLE) & Q(rx_analysis__process_start__lt=timezone.now() - NetworkRXAnalysis.PROCESS_TIMEOUT))
             )
         else:
             rx_qs = base_qs.all()
@@ -911,14 +925,18 @@ class _MeshSite(object):
 
     def run(self):
         #analyse the network
-        endpoint = Option.objects.get(name="mesh_site_endpoint").value
+        endpoint = Option.get_option("mesh_site_endpoint")
     
-        del_endpoint = Option.objects.get(name="del_calculation_endpoint").value
+        del_endpoint = Option.get_option("del_calculation_endpoint")
     
         verify_ssl = get_verify_ssl()
 
         del_options = {}
 
+        max_analyse_tasks = Option.get_option("max_analyse_tasks",1)
+        max_download_tasks = Option.get_option("max_download_tasks",5)
+
+        #remove the calculation of the repeaters which are removed from the network
         for s,networks,get_analysis,repeater_analysis_model in [
             (TX,self.tx_networks,lambda net:net.tx_analysis,RepeaterTXAnalysis),
             (RX,self.rx_networks,lambda net:net.rx_analysis,RepeaterRXAnalysis)
@@ -954,47 +972,40 @@ class _MeshSite(object):
             for net in networks:
                 analysis = get_analysis(net)
                 try:
-                    times = 0
-                    rep_qs =  repeater_analysis_model.objects.filter(repeater__network = net).exclude(process_status__gt=repeater_analysis_model.IDLE)
-                    while rep_qs.exists():
-                        time.sleep(60)
-                        times += 60
-                        if times > 1800:
-                            #half an hour,timeout
-                            raise Exception("Repeaters() are still under processing, wait some time and analyse the network again".format(rep_qs.all()))
-    
-                    rep_qs =  repeater_analysis_model.objects.filter(repeater__network = net).exclude(process_status__lt=0)
-                    if rep_qs.exists():
-                        raise Exception("Repeaters() are processed failed, wait some time and analyse the network again".format(rep_qs.all()))
-    
-                    #thread = NetworkAnalysisThread(dict(options),dict(del_options),s,net,analysis,endpoint,del_endpoint,verify_ssl)
-                    thread = NetworkAnalysisThread(options,del_options,s,net,analysis,endpoint,del_endpoint,verify_ssl)
-                    #threads.append(thread)
+                    thread = NetworkAnalysisThread(dict(options),dict(del_options),s,net,analysis,repeater_analysis_model,endpoint,del_endpoint,verify_ssl)
+                    threads.append(thread)
                     thread.start()
+                    if len(threads) >= max_analyse_tasks:
+                        _wait_threads(threads)
+                        threads.clear()
                     #current account plan doesn't support call webservice multipe times at the same time.
-                    thread.join()
                 except:
                     end_processing(analysis,analysis.ANALYSE_FAILED,msg = traceback.format_exc())
     
-        for t in threads:
-            t.join()
+        if threads:
+            _wait_threads(threads)
+            threads.clear()
     
         #post analyse
-        threads.clear()
         for s,networks,get_analysis in [o for o in [(TX,self.tx_networks,lambda r:r.tx_analysis),(RX,self.rx_networks,lambda r:r.rx_analysis)] if o[1]]:
             for net in networks:
                 analysis = get_analysis(net)
                 thread = NetworkPostAnalysisThread(analysis,verify_ssl)
                 threads.append(thread)
                 thread.start()
+                if len(threads) >= max_download_tasks:
+                    _wait_threads(threads)
+                    threads.clear()
     
-        for t in threads:
-            t.join()
+        if threads:
+            _wait_threads(threads)
+            threads.clear()
 
 
 def analyse_repeater_coverage(queryset=None,network=None,repeater=None,force=False,scope=TX | RX):
+    #get the repeater list which are required to be analysed
     tx_repeaters,rx_repeaters = get_repeater_list(queryset=queryset,network=network,repeater=repeater,force=force,scope=scope)
-    #set process status to waiting for repeaters
+    #set process status to related waiting status for repeaters
     counter = 0
     for s,repeaters,get_analysis in [o for o in [
         (TX,tx_repeaters,lambda rep:RepeaterTXAnalysis.objects.get_or_create(repeater=rep,defaults={"analyse_requested":timezone.now()})[0]),
@@ -1009,7 +1020,9 @@ def analyse_repeater_coverage(queryset=None,network=None,repeater=None,force=Fal
                 start_processing(analysis,analysis.WAITING_STATUS_MAPPING[analysis.process_status])
 
     if counter :
+       #submit the task to analyse repoeaters
         _tasks.put(_AreaCoverage(tx_repeaters=tx_repeaters,rx_repeaters=rx_repeaters))
+        #start the analyse worker if it is not started yeat.
         if not AnalyseWorker.instance:
             AnalyseWorker.instance = AnalyseWorker()
             AnalyseWorker.instance.start()
@@ -1018,12 +1031,14 @@ def analyse_repeater_coverage(queryset=None,network=None,repeater=None,force=Fal
 
 
 def analyse_network_coverage(queryset=None,network=None,force=False,scope=TX | RX,options={}):
+    #get the network list which are required to be analysed
     tx_networks,rx_networks = get_network_list(queryset=queryset,network=network,force=force,scope=scope)
+    #get the repeater list which are required to be analysed
     tx_repeaters,rx_repeaters = get_repeater_list(queryset=Repeater.objects.filter(network=network) if network else Repeater.objects.filter(network__in=[o.id for o in queryset]),force=force,scope=scope)
 
     net_counter = 0
     rep_counter = 0
-    #set process status to waiting for network
+    #set process status to related waiting status for network
     for s,networks,get_analysis in [o for o in [
         (TX,tx_networks,lambda net:NetworkTXAnalysis.objects.get_or_create(network=net,defaults={"analyse_requested":timezone.now()})[0]),
         (RX,rx_networks,lambda net:NetworkRXAnalysis.objects.get_or_create(network=net,defaults={"analyse_requested":timezone.now()})[0])] if o[1]]:
@@ -1036,7 +1051,7 @@ def analyse_network_coverage(queryset=None,network=None,force=False,scope=TX | R
             else:
                 start_processing(analysis,analysis.WAITING_STATUS_MAPPING[analysis.process_status])
 
-    #set process status to waiting for repeaters
+    #set process status to related waiting status for repeaters
     for s,repeaters,get_analysis in [o for o in [
         (TX,tx_repeaters,lambda rep:RepeaterTXAnalysis.objects.get_or_create(repeater=rep,defaults={"analyse_requested":timezone.now()})[0]),
         (RX,rx_repeaters,lambda rep:RepeaterRXAnalysis.objects.get_or_create(repeater=rep,defaults={"analyse_requested":timezone.now()})[0])] if o[1]]:
@@ -1049,12 +1064,14 @@ def analyse_network_coverage(queryset=None,network=None,force=False,scope=TX | R
             else:
                 start_processing(analysis,analysis.WAITING_STATUS_MAPPING[analysis.process_status])
 
-    #analysis repoeaters
+    #submit the task to analyse repoeaters
     if rep_counter:
         _tasks.put(_AreaCoverage(tx_repeaters=tx_repeaters,rx_repeaters=rx_repeaters))
+    #submit the task to analyse networks
     if net_counter:
         _tasks.put(_MeshSite(network=net,force=force,scope=scope,options=options["mesh_site"],del_options=options["del_calculation"]))
 
+    #start the analyse worker if it is not started yeat.
     if rep_counter or net_counter:
         if not AnalyseWorker.instance:
             AnalyseWorker.instance = AnalyseWorker()

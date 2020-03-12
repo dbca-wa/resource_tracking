@@ -69,11 +69,11 @@ class Option(models.Model):
         return self._tvalue
 
     @classmethod
-    def get_option(cls,key):
+    def get_option(cls,key,default=None):
         try:
             return Option.objects.get(name=key).tvalue
         except:
-            return None
+            return default
 
     
 
@@ -226,7 +226,6 @@ def network_mercator_file_path(instance,filename):
 class CoverageAnalysis(models.Model):
     IDLE = 0
 
-    MIN_PROCESSING = 100 #Min processing stauts exclusive
     WAITING = 110
     
     WAITING_TO_DELETE = 120
@@ -317,7 +316,7 @@ class CoverageAnalysis(models.Model):
 
     @property
     def process_status_name(self):
-        if self.process_status > self.MIN_PROCESSING and timezone.now() - self.process_start > self.PROCESS_TIMEOUT:
+        if self.process_status > self.IDLE and timezone.now() - self.process_start > self.PROCESS_TIMEOUT:
             return "Timeout"
         else:
             return self.PROCESS_STATUS_CHOICES[self.process_status]
@@ -325,7 +324,7 @@ class CoverageAnalysis(models.Model):
     @property
     def status_name(self):
         status = self.process_status
-        if self.process_status > self.MIN_PROCESSING and timezone.now() - self.process_start > self.PROCESS_TIMEOUT:
+        if self.process_status > self.IDLE and timezone.now() - self.process_start > self.PROCESS_TIMEOUT:
             status = self.IDLE
 
         if status == self.IDLE:

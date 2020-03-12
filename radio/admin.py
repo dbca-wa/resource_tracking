@@ -169,7 +169,7 @@ class StatusMixin(object):
     rx_analysis_up2date.short_description = 'RX Analysis Up to Date?'
     rx_analysis_up2date.boolean = True
 
-@admin.register(Network)
+#@admin.register(Network)
 class NetworkAdmin(StatusMixin,AnalysisFieldsMixin,admin.ModelAdmin):
     list_display = ('name', 'comments',"tx_analysis_status","rx_analysis_status")
     ordering = ('name',)
@@ -218,14 +218,13 @@ class NetworkAdmin(StatusMixin,AnalysisFieldsMixin,admin.ModelAdmin):
         self._analyse_coverage(request,queryset,analysis.RX,True)
     reanalyse_rx_coverage.short_description = 'Reanalyse RX Coverage'
 
-
 @admin.register(Repeater)
 class RepeaterAdmin(StatusMixin,RepeaterFieldsMixin,AnalysisFieldsMixin,admin.ModelAdmin):
-    list_display = ('site_name', 'network','district','channel_number',"_tx_frequency",'_ctcss_tx','_rx_frequency','_ctcss_rx',"tx_analysis_status","rx_analysis_status")
+    list_display = ('site_name', 'district','channel_number',"_tx_frequency",'_ctcss_tx','_rx_frequency','_ctcss_rx',"tx_analysis_status","rx_analysis_status")
     ordering = ('site_name',)
-    list_filter = ('district','network')
-    readonly_fields = ("network","tx_last_analysed","tx_bbox","tx_raster_4326","tx_shp_file","rx_last_analysed","rx_bbox","rx_raster_4326","rx_shp_file","tx_analysis_status","tx_analyse_msg","rx_analysis_status","rx_analyse_msg")
-    fields= ["site_name","network","district","channel_number","sss_display","sss_description","point","link_point","link_description",
+    list_filter = ('district',)
+    readonly_fields = ("tx_last_analysed","tx_bbox","tx_raster_4326","tx_shp_file","rx_last_analysed","rx_bbox","rx_raster_4326","rx_shp_file","tx_analysis_status","tx_analyse_msg","rx_analysis_status","rx_analyse_msg")
+    fields= ["site_name","district","channel_number","sss_display","sss_description","point","link_point","link_description",
             "tx_frequency","ctcss_tx","tx_antenna_height","nac_tx","tx_power","tx_antenna_gain",
             "rx_frequency","ctcss_rx","rx_antenna_height","nac_rx","rx_power","rx_antenna_gain",
             "output_color","output_radius","output_clutter","last_inspected",
