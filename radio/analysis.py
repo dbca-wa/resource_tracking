@@ -639,7 +639,7 @@ class RepeaterAnalysisThread(_Thread):
             end_processing(self.analysis,self.analysis.ANALYSE_FAILED,msg=traceback.format_exc())
 
 class RepeaterDownloadThread(_Thread):
-    def __init__(self,analysis,coverage_model,verify_ssl):
+    def __init__(self,analysis,verify_ssl):
         super().__init__()
         self.analysis = analysis
         self.verify_ssl = verify_ssl
