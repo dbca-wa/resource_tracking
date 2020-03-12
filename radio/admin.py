@@ -43,13 +43,17 @@ class AnalysisFieldsMixin(object):
 
     def tx_raster_4326(self,obj):
         raster_file = '<a href="{}" target="repeater_raster">{}</a>'.format(obj.tx_analysis.raster_4326.url,obj.tx_analysis.raster_4326.name) if obj and obj.tx_analysis and obj.tx_analysis.raster_4326 else ""
-        world_file = '<b style="padding-left:20px">World File:</b> <a href="{}" download>{}</a>'.format(obj.tx_analysis.world_file_4326.url,obj.tx_analysis.world_file_4326.name) if obj and obj.tx_analysis and obj.tx_analysis.world_file_4326 else ""
-        return mark_safe("{}{}".format(raster_file,world_file))
+        #world_file = '<b style="padding-left:20px">World File:</b> <a href="{}" download>{}</a>'.format(obj.tx_analysis.world_file_4326.url,obj.tx_analysis.world_file_4326.name) if obj and obj.tx_analysis and obj.tx_analysis.world_file_4326 else ""
+        #return mark_safe("{}{}".format(raster_file,world_file))
+        return mark_safe(raster_file)
 
     tx_raster_4326.short_description = 'TX Raster(EPSG:4326)'
 
     def tx_shp_file(self,obj):
-        return mark_safe('<a href="{}" download>{}</a>'.format(obj.tx_analysis.shp_file.url,obj.tx_analysis.shp_file.name)) if obj and obj.tx_analysis and obj.tx_analysis.shp_file else ""
+        shp_file = '<a href="{}" download>{}</a>'.format(obj.tx_analysis.shp_file.url,obj.tx_analysis.shp_file.name) if obj and obj.tx_analysis and obj.tx_analysis.shp_file else ""
+
+        sld_file = '<b style="padding-left:20px">sld File:</b> <a href="/static/radio/rainbow_55.sld" download>rainbow.sld</a>' if obj and obj.tx_analysis and obj.tx_analysis.shp_file else ""
+        return mark_safe("{}{}".format(shp_file,sld_file))
     tx_shp_file.short_description = 'TX Shape File'
 
     def rx_analyse_result(self,obj):
@@ -72,7 +76,11 @@ class AnalysisFieldsMixin(object):
     rx_raster_4326.short_description = 'RX Raster(EPSG:4326)'
 
     def rx_shp_file(self,obj):
-        return mark_safe('<a href="{}" download>{}</a>'.format(obj.rx_analysis.shp_file.url,obj.rx_analysis.shp_file.name)) if obj and obj.rx_analysis and obj.rx_analysis.shp_file else ""
+        shp_file = '<a href="{}" download>{}</a>'.format(obj.rx_analysis.shp_file.url,obj.rx_analysis.shp_file.name) if obj and obj.rx_analysis and obj.rx_analysis.shp_file else ""
+
+        sld_file = '<b style="padding-left:20px">sld File:</b> <a href="/static/radio/rainbow_55.sld" download>rainbow.sld</a>' if obj and obj.rx_analysis and obj.rx_analysis.shp_file else ""
+        return mark_safe("{}{}".format(shp_file,sld_file))
+
     rx_shp_file.short_description = 'RX Shape File'
 
 
@@ -106,24 +114,38 @@ class RepeaterInline(RepeaterFieldsMixin,admin.TabularInline):
         obj.modifier = request.user
 
         super().save_model(request,obj,form,change)
+
+class StatusMixin(object):
+    
+    def tx_analysis_status(self,obj):
+        if not obj or not obj.tx_analysis:
+            return ""
+        else:
+            return obj.tx_analysis.status_name
+    tx_analysis_status.short_description = 'TX Analysis Status'
         
-
-@admin.register(Network)
-class NetworkAdmin(AnalysisFieldsMixin,admin.ModelAdmin):
-    list_display = ('name', 'comments',"tx_analyse_up2date","rx_analyse_up2date")
-    ordering = ('name',)
-    form = NetworkEditForm
-    inlines = (RepeaterInline,)
-    readonly_fields = ("tx_last_analysed","tx_bbox","tx_raster_4326","rx_last_analysed","rx_bbox","rx_raster_4326")
-
-    #actions = ('analyse_coverage','reanalyse_coverage')
-    actions = ('analyse_coverage',)
-
-    def tx_analyse_result(self,obj):
-        return mark_safe("<pre>{}</pre>".format((obj.tx_analysis.analyse_result or "") if obj else ""))
-    tx_analyse_result.short_description = 'TX Analyse Result'
-
-    def tx_analyse_up2date(self,obj):
+    def tx_analyse_msg(self,obj):
+        if not obj or not obj.tx_analysis:
+            return ""
+        else:
+            return obj.tx_analysis.process_msg or ""
+    tx_analyse_msg.short_description = 'TX Analyse Message'
+        
+    def rx_analysis_status(self,obj):
+        if not obj or not obj.rx_analysis:
+            return ""
+        else:
+            return obj.rx_analysis.status_name
+    rx_analysis_status.short_description = 'RX Analysis Status'
+        
+    def rx_analyse_msg(self,obj):
+        if not obj or not obj.rx_analysis:
+            return ""
+        else:
+            return obj.rx_analysis.process_msg or ""
+    rx_analyse_msg.short_description = 'RX Analyse Message'
+        
+    def tx_analysis_up2date(self,obj):
         if not obj:
             return True
         elif not obj.tx_analysis:
@@ -132,10 +154,10 @@ class NetworkAdmin(AnalysisFieldsMixin,admin.ModelAdmin):
             return False
         else:
             return obj.tx_analysis.last_analysed >= obj.tx_analysis.analyse_requested
-    tx_analyse_up2date.short_description = 'TX Analyse Up to Date?'
-    tx_analyse_up2date.boolean = True
+    tx_analysis_up2date.short_description = 'TX Analysis Up to Date?'
+    tx_analysis_up2date.boolean = True
 
-    def rx_analyse_up2date(self,obj):
+    def rx_analysis_up2date(self,obj):
         if not obj:
             return True
         elif not obj.rx_analysis:
@@ -144,10 +166,23 @@ class NetworkAdmin(AnalysisFieldsMixin,admin.ModelAdmin):
             return False
         else:
             return obj.rx_analysis.last_analysed >= obj.rx_analysis.analyse_requested
-    rx_analyse_up2date.short_description = 'RX Analyse Up to Date?'
-    rx_analyse_up2date.boolean = True
+    rx_analysis_up2date.short_description = 'RX Analysis Up to Date?'
+    rx_analysis_up2date.boolean = True
 
+@admin.register(Network)
+class NetworkAdmin(StatusMixin,AnalysisFieldsMixin,admin.ModelAdmin):
+    list_display = ('name', 'comments',"tx_analysis_status","rx_analysis_status")
+    ordering = ('name',)
+    form = NetworkEditForm
+    inlines = (RepeaterInline,)
+    readonly_fields = ("tx_analysis_status","tx_analyse_msg","rx_analysis_status","rx_analyse_msg","tx_last_analysed","tx_bbox","tx_raster_4326","rx_last_analysed","rx_bbox","rx_raster_4326")
 
+    #actions = ('analyse_tx_coverage','analyse_rx_coverage','reanalyse_tx_coverage',reanalyse_rx_coverage)
+    actions = ('analyse_tx_coverage','analyse_rx_coverage')
+
+    def tx_analyse_result(self,obj):
+        return mark_safe("<pre>{}</pre>".format((obj.tx_analysis.analyse_result or "") if obj else ""))
+    tx_analyse_result.short_description = 'TX Analyse Result'
 
     def save_model(self, request, obj, form, change):
         """
@@ -160,103 +195,74 @@ class NetworkAdmin(AnalysisFieldsMixin,admin.ModelAdmin):
         super().save_model(request,obj,form,change)
         form.save_repeaters()
         
-    def analyse_coverage(self, request, queryset):
-        options = {}
-        for network in queryset:
-            try:
-                analysis.analyse_network_coverage(network=network,options=options)
-                self.message_user(request, 'Network({}) have been analysed.'.format(network))
-            except Exception as ex:
-                traceback.print_exc()
-                self.message_user(request, 'Failed to analyse the network({}).{}'.format(network,str(ex)),level=messages.ERROR)
+    def _analyse_coverage(self, request, queryset,scope,force):
+        counter = analysis.analyse_network_coverage(queryset=queryset,scope=scope,force=force)
+        if counter:
+            self.message_user(request, 'The network analysing task was submitted.')
+        else:
+            self.message_user(request, 'All chosen networks is up to date or under processing')
 
-    analyse_coverage.short_description = 'Analyse Coverage'
+    def analyse_tx_coverage(self, request, queryset):
+        self._analyse_coverage(request,queryset,analysis.TX,False)
+    analyse_tx_coverage.short_description = 'Analyse TX Coverage'
 
-    def reanalyse_coverage(self, request, queryset):
-        options = {}
-        for network in queryset:
-            try:
-                analysis.analyse_network_coverage(network=network,options=options,force=True)
-                self.message_user(request, 'Network({}) have been analysed.'.format(network))
-            except Exception as ex:
-                traceback.print_exc()
-                self.message_user(request, 'Failed to analyse the network({}).{}'.format(network,str(ex)),level=messages.ERROR)
+    def analyse_rx_coverage(self, request, queryset):
+        self._analyse_coverage(request,queryset,analysis.RX,False)
+    analyse_rx_coverage.short_description = 'Analyse RX Coverage'
 
-    reanalyse_coverage.short_description = 'Reanalyse Coverage'
+    def reanalyse_tx_coverage(self, request, queryset):
+        self._analyse_coverage(request,queryset,analysis.TX,True)
+    reanalyse_tx_coverage.short_description = 'Reanalyse TX Coverage'
+
+    def reanalyse_rx_coverage(self, request, queryset):
+        self._analyse_coverage(request,queryset,analysis.RX,True)
+    reanalyse_rx_coverage.short_description = 'Reanalyse RX Coverage'
+
 
 @admin.register(Repeater)
-class RepeaterAdmin(RepeaterFieldsMixin,AnalysisFieldsMixin,admin.ModelAdmin):
-    list_display = ('site_name', 'network','district','channel_number',"_tx_frequency",'_ctcss_tx','_rx_frequency','_ctcss_rx',"tx_analyse_up2date","rx_analyse_up2date")
+class RepeaterAdmin(StatusMixin,RepeaterFieldsMixin,AnalysisFieldsMixin,admin.ModelAdmin):
+    list_display = ('site_name', 'network','district','channel_number',"_tx_frequency",'_ctcss_tx','_rx_frequency','_ctcss_rx',"tx_analysis_status","rx_analysis_status")
     ordering = ('site_name',)
     list_filter = ('district','network')
-    readonly_fields = ("network","tx_last_analysed","tx_bbox","tx_raster_4326","tx_shp_file","rx_last_analysed","rx_bbox","rx_raster_4326","rx_shp_file")
+    readonly_fields = ("network","tx_last_analysed","tx_bbox","tx_raster_4326","tx_shp_file","rx_last_analysed","rx_bbox","rx_raster_4326","rx_shp_file","tx_analysis_status","tx_analyse_msg","rx_analysis_status","rx_analyse_msg")
     fields= ["site_name","network","district","channel_number","sss_display","sss_description","point","link_point","link_description",
-            "tx_frequency","ctcss_tx","tx_antenna_height","nac_tx",
-            "rx_frequency","ctcss_rx","rx_antenna_height","nac_rx",
+            "tx_frequency","ctcss_tx","tx_antenna_height","nac_tx","tx_power","tx_antenna_gain",
+            "rx_frequency","ctcss_rx","rx_antenna_height","nac_rx","rx_power","rx_antenna_gain",
             "output_color","output_radius","output_clutter","last_inspected",
-            "tx_last_analysed","tx_bbox","tx_raster_4326","tx_shp_file","rx_last_analysed","rx_bbox","rx_raster_4326","rx_shp_file"]
+            "tx_last_analysed","tx_bbox","tx_raster_4326","tx_shp_file","rx_last_analysed","rx_bbox","rx_raster_4326","rx_shp_file",
+            "tx_analysis_status","tx_analyse_msg","rx_analysis_status","rx_analyse_msg"]
     form = RepeaterEditForm
-    actions = ('analyse_coverage','reanalyse_coverage')
+    actions = ('analyse_tx_coverage','analyse_rx_coverage','reanalyse_tx_coverage','reanalyse_rx_coverage')
+    #actions = ('analyse_tx_coverage','analyse_rx_coverage')
 
     def info_completed(self,obj):
         return obj.is_complete if obj else False
     info_completed.boolean = True
     info_completed.short_description = 'Info Completed?'
 
-    def tx_analyse_up2date(self,obj):
-        if not obj:
-            return True
-        elif not obj.tx_analysis:
-            return False
-        elif not obj.tx_analysis.last_analysed:
-            return False
+
+    def _analyse_coverage(self, request, queryset,scope,force):
+        counter = analysis.analyse_repeater_coverage(queryset=queryset,scope=scope,force=force)
+        if counter:
+            self.message_user(request, 'The repeater analysing task was submitted.')
         else:
-            return obj.tx_analysis.last_analysed >= obj.tx_analysis.analyse_requested
-    tx_analyse_up2date.short_description = 'TX Analyse Up to Date?'
-    tx_analyse_up2date.boolean = True
+            self.message_user(request, 'All chosen repeaters is up to date or under processing')
 
-    def rx_analyse_up2date(self,obj):
-        if not obj:
-            return True
-        elif not obj.rx_analysis:
-            return False
-        elif not obj.rx_analysis.last_analysed:
-            return False
-        else:
-            return obj.rx_analysis.last_analysed >= obj.rx_analysis.analyse_requested
-    rx_analyse_up2date.short_description = 'RX Analyse Up to Date?'
-    rx_analyse_up2date.boolean = True
+    def analyse_tx_coverage(self, request, queryset):
+        self._analyse_coverage(request,queryset,analysis.TX,False)
+    analyse_tx_coverage.short_description = 'Analyse TX Coverage'
 
+    def analyse_rx_coverage(self, request, queryset):
+        self._analyse_coverage(request,queryset,analysis.RX,False)
+    analyse_rx_coverage.short_description = 'Analyse RX Coverage'
 
-    def analyse_coverage(self, request, queryset):
-        del_endpoint = Option.objects.get(name="del_calculation_endpoint").value
-        options = {}
-        del_options = {}
-        verify_ssl = analysis.get_verify_ssl()
-        for rep in queryset:
-            try:
-                analysis.area_coverage(repeater=rep,force=False,scope=analysis.TX | analysis.RX,options=options,del_options=del_options,verify_ssl=verify_ssl)
-                self.message_user(request, 'Repeater({}) have been analysed.'.format(rep))
-            except Exception as ex:
-                traceback.print_exc()
-                self.message_user(request, 'Failed to analyse the repeater({}).{}'.format(rep,str(ex)),level=messages.ERROR)
+    def reanalyse_tx_coverage(self, request, queryset):
+        self._analyse_coverage(request,queryset,analysis.TX,True)
+    reanalyse_tx_coverage.short_description = 'Reanalyse TX Coverage'
 
-    analyse_coverage.short_description = 'Analyse Coverage'
-
-    def reanalyse_coverage(self, request, queryset):
-        del_endpoint = Option.objects.get(name="del_calculation_endpoint").value
-        options = {}
-        del_options = {}
-        verify_ssl = analysis.get_verify_ssl()
-        for rep in queryset:
-            try:
-                analysis.area_coverage(repeater=rep,force=True,scope=analysis.TX | analysis.RX,options=options,del_options=del_options,verify_ssl=verify_ssl)
-                self.message_user(request, 'Repeater({}) have been analysed.'.format(rep))
-            except Exception as ex:
-                traceback.print_exc()
-                self.message_user(request, 'Failed to analyse the repeater({}).{}'.format(rep,str(ex)),level=messages.ERROR)
-
-    reanalyse_coverage.short_description = 'Reanalyse Coverage'
+    def reanalyse_rx_coverage(self, request, queryset):
+        self._analyse_coverage(request,queryset,analysis.RX,True)
+    reanalyse_rx_coverage.short_description = 'Reanalyse RX Coverage'
 
 @admin.register(Option)
 class OptionAdmin(admin.ModelAdmin):

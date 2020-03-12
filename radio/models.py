@@ -3,6 +3,7 @@ import os
 import logging
 import requests
 import json
+from datetime import timedelta
 
 from django.utils import timezone
 from django.conf import settings
@@ -66,6 +67,14 @@ class Option(models.Model):
                 self._tvalue = self.value
 
         return self._tvalue
+
+    @classmethod
+    def get_option(cls,key):
+        try:
+            return Option.objects.get(name=key).tvalue
+        except:
+            return None
+
     
 
     def __str__(self):
@@ -126,6 +135,10 @@ class Repeater(models.Model):
     nac_rx = models.CharField(max_length=32,null=True,blank=True,verbose_name="NAC RX (P25)")
     tx_antenna_height = models.FloatField(null=True,blank=True,verbose_name="TX Antenna Height (M)")
     rx_antenna_height = models.FloatField(null=True,blank=True,verbose_name="RX Antenna Height (M)")
+    tx_power = models.FloatField(null=True,blank=True,verbose_name="TX Transmitter RF power in Watts,20dBm=0.1w")
+    rx_power = models.FloatField(null=True,blank=True,verbose_name="RX Transmitter RF power in Watts,20dBm=0.1w")
+    tx_antenna_gain = models.FloatField(null=True,blank=True,verbose_name="TX Transmitter antenna  gain in dBi")
+    rx_antenna_gain = models.FloatField(null=True,blank=True,verbose_name="RX Transmitter antenna  gain in dBi")
     output_color = models.CharField(max_length=32,null=True,blank=True)
     output_radius = models.FloatField(null=True,blank=True,verbose_name="Output Radius (Km)")
     output_clutter = models.FloatField(null=True,blank=True,verbose_name="Output Clutter (M)")
@@ -210,10 +223,129 @@ def network_4326_file_path(instance,filename):
 def network_mercator_file_path(instance,filename):
     return network_file_path(instance,filename,suffix="mercator")
 
-class NetworkAnalysis(models.Model):
+class CoverageAnalysis(models.Model):
+    IDLE = 0
+
+    MIN_PROCESSING = 100 #Min processing stauts exclusive
+    WAITING = 110
+    
+    WAITING_TO_DELETE = 120
+    DELETING = 121
+    DELETE_FAILED = -122
+    DELETED = 129
+
+    WAITING_TO_ANALYSE = 130
+    ANALYSING = 131
+    ANALYSE_FAILED = -132
+    ANALYSED = 139
+
+    WAITING_TO_DOWNLOAD = 140
+    DOWNLOADING = 141
+    DOWNLOAD_FAILED = -142
+    DOWNLOADED = 149
+
+    WAITING_TO_EXTRACT = 150
+    EXTRACTING = 151
+    EXTRACT_FAILED = -152
+    EXTRACTED = 159
+
+    #Failed statuses
+    TIMEOUT = -9998
+    FAILED = -9999
+
+    PROCESS_STATUS_CHOICES = (
+        (IDLE,"Idle"),
+        (WAITING,"Waiting to process"),
+
+        (DELETE_FAILED ,"Delete Failed"),
+        (WAITING_TO_DELETE ,"Waiting to delete"),
+        (DELETING,"Deleting Calculation"),
+        (DELETED,"Deleted Calculation"),
+
+        (ANALYSE_FAILED,"Analyse Failed"),
+        (WAITING_TO_ANALYSE ,"Waiting to analyse"),
+        (ANALYSING,"Analysing"),
+        (ANALYSED,"Analysed"),
+
+        (DOWNLOAD_FAILED,"Download Failed"),
+        (WAITING_TO_DOWNLOAD ,"Waiting to download"),
+        (DOWNLOADING,"Downloading"),
+        (DOWNLOADED,"Downloaded"),
+
+        (EXTRACT_FAILED,"Extracting Failed"),
+        (WAITING_TO_EXTRACT ,"Waiting to extract"),
+        (EXTRACTING,"Extrating Spatial Data"),
+
+        (TIMEOUT,"Timeout"),
+        (FAILED,"Failed"),
+    )
+    PROCESS_STATUS_MAPPING = dict(PROCESS_STATUS_CHOICES)
+
+    WAITING_STATUS_MAPPING = {
+        IDLE:WAITING,
+        WAITING:WAITING,
+
+        WAITING_TO_DELETE:WAITING_TO_DELETE,
+        DELETING:WAITING_TO_DELETE,
+        DELETE_FAILED:WAITING_TO_DELETE,
+        DELETED:WAITING_TO_ANALYSE,
+
+        WAITING_TO_ANALYSE:WAITING_TO_ANALYSE,
+        ANALYSING:WAITING_TO_ANALYSE,
+        ANALYSE_FAILED:WAITING_TO_ANALYSE,
+        ANALYSED:WAITING_TO_DOWNLOAD,
+
+        WAITING_TO_DOWNLOAD:WAITING_TO_DOWNLOAD,
+        DOWNLOADING:WAITING_TO_DOWNLOAD,
+        DOWNLOAD_FAILED:WAITING_TO_DOWNLOAD,
+        DOWNLOADED:WAITING_TO_EXTRACT,
+
+        WAITING_TO_EXTRACT:WAITING_TO_EXTRACT,
+        EXTRACTING:WAITING_TO_EXTRACT,
+        EXTRACT_FAILED:WAITING_TO_EXTRACT,
+
+        TIMEOUT:WAITING,
+        FAILED:WAITING
+    }
+
+    PROCESS_TIMEOUT = timedelta(hours=6)
+
+    process_status = models.SmallIntegerField(default=IDLE,choices=PROCESS_STATUS_CHOICES,editable=False)
+    process_msg = models.TextField(editable=False,null=True)
+    process_start = models.DateTimeField(editable=False,null=True)
+    process_end = models.DateTimeField(editable=False,null=True)
+
+    @property
+    def process_status_name(self):
+        if self.process_status > self.MIN_PROCESSING and timezone.now() - self.process_start > self.PROCESS_TIMEOUT:
+            return "Timeout"
+        else:
+            return self.PROCESS_STATUS_CHOICES[self.process_status]
+
+    @property
+    def status_name(self):
+        status = self.process_status
+        if self.process_status > self.MIN_PROCESSING and timezone.now() - self.process_start > self.PROCESS_TIMEOUT:
+            status = self.IDLE
+
+        if status == self.IDLE:
+            if not self.last_analysed:
+                return "Outdated"
+            elif self.last_analysed < self.analyse_requested:
+                return "Outdated"
+            else:
+                return "Latest"
+        else:
+            return self.PROCESS_STATUS_MAPPING[status]
+
+
+
+    class Meta:
+        abstract = True
+
+class NetworkAnalysis(CoverageAnalysis):
     analyse_requested = models.DateTimeField(editable=False)
     last_analysed = models.DateTimeField(editable=False,null=True)
-    last_downloaded = models.DateTimeField(editable=False,null=True)
 
     analyse_result = JSONField(null=True,editable=False)
     raster_4326 = models.FileField(max_length=512,null=True,editable=False,upload_to=network_4326_file_path, storage=OverwriteStorage())
@@ -231,13 +363,14 @@ class NetworkTXAnalysis(NetworkAnalysis):
 class NetworkRXAnalysis(NetworkAnalysis):
     network = models.OneToOneField(Network,on_delete=models.CASCADE,primary_key=True,editable=False,related_name="rx_analysis")
 
-def repeater_file_path(instance,filename,suffix=None):
+def repeater_file_path(instance,filename,suffix=None,ext=None):
     if isinstance(instance,RepeaterTXAnalysis):
         folder = "tx"
     else:
         folder = "rx"
 
-    ext = os.path.splitext(filename)[1]
+    if not ext:
+        ext = os.path.splitext(filename)[1]
    
     site_name = instance.repeater.site_name.lower().replace(" ","_")
     if suffix :
@@ -246,20 +379,13 @@ def repeater_file_path(instance,filename,suffix=None):
         return os.path.join("radio","repeaters",site_name,folder,"{}_{}{}".format(site_name,folder,ext))
 
 def repeater_4326_file_path(instance,filename):
-    return repeater_file_path(instance,filename,suffix="4326")
+    return repeater_file_path(instance,filename,suffix="4326",ext=".tiff")
 
 def repeater_mercator_file_path(instance,filename):
     return repeater_file_path(instance,filename,suffix="mercator")
 
 def repeater_shp_file_path(instance,filename):
-    if isinstance(instance,RepeaterTXAnalysis):
-        folder = "tx"
-    else:
-        folder = "rx"
-
-    site_name = instance.repeater.site_name.lower().replace(" ","_")
-    return os.path.join("radio","repeaters",site_name,folder,"{}_{}.shp.zip".format(site_name,folder))
-
+    return repeater_file_path(instance,filename,ext=".shp.zip")
 
 COMPRESS_FILE_SETTINGS = [
     (".7z",lambda f,output:["7za","-y","x",f,"-o{}".format(output)]),
@@ -272,11 +398,10 @@ COMPRESS_FILE_SETTINGS = [
     (".tar.bz",lambda f,output:["tar","--overwrite","-x","-j","-f",f,"-C",output])
 ]
 
-class RepeaterAnalysis(models.Model):
+class RepeaterAnalysis(CoverageAnalysis):
     network = models.CharField(max_length=64,null=True,editable=False)
     analyse_requested = models.DateTimeField(editable=False)
     last_analysed = models.DateTimeField(editable=False,null=True)
-    last_downloaded = models.DateTimeField(editable=False,null=True)
 
     analyse_result = JSONField(null=True,editable=False)
     raster_4326 = models.FileField(max_length=512,null=True,editable=False,upload_to=repeater_4326_file_path, storage=OverwriteStorage())
@@ -285,7 +410,6 @@ class RepeaterAnalysis(models.Model):
     world_file_mercator = models.FileField(max_length=512,null=True,editable=False,upload_to=repeater_mercator_file_path, storage=OverwriteStorage())
     shp_file = models.FileField(max_length=512,null=True,editable=False,upload_to=repeater_shp_file_path, storage=OverwriteStorage())
     bbox = ArrayField(base_field=models.FloatField(),size=4,null=True,editable=False) #left bottom lon,left bottom lon,upper right lon,upper right lat 
-    geom = models.MultiPolygonField(null=True,editable=False)
 
     class Meta:
         abstract = True
@@ -295,6 +419,23 @@ class RepeaterTXAnalysis(RepeaterAnalysis):
 
 class RepeaterRXAnalysis(RepeaterAnalysis):
     repeater = models.OneToOneField(Repeater,on_delete=models.CASCADE,primary_key=True,editable=False,related_name="rx_analysis")
+
+
+class RepeaterCoverage(models.Model):
+    repeater = models.ForeignKey(Repeater,on_delete=models.CASCADE,editable=False,related_name="+")
+    site_name = models.CharField(max_length=128)
+    district = models.CharField(max_length=64,null=False,editable=False)
+    dn= models.IntegerField(null=True,editable=False)
+    geom = models.MultiPolygonField(null=True,editable=False)
+
+    class Meta:
+        abstract = True
+
+class RepeaterTXCoverage(RepeaterCoverage):
+    pass
+
+class RepeaterRXCoverage(RepeaterCoverage):
+    pass
 
 class AnalysisListener(object):
     @staticmethod
