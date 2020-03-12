@@ -134,7 +134,9 @@ class AnalyseWorker(threading.Thread):
             while True:
                 try:
                     task = _tasks.get(timeout=10)
+                    logger.debug("Thread({}.{}) begins to run a task({}) from queue".format(os.getpid(),id(self),task))
                     task.run()
+                    logger.debug("Thread({}.{}) completes the task({})".format(os.getpid(),id(self),task))
                 except queue.Empty:
                     break
         finally:
@@ -636,17 +638,24 @@ class RepeaterAnalysisThread(_Thread):
         except :
             end_processing(self.analysis,self.analysis.ANALYSE_FAILED,msg=traceback.format_exc())
 
-class RepeaterPostAnalysisThread(_Thread):
+class RepeaterDownloadThread(_Thread):
     def __init__(self,analysis,coverage_model,verify_ssl):
         super().__init__()
         self.analysis = analysis
-        self.coverage_model = coverage_model
         self.verify_ssl = verify_ssl
         self._ex = None
 
     def _run(self):
         _download_repeater_file(self.analysis,verify_ssl=self.verify_ssl)
 
+class RepeaterExtractThread(_Thread):
+    def __init__(self,analysis,coverage_model):
+        super().__init__()
+        self.analysis = analysis
+        self.coverage_model = coverage_model
+        self._ex = None
+
+    def _run(self):
         _process_spatial_data(self.analysis,self.coverage_model)
 
 class NetworkAnalysisThread(_Thread):
@@ -789,6 +798,9 @@ class _AreaCoverage(object):
         self.tx_repeaters = tx_repeaters
         self.rx_repeaters = rx_repeaters
 
+    def __str__(self):
+        return "AreaCoverage(tx_repeaters={},rx_repeaters={})".format(self.tx_repeaters,self.rx_repeaters)
+
     def run(self):
         del_endpoint = Option.get_option("del_calculation_endpoint")
     
@@ -797,7 +809,8 @@ class _AreaCoverage(object):
         verify_ssl = get_verify_ssl()
 
         max_analyse_tasks = Option.get_option("max_analyse_tasks",1)
-        max_download_tasks = Option.get_option("max_download_tasks",5)
+        max_download_tasks = Option.get_option("max_download_tasks",1)
+        max_extract_tasks = Option.get_option("max_extract_tasks",3)
 
         options = {}
         del_options = {}
@@ -842,17 +855,35 @@ class _AreaCoverage(object):
             _wait_threads(threads)
             threads.clear()
 
-        #post analyse
+        #download calculation files
+        threads.clear()
+        for s,repeaters,get_analysis in [(TX,self.tx_repeaters,lambda r:r.tx_analysis),(RX,self.rx_repeaters,lambda r:r.rx_analysis)]:
+            if not repeaters:
+                continue
+            for repeater in repeaters:
+                analysis = get_analysis(repeater)
+                thread = RepeaterDownloadThread(analysis,verify_ssl)
+                threads.append(thread)
+                thread.start()
+                if len(threads) >= max_download_tasks:
+                    _wait_threads(threads)
+                    threads.clear()
+
+        if threads:
+            _wait_threads(threads)
+            threads.clear()
+
+        #extract spatial data
         threads.clear()
         for s,repeaters,get_analysis,coverage_model in [(TX,self.tx_repeaters,lambda r:r.tx_analysis,RepeaterTXCoverage),(RX,self.rx_repeaters,lambda r:r.rx_analysis,RepeaterRXCoverage)]:
             if not repeaters:
                 continue
             for repeater in repeaters:
                 analysis = get_analysis(repeater)
-                thread = RepeaterPostAnalysisThread(analysis,coverage_model,verify_ssl)
+                thread = RepeaterExtractThread(analysis,coverage_model)
                 threads.append(thread)
                 thread.start()
-                if len(threads) >= max_download_tasks:
+                if len(threads) >= max_extract_tasks:
                     _wait_threads(threads)
                     threads.clear()
 
@@ -917,6 +948,10 @@ class _MeshSite(object):
     def __init__(self,tx_networks=None,rx_networks=None):
         self.tx_networks = None
         self.rx_networks = None
+
+
+    def __str__(self):
+        return "MestSite(tx_networks={},rx_networks={})".format(self.tx_networks,self.rx_networks)
 
     def run(self):
         #analyse the network
