@@ -446,7 +446,7 @@ def _process_spatial_data(analysis,coverage_model):
         update_fields.append("last_analysed")
         end_processing(analysis,analysis.IDLE,update_fields=update_fields)
     except:
-        end_processing(analysis,analysis.EXTRACTE_FAILED,msg=traceback.format_exc())
+        end_processing(analysis,analysis.EXTRACT_FAILED,msg=traceback.format_exc())
 
 def _del_calculation(cid,options={},endpoint=None,verify_ssl=None):
     """
