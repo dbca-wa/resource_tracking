@@ -308,9 +308,6 @@ def _download_file(analysis,file_column_mapping,verify_ssl=None):
 
         update_fields = []
         for column,column_settings in file_column_mapping.items():
-            if analysis.analyse_result.get("{}_downloaded".format(column)):
-                #already downloaded
-                continue
             key,get_file_path,rel_column = column_settings
             if callable(key):
                 url = key(analysis.analyse_result)
@@ -336,8 +333,6 @@ def _download_file(analysis,file_column_mapping,verify_ssl=None):
     
             setattr(analysis,column,rel_file_path)
             update_fields.append(column)
-            analysis.analyse_result["{}_downloaded".format(column)]=str(timezone.now())
-            update_fields.append("analyse_result")
             
             if rel_column:
                 setattr(analysis,rel_column,None)
