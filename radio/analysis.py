@@ -513,9 +513,9 @@ def _del_analysis_calculation(analysis,options={},endpoint=None,verify_ssl=None,
     try:
         start_processing(analysis,analysis.DELETING)
         if not analysis or not analysis.analyse_result or not analysis.analyse_result.get("id") :
-            #data incorrect
-            raise Exception("Can't find calculation id in analyse result")
-        if not analysis.analyse_result.get("deleted"):
+            #can't find calculation id, no need to delete
+            pass
+        elif not analysis.analyse_result.get("deleted"):
             _del_calculation(analysis.analyse_result["id"],options=options,endpoint=endpoint,verify_ssl=verify_ssl)
             if hasattr(analysis,"network"):
                 #analysis has network field, reset it
@@ -525,7 +525,7 @@ def _del_analysis_calculation(analysis,options={},endpoint=None,verify_ssl=None,
             update_fields.append("analyse_result")
         end_processing(analysis,target_status,update_fields=update_fields)
     except :
-        logger.error("delete calculation({}) failed,options={}.{}".format(analysis.analyse_result["id"],["{}={}".format(k,'******' if k in credential_options else v) for k,v in options.items()],traceback.format_exc()))
+        logger.error("delete calculation({}) failed,options={}.{}".format(analysis.analyse_result.get("id"),["{}={}".format(k,'******' if k in credential_options else v) for k,v in options.items()],traceback.format_exc()))
         end_processing(analysis,analysis.DELETE_FAILED,msg=traceback.format_exc(),update_fields=update_fields)
 
     return False if analysis.process_status == analysis.FAILED else True
@@ -740,16 +740,16 @@ def get_repeater_list(queryset=None,network=None,repeater=None,force=False,scope
 
     if queryset:
         if isinstance(queryset,QuerySet):
-            base_qs = queryset.order_by("network")
+            base_qs = queryset.order_by("network","site_name")
         else:
-            base_qs = Repeater.objects.filter(id__in = [r.id for r in queryset]).order_by("network")
+            base_qs = Repeater.objects.filter(id__in = [r.id for r in queryset]).order_by("network","site_name")
     else:
         if repeater:
             base_qs = Repeater.objects.filter(id = repeater.id)
         elif network:
-            base_qs = Repeater.objects.filter(network = network).order_by("network")
+            base_qs = Repeater.objects.filter(network = network).order_by("network","site_name")
         else:
-            base_qs = Repeater.objects.all().order_by("network")
+            base_qs = Repeater.objects.all().order_by("network","site_name")
 
     if scope & TX == TX:
         if not force:
