@@ -401,6 +401,9 @@ class RepeaterAnalysis(CoverageAnalysis):
     network = models.CharField(max_length=64,null=True,editable=False)
     analyse_requested = models.DateTimeField(editable=False)
     last_analysed = models.DateTimeField(editable=False,null=True)
+    last_merged = models.DateTimeField(editable=False,null=True)
+    last_resolved = models.DateTimeField(editable=False,null=True)
+    last_simplified = models.DateTimeField(editable=False,null=True)
 
     analyse_result = JSONField(null=True,editable=False)
     raster_4326 = models.FileField(max_length=512,null=True,editable=False,upload_to=repeater_4326_file_path, storage=OverwriteStorage())
@@ -434,6 +437,12 @@ class RepeaterTXCoverage(RepeaterCoverage):
     pass
 
 class RepeaterRXCoverage(RepeaterCoverage):
+    pass
+
+class RepeaterTXCoverageSimplified(RepeaterCoverage):
+    pass
+
+class RepeaterRXCoverageSimplified(RepeaterCoverage):
     pass
 
 class AnalysisListener(object):
