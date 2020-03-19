@@ -17,7 +17,7 @@ from .models import Repeater,RepeaterTXAnalysis,RepeaterRXAnalysis,RepeaterTXCov
 TX = (RepeaterTXAnalysis,RepeaterTXCoverage,RepeaterTXCoverageSimplified)
 RX = (RepeaterRXAnalysis,RepeaterRXCoverage,RepeaterRXCoverageSimplified)
 
-def simplify(scope=TX,repeaterids=None,dn=None,enforce=False):
+def simplify(scope=TX,repeaterids=None,dn=None,enforce=False,resolve_repeater_overlap=False):
     #merge 
     parent_conn,child_conn = Pipe(True)
     p = Process(target=_mergeInProcess,args=(child_conn,))
@@ -30,7 +30,8 @@ def simplify(scope=TX,repeaterids=None,dn=None,enforce=False):
     #resolve dn overlap
     resovleDNOverlap(scope,repeaterids=repeaterids,dn=dn,enforce=enforce)
 
-    resolveRepeaterOverlap(scope,enforce=enforce)
+    if resolve_repeater_overlap:
+        resolveRepeaterOverlap(scope,enforce=enforce)
 
 def _mergeInProcess(conn):
     scope,repeaterids,enforce = conn.recv()
