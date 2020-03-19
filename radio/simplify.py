@@ -1,4 +1,5 @@
 import os
+import logging
 import itertools
 from multiprocessing import Process, Pipe
 from osgeo import ogr
@@ -9,6 +10,7 @@ from django.forms.models import model_to_dict
 from django.db.models import Q,F
 from django.utils import timezone
 
+logger = logging.getLogger(__name__)
 
 from .models import Repeater,RepeaterTXAnalysis,RepeaterRXAnalysis,RepeaterTXCoverage,RepeaterRXCoverage,RepeaterTXCoverageSimplified,RepeaterRXCoverageSimplified
 
@@ -122,7 +124,7 @@ def merge(scope,repeaterids=None,enforce=False):
                     simplified_coverage.geom = geom
                     simplified_coverage.id = None
                     simplified_coverage.save()
-                    print("Save the coverage for repeater (site_name={},dn={},polygons={})".format(rep.site_name,previous_coverage.dn,len(geom)))
+                    logger.info("Save the coverage for repeater (site_name={},dn={},polygons={})".format(rep.site_name,previous_coverage.dn,len(geom)))
                 if invalid_geom:
                     simplified_coverage = simplified_coverage_model()
                     for f in simplified_coverage_model._meta.fields:
@@ -131,7 +133,7 @@ def merge(scope,repeaterids=None,enforce=False):
                     simplified_coverage.geom = invalid_geom
                     simplified_coverage.id = None
                     simplified_coverage.save()
-                    print("Save the invalid coverage  for repeater (site_name={},dn={},polygons={})".format(rep.site_name,coverage.dn,len(geom)))
+                    logger.warning("Save the invalid coverage  for repeater (site_name={},dn={},polygons={})".format(rep.site_name,coverage.dn,len(geom)))
                 if coverage:
                     multi = ogr.Geometry(ogr.wkbMultiPolygon)
                     previous_coverage = coverage
@@ -154,12 +156,12 @@ def _resolveDNOverlap(simplified_coverage_model,coverageid):
     geom = coverage.geom
 
     polygons = []
-    print("\nBegin to resolve dn overlap for the coverage (site_name={},dn={})".format(rep.site_name,coverage.dn))
+    logger.info("\nBegin to resolve dn overlap for the coverage (site_name={},dn={})".format(rep.site_name,coverage.dn))
 
     bbox = geom.envelope
     for s_coverage in simplified_coverage_model.objects.filter(repeater=rep,dn__gt=coverage.dn).order_by("-dn"):
         s_geom = s_coverage.geom
-        print("    Begin to resolve dn overlap for the coverage (site_name={}) between (dn={},polygons={}) and (dn={},polygons={})".format(
+        logger.info("    Begin to resolve dn overlap for the coverage (site_name={}) between (dn={},polygons={}) and (dn={},polygons={})".format(
             rep.site_name,coverage.dn,len(geom),s_coverage.dn,len(s_geom))
         )
         s_bbox = s_geom.envelope
@@ -169,11 +171,11 @@ def _resolveDNOverlap(simplified_coverage_model,coverageid):
         geom1 = geom.difference(s_geom)
         if not geom1:
             if not geom.valid:
-                print("The polygon of the coverage is invalid, skip (site_name={},dn={})".format(rep.site_name,coverage.dn))
+                logger.warning("The polygon of the coverage is invalid, skip (site_name={},dn={})".format(rep.site_name,coverage.dn))
                 geom = coverage.geom
                 break
             elif not s_geom.valid:
-                print("    The polygon of the coverage is invalid, skip (site_name={},dn={})".format(rep.site_name,s_coverage.dn))
+                logger.warning("    The polygon of the coverage is invalid, skip (site_name={},dn={})".format(rep.site_name,s_coverage.dn))
                 continue
             else:
                 #geom totally contained by s_geom
@@ -188,28 +190,28 @@ def _resolveDNOverlap(simplified_coverage_model,coverageid):
             geom = MultiPolygon([geom])
 
         if (geom == coverage.geom or geom.wkt == coverage.geom.wkt):
-            print("Coverage is not intersection with polygons with higher dn  (site_name={},dn={},new polygons={},polygons={})".format(rep.site_name,coverage.dn,len(geom),len(coverage.geom)))
+            logger.info("Coverage is not intersection with polygons with higher dn  (site_name={},dn={},new polygons={},polygons={})".format(rep.site_name,coverage.dn,len(geom),len(coverage.geom)))
             return
 
     invalid_geom = None
     if geom:
         if not geom.valid:
-            print("Resolved multi polygon is invalid. fix it")
+            logger.info("Resolved multi polygon is invalid. fix it")
             geom,invalid_geom = _fix_geometry(geom)
 
     if geom:
         coverage.geom = geom
         coverage.save(update_fields=["geom"])
-        print("Save the coverage which is intersection with polygons with higher dn  (site_name={},dn={},new polygons={},polygons={})".format(rep.site_name,coverage.dn,len(geom),len(coverage.geom)))
+        logger.info("Save the coverage which is intersection with polygons with higher dn  (site_name={},dn={},new polygons={},polygons={})".format(rep.site_name,coverage.dn,len(geom),len(coverage.geom)))
     else:
         coverage.delete()
-        print("Delete the coverage which is totally contained by the polygons with higher dn  (site_name={},dn={},polygons={})".format(rep.site_name,coverage.dn,len(geom)))
+        logger.info("Delete the coverage which is totally contained by the polygons with higher dn  (site_name={},dn={},polygons={})".format(rep.site_name,coverage.dn,len(geom)))
 
     if invalid_geom:
         coverage.geom = invalid_geom
         coverage.id = None
         coverate.save()
-        print("Save the invalid coverage  for repeater (site_name={},dn={},polygons={})".format(rep.site_name,coverage.dn,len(invalid_geom)))
+        logger.warning("Save the invalid coverage  for repeater (site_name={},dn={},polygons={})".format(rep.site_name,coverage.dn,len(invalid_geom)))
 
 def resovleDNOverlap(scope,repeaterids=None,dn=None,enforce=False):
     coverageid_sql = "SELECT id FROM {} WHERE repeater_id = {}{} order by dn desc"
@@ -255,14 +257,14 @@ def _resolveRepeaterOverlapInProcess(conn):
     conn.close()
 
 def _resolveRepeaterOverlap(analysis_model,simplified_coverage_model,rep1,rep2):
-    print("\nReolve the overlap between repeater({}) and repeater({})".format(rep1.site_name,rep2.site_name))
+    logger.info("\nReolve the overlap between repeater({}) and repeater({})".format(rep1.site_name,rep2.site_name))
     rep2_coverages = list(simplified_coverage_model.objects.filter(repeater=rep2).order_by("-dn"))
     for coverage1 in simplified_coverage_model.objects.filter(repeater=rep1).order_by("-dn"):
         geom1 = coverage1.geom
         cov1_bbox = geom1.envelope
 
         for coverage2 in rep2_coverages:
-            print("    Reolve the overlap between coverage(site_name={},dn={}) and coverage(site_name={},dn={})".format(rep1.site_name,coverage1.dn,rep2.site_name,coverage2.dn))
+            logger.info("    Reolve the overlap between coverage(site_name={},dn={}) and coverage(site_name={},dn={})".format(rep1.site_name,coverage1.dn,rep2.site_name,coverage2.dn))
             geom2 = coverage2.geom
             cov2_bbox = geom2.envelope
             if not cov1_bbox.intersects(cov2_bbox):
@@ -271,15 +273,15 @@ def _resolveRepeaterOverlap(analysis_model,simplified_coverage_model,rep1,rep2):
                 _geom = geom2.Difference(geom1)
                 if not _geom:
                     if not geom1.valid:
-                        print("The polygon of the coverage is invalid, skip (site_name={},dn={})".format(rep1.site_name,coverage1.dn))
+                        logger.warning("The polygon of the coverage is invalid, skip (site_name={},dn={})".format(rep1.site_name,coverage1.dn))
                         break
                     elif not geom2.valid:
-                        print("The polygon of the coverage is invalid, skip (site_name={},dn={})".format(rep2.site_name,coverage2.dn))
+                        logger.warning("The polygon of the coverage is invalid, skip (site_name={},dn={})".format(rep2.site_name,coverage2.dn))
                         continue
                     else:
                         #geom2 is totally contained by geom1
                         geom2 = None
-                        print("The polygon of the coverage is totally contained by another coverage(site_name={},dn={}), skip (site_name={},dn={})".format(
+                        logger.info("The polygon of the coverage is totally contained by another coverage(site_name={},dn={}), skip (site_name={},dn={})".format(
                             rep1.site_name,coverage1.dn,rep2.site_name,coverage2.dn)
                         )
                         coverage2.delete()
@@ -290,17 +292,17 @@ def _resolveRepeaterOverlap(analysis_model,simplified_coverage_model,rep1,rep2):
                         geom2 = MultiPolygon([geom2])
                     coverage2.geom = geom2
                     coverage2.save(update_fields=["geom"])
-                    print("The polygon of the coverage is overlaped with another coverage(site_name={},dn={}), skip (site_name={},dn={})".format(
-                        rep3.site_name,coverage1.dn,rep2.site_name,coverage2.dn
+                    logger.info("The polygon of the coverage is overlaped with another coverage(site_name={},dn={}), (site_name={},dn={})".format(
+                        rep1.site_name,coverage1.dn,rep2.site_name,coverage2.dn
                     ))
             else:
                 _geom = geom1.Difference(geom2)
                 if not _geom:
                     if not geom1.valid:
-                        print("The polygon of the coverage is invalid, skip (site_name={},dn={})".format(rep1.site_name,coverage1.dn))
+                        logger.warning("The polygon of the coverage is invalid, skip (site_name={},dn={})".format(rep1.site_name,coverage1.dn))
                         break
                     elif not geom2.valid:
-                        print("The polygon of the coverage is invalid, skip (site_name={},dn={})".format(rep2.site_name,coverage2.dn))
+                        logger.warning("The polygon of the coverage is invalid, skip (site_name={},dn={})".format(rep2.site_name,coverage2.dn))
                         continue
                     else:
                         #geom2 is totally contained by geom1
@@ -315,28 +317,28 @@ def _resolveRepeaterOverlap(analysis_model,simplified_coverage_model,rep1,rep2):
                 geom1 = MultiPolygon([geom1])
     
             if (geom1 == coverage1.geom or geom1.wkt == coverage1.geom.wkt):
-                print("Coverage is not intersected with polygons with higher dn  (site_name={},dn={},new polygons={},polygons={})".format(rep1.site_name,coverage1.dn,len(geom1),len(coverage1.geom)))
+                logger.info("Coverage is not intersected with polygons with higher dn  (site_name={},dn={},new polygons={},polygons={})".format(rep1.site_name,coverage1.dn,len(geom1),len(coverage1.geom)))
                 return
     
         invalid_geom = None
         if geom1:
             if not geom1.valid:
-                print("Resolved multi polygon is invalid. fix it")
+                logger.info("Resolved multi polygon is invalid. fix it")
                 geom1,invalid_geom = _fix_geometry(geom1)
     
         if geom1:
             coverage1.geom = geom1
             coverage1.save(update_fields=["geom"])
-            print("Save the coverage which is intersected with polygons with higher dn  (site_name={},dn={},new polygons={},polygons={})".format(rep1.site_name,coverage1.dn,len(geom1),len(coverage1.geom)))
+            logger.info("Save the coverage which is intersected with polygons with higher dn  (site_name={},dn={},new polygons={},polygons={})".format(rep1.site_name,coverage1.dn,len(geom1),len(coverage1.geom)))
         else:
             coverage1.delete()
-            print("Delete the coverage which is totally contained by the polygons with higher dn  (site_name={},dn={},polygons={})".format(rep1.site_name,coverage1.dn,len(geom1)))
+            logger.info("Delete the coverage which is totally contained by the polygons with higher dn  (site_name={},dn={},polygons={})".format(rep1.site_name,coverage1.dn,len(geom1)))
     
         if invalid_geom:
             coverage1.geom = invalid_geom
             coverage1.id = None
             coverate1.save()
-            print("Save the invalid coverage  for repeater (site_name={},dn={},polygons={})".format(rep1.site_name,coverage1.dn,len(invalid_geom)))
+            logger.warning("Save the invalid coverage  for repeater (site_name={},dn={},polygons={})".format(rep1.site_name,coverage1.dn,len(invalid_geom)))
 
 def resolveRepeaterOverlap(scope,enforce=False):
     analysis_model,coverage_model,simplified_coverage_model = scope

@@ -1,5 +1,9 @@
+import logging
+
 from django.core.management.base import BaseCommand, CommandError
 from radio import simplify
+
+logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     help = 'Simplify repeater coverage polygons'
@@ -26,14 +30,15 @@ class Command(BaseCommand):
         tx = options["tx"]
         rx = options["rx"]
         if not tx and not rx:
+            logger.error("Please specify --tx or --rx to run")
             return
 
         if tx:
-            print("Begin to simplify repeater's tx coverage polygons")
+            logger.info("Begin to simplify repeater's tx coverage polygons")
             simplify.simplify(scope=simplify.TX,enforce=enforce)
-            print("End to simplify repeater's tx coverage polygons")
+            logger.info("End to simplify repeater's tx coverage polygons")
 
         if rx:
-            print("Begin to simplify repeater's rx coverage polygons")
+            logger.info("Begin to simplify repeater's rx coverage polygons")
             simplify.simplify(scope=simplify.RX,enforce=enforce)
-            print("End to simplify repeater's rx coverage polygons")
+            logger.info("End to simplify repeater's rx coverage polygons")
