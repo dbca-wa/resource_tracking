@@ -8,7 +8,6 @@ RUN apt-get update -y \
   && pip install --upgrade pip
 RUN apt-get update -y && apt-get install --no-install-recommends -y vim unzip p7zip-full
 RUN apt-get install software-properties-common -y && apt-get update
-#RUN add-apt-repository ppa:ubuntugis/ppa && apt-get update && apt-get install gdal-bin
 RUN apt-get update && apt-get install gdal-bin
 RUN apt-get install g++ libgdal-dev -y
 # Install Python libs from requirements.txt.

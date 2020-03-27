@@ -16,4 +16,4 @@ requests==2.22.0
 #sentry-sdk==0.10.2
 Pillow
 numpy
-GDAL==3.0.4
+GDAL==2.4.0
