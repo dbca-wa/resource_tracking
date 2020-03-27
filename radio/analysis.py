@@ -559,7 +559,7 @@ def _process_spatial_data(analysis,coverage_model=None,simplified_coverage_model
                 if shp_file_folder:
                     #remove the temporary folder
                     try:
-                        #shutil.rmtree(shp_file_folder)
+                        shutil.rmtree(shp_file_folder)
                         pass
                     except :
                         logger.error(traceback.format_exc())
