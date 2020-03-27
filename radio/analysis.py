@@ -20,6 +20,7 @@ from django.utils import timezone
 from .models import (Repeater,RepeaterTXAnalysis,RepeaterRXAnalysis,repeater_4326_file_path,repeater_mercator_file_path,repeater_shp_file_path,
         Network,NetworkTXAnalysis,NetworkRXAnalysis,network_4326_file_path,network_mercator_file_path,
         RepeaterTXCoverage,RepeaterRXCoverage,
+        RepeaterTXCoverageSimplified,RepeaterRXCoverageSimplified,
         Option)
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,8 @@ RX = 2
 _tasks = queue.Queue()
 
 credential_options = ["uid","key"]
+
+extract_options = ["simplify_tolerance","simplify_feature_limit","simplify_feature_min_area"]
 
 # options for area coverage
 fixed_options = [
@@ -98,7 +101,7 @@ COMPRESS_FILE_SETTINGS = [
 #mapping between Repeater analysis column and json field and other related settings 
 repeater_file_column_mapping = {
     "raster_4326":(lambda result:result["shp"].replace('fmt=shp','fmt=tiff'),repeater_4326_file_path,"world_file_4326"),
-    "raster_mercator":('PNG_Mercator',repeater_mercator_file_path,"world_file_mercator"),
+    #"raster_mercator":('PNG_Mercator',repeater_mercator_file_path,"world_file_mercator"),
     "shp_file":('shp',repeater_shp_file_path,None),
 }
 
@@ -367,7 +370,96 @@ def _download_network_file(analysis,verify_ssl=None):
     """
     _download_file(analysis,network_file_column_mapping,verify_ssl=verify_ssl)
 
-def _process_spatial_data(analysis,coverage_model):
+def polygonize_tiff(analysis,simplified_coverage_model):
+    """
+    Polygonize and simplify tiff file
+    gdal_translate 12_mile_tx_4326.tiff -b 1 -ot UInt32  12_mile_tx_4326_201.tiff
+    gdal_translate 12_mile_tx_4326.tiff -b 2 -ot UInt32  12_mile_tx_4326_202.tiff
+    gdal_translate 12_mile_tx_4326.tiff -b 3 -ot UInt32  12_mile_tx_4326_203.tiff
+    gdal_translate 12_mile_tx_4326.tiff -b 4 -ot UInt32  12_mile_tx_4326_204.tiff
+
+    python /usr/bin/gdal_calc.py   -A 12_mile_tx_4326_201.tiff -B 12_mile_tx_4326_202.tiff -C 12_mile_tx_4326_203.tiff -D 12_mile_tx_4326_204.tiff --type=UInt32 --calc="A*256*256*256*(D>0) + B*256*256*(D>0) + C*256*(D>0) + D" --outfile=12_mile_tx_4326_200.tiff --debug --overwrite
+
+
+    python /usr/bin/gdal_sieve.py -st 4 -4     12_mile_tx_4326_200.tiff   12_mile_tx_4326_214.tiff
+
+    gdal_translate -a_nodata 0 12_mile_tx_4326_214.tiff  12_mile_tx_4326_224.tiff
+
+    python /usr/bin/gdal_polygonize.py 12_mile_tx_4326_224.tiff -f "ESRI Shapefile" 12_mile_tx_4326_234.shp
+
+    """
+    if not analysis.raster_4326:
+        #not raster file 
+        return
+
+    if not analysis.raster_4326.name.endswith(".tiff"):
+        #not geotiff file 
+        return
+
+    working_folder = None
+    try:
+        working_folder = tempfile.mkdtemp(prefix="radio",suffix=".tiff")
+        #save the 4 bands to 4 separate raster files
+        for i in range(1,5):
+            cmd = "gdal_translate {1} -b {3} -ot UInt32  {0}/{2}_{3}.tiff".format(working_folder,analysis.raster_4326_path,analysis.raster_4326_basename,i)
+            logger.debug("Save the {} band to a separate raster file  cmd='{}'".format(i,cmd))
+            subprocess.check_call(cmd,shell=True)
+
+        #combine the 4 separate raster files into one raster file with one band
+        cmd = "gdal_calc.py   -A {0}/{1}_1.tiff -B {0}/{1}_2.tiff -C {0}/{1}_3.tiff -D {0}/{1}_4.tiff --type=UInt32 --calc=\"A*256*256*256*(D>0) + B*256*256*(D>0) + C*256*(D>0) + D\" --outfile={0}/{1}_combined.tiff --debug --overwrite".format(working_folder,analysis.raster_4326_basename)
+        logger.debug("Combine the 4 band to a single raster file with one band  cmd='{}'".format(cmd))
+        subprocess.check_call(cmd,shell=True)
+
+        #call gdal_sieve to remove the raster polygons which has less the threadhold pixels.
+        threadhold = Option.get_option("sieve_threadhold",4)
+        if threadhold:
+            options = Option.get_option("sieve_options") or "-4"
+            cmd = "gdal_sieve.py -st {2} {3} {0}/{1}_combined.tiff   {0}/{1}_sieved.tiff".format(working_folder,analysis.raster_4326_basename,threadhold,options)
+            logger.debug("call gdal_sieve to simplify the raster file  cmd='{}'".format(cmd))
+            subprocess.check_call(cmd,shell=True)
+
+        #set the nodata
+        cmd = "gdal_translate -a_nodata 0 {0}/{1}_sieved.tiff  {0}/{2}".format(working_folder,analysis.raster_4326_basename,analysis.raster_4326_filename)
+        logger.debug("Set pixel to nodata if band value is 0  cmd='{}'".format(cmd))
+        subprocess.check_call(cmd,shell=True)
+
+        #Polygonize the raster
+        cmd = "gdal_polygonize.py {0}/{1} -f \"ESRI Shapefile\" {0}/{2}.shp".format(working_folder,analysis.raster_4326_filename,analysis.raster_4326_basename)
+        logger.debug("Polygonize the raster file  cmd='{}'".format(cmd))
+        subprocess.check_call(cmd,shell=True)
+
+        #import the vector to table
+        #delete the existing data first
+        simplified_coverage_model.objects.filter(repeater=analysis.repeater).delete()
+        shp_file_path = os.path.join(working_folder,"{0}.shp".format(analysis.raster_4326_basename))
+        
+        ds = gdal.DataSource(shp_file_path)
+        layer = ds[0]
+        rep = analysis.repeater
+        for feat in layer:
+            if isinstance(feat.geom,gdal.geometries.Polygon):
+                obj = simplified_coverage_model(repeater=analysis.repeater,site_name=rep.site_name,district=rep.district.name,dn=feat.get('DN'),geom=MultiPolygon([feat.geom.geos]))
+            elif isinstance(feat.geom,gdal.geometries.MultiPolygon):
+                obj = simplified_coverage_model(repeater=analysis.repeater,site_name=rep.site_name,district=rep.district.name,dn=feat.get('DN'),geom=feat.geom.geos)
+            else:
+                raise Exception("Geometry({}) Not Support, only support Polygon and MultiPolygon".format(feat.geom.__class__))
+
+            Dobj.color = "#{}".format("000000{}".format(hex(obj.dn)[2:-2])[-6:])
+            obj.save()
+
+    finally:
+        if working_folder:
+            #remove the temporary folder
+            try:
+                shutil.rmtree(working_folder)
+                pass
+            except :
+                logger.error(traceback.format_exc())
+
+def get_layername(shp_file_path,layer=0):
+    return gdal.DataSource(shp_file_path)[layer].name
+
+def _process_spatial_data(analysis,coverage_model=None,simplified_coverage_model=None):
     """
     Generate the world file for raster 
     Extract the spatial data from shape file for vector data
@@ -393,13 +485,18 @@ def _process_spatial_data(analysis,coverage_model):
         analysis.bbox = normalize_bbox(bounds)
         update_fields.append("bbox")
         
+        """
         #generate world file
         #for f,projection,column in ((analysis.raster_4326.name,"epsg:4326","world_file_4326"),(analysis.raster_mercator.name,"epsg:3857","world_file_mercator")):
         for f,projection,column in ((analysis.raster_mercator.name,"epsg:3857","world_file_mercator"),):
             world_file = generate_world_file(os.path.join(settings.MEDIA_ROOT,f),transform_bbox(analysis.bbox,projection))
             setattr(analysis,column,world_file[len(settings.MEDIA_ROOT) + 1:])
             update_fields.append(column)
+        """
     
+        #if simplified_coverage_model:
+        #    polygonize_tiff(analysis,simplified_coverage_model)
+
         if hasattr(analysis,"shp_file"):
             #decompress file
             file_name = analysis.shp_file.name.lower()
@@ -419,7 +516,34 @@ def _process_spatial_data(analysis,coverage_model):
                         break
                 if not shp_file_path:
                     raise Exception("Can't find shape file in folder ''".format(shp_file_folder))
-        
+                layer_name = get_layername(shp_file_path)
+
+                simplify_tolerance = Option.get_option("simplify_tolerance") or 0.0002
+                feature_limit = Option.get_option("simplify_feature_limit")
+                feature_min_area = Option.get_option("simplify_feature_min_area")
+                #simplify the shape file
+                cmd = "ogr2ogr -f \"ESRI Shapefile\" -overwrite {0}/simplified.shp {1} -dialect sqlite -sql \"select ST_Simplify(ST_Buffer(geometry, {2}),{2}) as geometry, DN from {3} {{}}\"".format(shp_file_folder,shp_file_path,simplify_tolerance,layer_name)
+
+                if feature_limit:
+                    cmd = cmd.format("order by ST_Area(geometry) desc limit {} ".format(feature_limit))
+                elif feature_min_area:
+                    cmd = cmd.format("where ST_Area(ST_Transform(geometry,3857)) >= {} order by DN".format(feature_min_area))
+                else:
+                    cmd = cmd.format("order by DN")
+
+
+                logger.debug("Simplify the shapefile  cmd='{}'".format(cmd))
+                subprocess.check_call(cmd,shell=True)
+
+                shp_file_path = "{0}/simplified.shp".format(shp_file_folder)
+                layer_name = get_layername(shp_file_path)
+
+                #merge based on dn 
+                cmd = "ogr2ogr -f \"ESRI Shapefile\" -overwrite {0}/merged.shp {1} -dialect sqlite -sql \"select ST_Union(geometry) as geometry, DN from {2} group by DN order by DN \"".format(shp_file_folder,shp_file_path,layer_name)
+                logger.debug("Merge the features based on DN   cmd='{}'".format(cmd))
+                subprocess.check_call(cmd,shell=True)
+                shp_file_path = "{0}/merged.shp".format(shp_file_folder)
+
                 ds = gdal.DataSource(shp_file_path)
                 layer = ds[0]
                 rep = analysis.repeater
@@ -435,7 +559,8 @@ def _process_spatial_data(analysis,coverage_model):
                 if shp_file_folder:
                     #remove the temporary folder
                     try:
-                        shutil.rmtree(shp_file_folder)
+                        #shutil.rmtree(shp_file_folder)
+                        pass
                     except :
                         logger.error(traceback.format_exc())
     
@@ -649,14 +774,15 @@ class RepeaterDownloadThread(_Thread):
         _download_repeater_file(self.analysis,verify_ssl=self.verify_ssl)
 
 class RepeaterExtractThread(_Thread):
-    def __init__(self,analysis,coverage_model):
+    def __init__(self,analysis,coverage_model,simplified_coverage_model):
         super().__init__()
         self.analysis = analysis
         self.coverage_model = coverage_model
+        self.simplified_coverage_model = simplified_coverage_model
         self._ex = None
 
     def _run(self):
-        _process_spatial_data(self.analysis,self.coverage_model)
+        _process_spatial_data(self.analysis,self.coverage_model,self.simplified_coverage_model)
 
 class NetworkAnalysisThread(_Thread):
     def __init__(self,options,del_options,scope,network,analysis,repeater_analysis_model,endpoint,del_endpoint,verify_ssl):
@@ -759,9 +885,7 @@ def get_repeater_list(queryset=None,network=None,repeater=None,force=False,scope
         if not force:
             tx_qs = base_qs.filter(
                 Q(tx_analysis__last_analysed__isnull=True)|
-                Q(tx_analysis__last_analysed__lt=F("tx_analysis__analyse_requested"))
-            ).filter(
-                Q(tx_analysis__process_status=RepeaterTXAnalysis.IDLE)|
+                Q(tx_analysis__last_analysed__lt=F("tx_analysis__analyse_requested")) |
                 Q(tx_analysis__process_status__lt=0)|
                 (Q(tx_analysis__process_status__gt=RepeaterTXAnalysis.IDLE) & Q(tx_analysis__process_start__lt=timezone.now() - RepeaterTXAnalysis.PROCESS_TIMEOUT))
             )
@@ -875,12 +999,12 @@ class _AreaCoverage(object):
 
         #extract spatial data
         threads.clear()
-        for s,repeaters,get_analysis,coverage_model in [(TX,self.tx_repeaters,lambda r:r.tx_analysis,RepeaterTXCoverage),(RX,self.rx_repeaters,lambda r:r.rx_analysis,RepeaterRXCoverage)]:
+        for s,repeaters,get_analysis,coverage_model,simplified_coverage_model in [(TX,self.tx_repeaters,lambda r:r.tx_analysis,RepeaterTXCoverage,RepeaterTXCoverageSimplified),(RX,self.rx_repeaters,lambda r:r.rx_analysis,RepeaterRXCoverage,RepeaterRXCoverageSimplified)]:
             if not repeaters:
                 continue
             for repeater in repeaters:
                 analysis = get_analysis(repeater)
-                thread = RepeaterExtractThread(analysis,coverage_model)
+                thread = RepeaterExtractThread(analysis,coverage_model,simplified_coverage_model)
                 threads.append(thread)
                 thread.start()
                 if len(threads) >= max_extract_tasks:

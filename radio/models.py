@@ -2,6 +2,7 @@ import traceback
 import os
 import logging
 import requests
+import itertools
 import json
 from datetime import timedelta
 
@@ -246,6 +247,7 @@ class CoverageAnalysis(models.Model):
     WAITING_TO_EXTRACT = 150
     EXTRACTING = 151
     EXTRACT_FAILED = -152
+    EXTRACT_REQUIRED = -153
     EXTRACTED = 159
 
     #Failed statuses
@@ -272,6 +274,7 @@ class CoverageAnalysis(models.Model):
         (DOWNLOADED,"Downloaded"),
 
         (EXTRACT_FAILED,"Extracting Failed"),
+        (EXTRACT_REQUIRED,"Extract Required"),
         (WAITING_TO_EXTRACT ,"Waiting to extract"),
         (EXTRACTING,"Extrating Spatial Data"),
 
@@ -301,7 +304,9 @@ class CoverageAnalysis(models.Model):
 
         WAITING_TO_EXTRACT:WAITING_TO_EXTRACT,
         EXTRACTING:WAITING_TO_EXTRACT,
-        EXTRACT_FAILED:WAITING_TO_DOWNLOAD,
+        #EXTRACT_FAILED:WAITING_TO_DOWNLOAD,
+        EXTRACT_FAILED:WAITING_TO_EXTRACT,
+        EXTRACT_REQUIRED:WAITING_TO_EXTRACT,
 
         TIMEOUT:WAITING,
         FAILED:WAITING
@@ -337,6 +342,15 @@ class CoverageAnalysis(models.Model):
         else:
             return self.PROCESS_STATUS_MAPPING[status]
 
+    @property
+    def is_outdated(self):
+        if not self.last_analysed:
+            return True
+        elif self.last_analysed < self.analyse_requested:
+            return True
+        else:
+            return False
+
 
 
     class Meta:
@@ -349,8 +363,8 @@ class NetworkAnalysis(CoverageAnalysis):
     analyse_result = JSONField(null=True,editable=False)
     raster_4326 = models.FileField(max_length=512,null=True,editable=False,upload_to=network_4326_file_path, storage=OverwriteStorage())
     world_file_4326 = models.FileField(max_length=512,null=True,editable=False,upload_to=network_4326_file_path, storage=OverwriteStorage())
-    raster_mercator = models.FileField(max_length=512,null=True,editable=False,upload_to=network_mercator_file_path, storage=OverwriteStorage())
-    world_file_mercator = models.FileField(max_length=512,null=True,editable=False,upload_to=network_mercator_file_path, storage=OverwriteStorage())
+    #raster_mercator = models.FileField(max_length=512,null=True,editable=False,upload_to=network_mercator_file_path, storage=OverwriteStorage())
+    #world_file_mercator = models.FileField(max_length=512,null=True,editable=False,upload_to=network_mercator_file_path, storage=OverwriteStorage())
     bbox = ArrayField(base_field=models.FloatField(),size=4,null=True,editable=False) #left bottom lon,left bottom lon,upper right lon,upper right lat 
 
     class Meta:
@@ -408,10 +422,24 @@ class RepeaterAnalysis(CoverageAnalysis):
     analyse_result = JSONField(null=True,editable=False)
     raster_4326 = models.FileField(max_length=512,null=True,editable=False,upload_to=repeater_4326_file_path, storage=OverwriteStorage())
     world_file_4326 = models.FileField(max_length=512,null=True,editable=False,upload_to=repeater_4326_file_path, storage=OverwriteStorage())
-    raster_mercator = models.FileField(max_length=512,null=True,editable=False,upload_to=repeater_mercator_file_path, storage=OverwriteStorage())
-    world_file_mercator = models.FileField(max_length=512,null=True,editable=False,upload_to=repeater_mercator_file_path, storage=OverwriteStorage())
+    #raster_mercator = models.FileField(max_length=512,null=True,editable=False,upload_to=repeater_mercator_file_path, storage=OverwriteStorage())
+    #world_file_mercator = models.FileField(max_length=512,null=True,editable=False,upload_to=repeater_mercator_file_path, storage=OverwriteStorage())
     shp_file = models.FileField(max_length=512,null=True,editable=False,upload_to=repeater_shp_file_path, storage=OverwriteStorage())
     bbox = ArrayField(base_field=models.FloatField(),size=4,null=True,editable=False) #left bottom lon,left bottom lon,upper right lon,upper right lat 
+
+
+    @property
+    def raster_4326_path(self):
+        return os.path.join(settings.MEDIA_ROOT,self.raster_4326.name) if self.raster_4326 else None
+
+    @property
+    def raster_4326_filename(self):
+        return os.path.split(self.raster_4326.name)[1] if self.raster_4326 else None
+
+    @property
+    def raster_4326_basename(self):
+        return os.path.splitext(os.path.split(self.raster_4326.name)[1])[0] if self.raster_4326 else None
+
 
     class Meta:
         abstract = True
@@ -440,9 +468,11 @@ class RepeaterRXCoverage(RepeaterCoverage):
     pass
 
 class RepeaterTXCoverageSimplified(RepeaterCoverage):
+    color = models.CharField(max_length=16,null=True,editable=False)
     pass
 
 class RepeaterRXCoverageSimplified(RepeaterCoverage):
+    color = models.CharField(max_length=16,null=True,editable=False)
     pass
 
 class AnalysisListener(object):
@@ -600,7 +630,7 @@ class OptionListener(object):
         OptionListener._update_analysis(instance,None)
 
     def _update_analysis(existing_option,option):
-        from .analysis import global_options
+        from .analysis import global_options,extract_options
         if not option:
             #delete
             if not existing_option.value:
@@ -642,13 +672,34 @@ class OptionListener(object):
                         break
 
 
-        if not changed:
-            return
-        #option's value was changed, all repeaters and networks should be reanalyszed.
-        now = timezone.now()
-        RepeaterTXAnalysis.objects.all().update(analyse_requested=now)
-        RepeaterRXAnalysis.objects.all().update(analyse_requested=now)
+        if changed:
+            #option's value was changed, all repeaters and networks should be reanalyszed.
+            now = timezone.now()
+            RepeaterTXAnalysis.objects.all().update(analyse_requested=now)
+            RepeaterRXAnalysis.objects.all().update(analyse_requested=now)
 
-        NetworkTXAnalysis.objects.all().update(analyse_requested=now)
-        NetworkRXAnalysis.objects.all().update(analyse_requested=now)
+            NetworkTXAnalysis.objects.all().update(analyse_requested=now)
+            NetworkRXAnalysis.objects.all().update(analyse_requested=now)
+
+        if option.name in extract_options:
+            now = timezone.now()
+            status  = None
+            for analysis in itertools.chain(RepeaterTXAnalysis.objects.all(),RepeaterRXAnalysis.objects.all()):
+                if analysis.process_status > analysis.IDLE and now - analysis.process_start > analysis.PROCESS_TIMEOUT:
+                    status = analsis.IDLE
+                else:
+                    status = analysis.process_status
+                
+                if status == analysis.IDLE:
+                    if analysis.is_outdated:
+                        #outdated
+                        continue
+                    else:
+                        analysis.process_status = analysis.EXTRACT_REQUIRED
+                elif abs(status) < analysis.WAITING_TO_EXTRACT:
+                    #running the stages before extracting
+                    continue
+                else:
+                    analysis.process_status = analysis.EXTRACT_REQUIRED
+                analysis.save(update_fields=["process_status"])
 
