@@ -2,10 +2,14 @@ import os
 import csv
 from decimal import Decimal
 from datetime import datetime,date
+from colour import Color
 
 from django.contrib.gis.geos import Point
 from django.utils import timezone
 from django.core.exceptions import ObjectDoesNotExist
+from django.template import engines
+from django.conf import settings
+from django.db import connection
 
 from .models import District,Repeater,get_user_program
 
@@ -207,4 +211,80 @@ def set_repeater_from_csv(obj,rows):
 
     obj.modifier = get_user_program()
     obj.modified = now
+
+rainbow = ["#8B00FF","#2E2B5F","#0000FF","#00FF00","#FFFF00","#FF7F00","#FF0000"]
+def create_rainbow_sld(colors,max_dn=255,filter_by_dn=False):
+    if colors >= max_dn:
+        colors = max_dn
+
+    dns_per_color = int(max_dn / colors)
+    remain_dns = max_dn % colors
+    gradients = []
+    dn = 1
+    for i in range(0,colors):
+        if i < remain_dns:
+            gradients.append([(dn,dn + dns_per_color),None])
+            dn += dns_per_color + 1
+        else:
+            gradients.append([(dn,dn + dns_per_color - 1),None])
+            dn += dns_per_color
+
+    base_colorlevels = int((colors + 5) / 6)
+    remain_colors = (colors + 5) % 6
+    colorlevels = [int( (colors + 5) / 6)] * 6
+    if remain_colors:
+        for i in range(5,5 - remain_colors,-1):
+            colorlevels[i] += 1
+
+    rule_index = 0
+    for i in range(0,len(rainbow) - 1):
+        start_color = Color(rainbow[i])
+        end_color = Color(rainbow[i+1])
+        ignore_first_color = i > 0
+        for c in list(start_color.range_to(end_color,colorlevels[i])):
+            if ignore_first_color:
+                ignore_first_color = False
+            else:
+                gradients[rule_index][1] = str(c)
+                rule_index += 1
+
+    if filter_by_dn:
+        cur = connection.cursor()
+        cur.execute("select distinct dn from radio_repeatertxcoverage")
+        dns = [d[0] for d in cur.fetchall()]
+        dns.sort()
+        tmp = []
+        g_index = 0
+        length = len(gradients)
+        for dn in dns:
+            while g_index < length:
+                if dn < gradients[g_index][0][0]:
+                    #can't find the gradient for the dn
+                    break
+                elif dn <= gradients[g_index][0][1]:
+                    if tmp and tmp[-1][0][0] == gradients[g_index][0][0]:
+                        #alread added
+                        pass
+                    else:
+                        tmp.append(gradients[g_index])
+                    break
+                else:
+                    g_index += 1
+                    continue
+        gradients = tmp
+
+
+    django_engine = engines['django']
+
+    with open(os.path.join(settings.BASE_DIR,"radio/rainbow.sld")) as f:
+        template = django_engine.from_string(f.read())
+        sld = template.render({"gradients":gradients})
+
+
+    with open(os.path.join(settings.BASE_DIR,"media/radio/rainbow_{}.sld".format(colors)),"w") as f:
+        f.write(sld)
+
+
+
+
 

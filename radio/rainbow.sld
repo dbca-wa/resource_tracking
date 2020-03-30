@@ -28,6 +28,7 @@
           <se:PolygonSymbolizer>
             <se:Fill>
               <se:SvgParameter name="fill">{{c.1}}</se:SvgParameter>
+              <se:SvgParameter name="fill-opacity">0.75</se:SvgParameter>
             </se:Fill>
           </se:PolygonSymbolizer>
         </se:Rule>{% endfor %}

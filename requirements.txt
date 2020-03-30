@@ -17,3 +17,4 @@ requests==2.22.0
 Pillow
 numpy
 GDAL==2.4.0
+colour
