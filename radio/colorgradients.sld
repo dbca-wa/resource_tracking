@@ -5,7 +5,7 @@
     <UserStyle>
       <se:Name>radio_repeatertxcoverage</se:Name>
       <se:FeatureTypeStyle>{% for c in gradients %}<se:Rule>
-          <se:Name></se:Name>
+          <se:Name>{% if c.0.0 == c.0.1 %}dn is '{{c.0.0}}'{% else %}dn between '{{c.0.0}}' and '{{c.0.1}}'{% endif %}</se:Name>
           <se:Description>
               <se:Title>{% if c.0.0 == c.0.1 %}dn is '{{c.0.0}}'{% else %}dn between '{{c.0.0}}' and '{{c.0.1}}'{% endif %}</se:Title>
           </se:Description>

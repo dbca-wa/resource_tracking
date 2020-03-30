@@ -213,15 +213,31 @@ def set_repeater_from_csv(obj,rows):
     obj.modified = now
 
 rainbow = ["#8B00FF","#2E2B5F","#0000FF","#00FF00","#FFFF00","#FF7F00","#FF0000"]
-def create_rainbow_sld(colors,max_dn=255,filter_by_dn=False):
-    if colors >= max_dn:
-        colors = max_dn
+color_mapping = {
+    "rainbow": ["#8B00FF","#2E2B5F","#0000FF","#00FF00","#FFFF00","#FF7F00","#FF0000"],
+    "purple": ["#b589d6","#9969c7","#804fb3","#6a359c","#552586"],
+    "red": ["#f6bdc0","#f1959b","#f07467","#ea4c46","#dc1c13"],
+    "grey": ["#d3d3d3","#bdbdbd","#9e9e9e","#7d7d7d","#696969"]
+}
+def create_rainbow_sld(colorlevels,max_dn=255,filter_by_dn=False,basecolors="rainbow",sldname=None):
+    if colorlevels >= max_dn:
+        colorlevels = max_dn
 
-    dns_per_color = int(max_dn / colors)
-    remain_dns = max_dn % colors
+    if isinstance(basecolors,(tuple,list)):
+        if not sldname:
+            sldname = "colorgradients_{}.sld".format(colorlevels)
+    else:
+        if not sldname:
+            sldname = "{}_{}.sld".format(basecolors,colorlevels)
+        basecolors = color_mapping[basecolors]
+
+    basecolor_length = len(basecolors)
+
+    dns_per_color = int(max_dn / colorlevels)
+    remain_dns = max_dn % colorlevels
     gradients = []
     dn = 1
-    for i in range(0,colors):
+    for i in range(0,colorlevels):
         if i < remain_dns:
             gradients.append([(dn,dn + dns_per_color),None])
             dn += dns_per_color + 1
@@ -229,19 +245,18 @@ def create_rainbow_sld(colors,max_dn=255,filter_by_dn=False):
             gradients.append([(dn,dn + dns_per_color - 1),None])
             dn += dns_per_color
 
-    base_colorlevels = int((colors + 5) / 6)
-    remain_colors = (colors + 5) % 6
-    colorlevels = [int( (colors + 5) / 6)] * 6
-    if remain_colors:
-        for i in range(5,5 - remain_colors,-1):
-            colorlevels[i] += 1
+    remain_colorlevels = (colorlevels + basecolor_length - 2) % (basecolor_length - 1)
+    subcolorlevels = [int( (colorlevels + basecolor_length - 2) / (basecolor_length - 1))] * (basecolor_length - 1)
+    if remain_colorlevels:
+        for i in range(basecolor_length - 2,basecolor_length - 2 - remain_colorlevels,-1):
+            subcolorlevels[i] += 1
 
     rule_index = 0
-    for i in range(0,len(rainbow) - 1):
-        start_color = Color(rainbow[i])
-        end_color = Color(rainbow[i+1])
+    for i in range(0,len(basecolors) - 1):
+        start_color = Color(basecolors[i])
+        end_color = Color(basecolors[i+1])
         ignore_first_color = i > 0
-        for c in list(start_color.range_to(end_color,colorlevels[i])):
+        for c in list(start_color.range_to(end_color,subcolorlevels[i])):
             if ignore_first_color:
                 ignore_first_color = False
             else:
@@ -276,12 +291,12 @@ def create_rainbow_sld(colors,max_dn=255,filter_by_dn=False):
 
     django_engine = engines['django']
 
-    with open(os.path.join(settings.BASE_DIR,"radio/rainbow.sld")) as f:
+    with open(os.path.join(settings.BASE_DIR,"radio/colorgradients.sld")) as f:
         template = django_engine.from_string(f.read())
         sld = template.render({"gradients":gradients})
 
 
-    with open(os.path.join(settings.BASE_DIR,"media/radio/rainbow_{}.sld".format(colors)),"w") as f:
+    with open(os.path.join(settings.BASE_DIR,"media/radio/{}".format(sldname)),"w") as f:
         f.write(sld)
 
 
