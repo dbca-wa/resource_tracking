@@ -299,7 +299,7 @@ def save_fleetcare_db():
             created += 1
         updated += 1
         device.point = "POINT ({} {})".format(*data['GPS']['coordinates'])
-        if device.seen and seen > device.seen:
+        if not device.seen or seen > device.seen:
             device.seen = seen
         device.registration = data["vehicleRego"]
         device.velocity = int(float(data["readings"]["vehicleSpeed"]) * 1000)
