@@ -1,4 +1,5 @@
 # Prepare the base environment.
+# We use osgeo/gdal instead of a python base image because of the requirement to install the GDAL library.
 FROM osgeo/gdal:ubuntu-small-3.1.3 as builder_base_rt
 MAINTAINER asi@dbca.wa.gov.au
 RUN apt-get update -y \
@@ -8,14 +9,11 @@ RUN apt-get update -y \
   && pip3 install --upgrade pip
 
 # Install Python libs from requirements.txt.
+# Can't use Poetry because it won't install GDAL :/
 FROM builder_base_rt as python_libs_rt
 WORKDIR /app
-ENV POETRY_VERSION=1.0.5
-RUN pip install "poetry==$POETRY_VERSION"
-RUN python3 -m venv /venv
-COPY poetry.lock pyproject.toml /app/
-RUN poetry config virtualenvs.create false \
-  && poetry install --no-dev --no-interaction --no-ansi
+COPY requirements.txt ./
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Install the project.
 FROM python_libs_rt
