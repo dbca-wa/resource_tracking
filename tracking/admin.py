@@ -58,16 +58,17 @@ class LoggedPointAdmin(ModelAdmin):
     search_fields = ("device__deviceid", "device__registration")
     date_hierarchy = "seen"
 
-    def add_view(self, request, obj=None):
-        return HttpResponseRedirect(reverse('admin:tracking_loggedpoint_changelist'))
+    def has_add_permission(self, request):
+        return False
 
-    def change_view(self, request, obj=None):
-        return HttpResponseRedirect(reverse('admin:tracking_loggedpoint_changelist'))
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 class TrackingAdminSite(AdminSite):
     site_header = 'SSS administration'
     site_url = None
+
 
 tracking_admin_site = TrackingAdminSite(name='sss_admin')
 tracking_admin_site.register(Device, DeviceSSSAdmin)
