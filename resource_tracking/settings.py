@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django_extensions',
     'djgeojson',
     'tracking',
+    'radio'
 ]
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -115,7 +116,7 @@ LOGGING = {
     },
     'handlers': {
         'console': {
-            'level': 'INFO',
+            'level': 'DEBUG' if DEBUG else 'WARNING',
             'class': 'logging.StreamHandler',
             'formatter': 'console'
         },
@@ -134,6 +135,10 @@ LOGGING = {
             'handlers': ['console'],
             'level': 'INFO'
         },
+        'radio': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'WARNING',
+        }
     }
 }
 
@@ -143,3 +148,6 @@ TASTYPIE_DEFAULT_FORMATS = ['json']
 # Sentry configuration
 if env('SENTRY_DSN', False):
     SENTRY_CONFIG = {'dsn': env('SENTRY_DSN')}
+
+MEDIA_ROOT = os.path.join(BASE_DIR,"media")
+MEDIA_URL = "/media/"
