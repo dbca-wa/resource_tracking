@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     'django_extensions',
     'djgeojson',
     'tracking',
-    #'weather',
+    'radio'
 ]
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -116,7 +116,7 @@ LOGGING = {
     },
     'handlers': {
         'console': {
-            'level': 'INFO',
+            'level': 'DEBUG' if DEBUG else 'WARNING',
             'class': 'logging.StreamHandler',
             'formatter': 'console'
         },
@@ -131,35 +131,23 @@ LOGGING = {
             'level': 'WARNING',
             'propagate': False,
         },
-        'weather': {
-            'handlers': ['console'],
-            'level': 'INFO'
-        },
-        'dafwa': {
-            'handlers': ['console'],
-            'level': 'INFO'
-        },
-        'dafwa_uploads': {
-            'handlers': ['console'],
-            'level': 'INFO'
-        },
         'tracking_points': {
             'handlers': ['console'],
             'level': 'INFO'
         },
+        'radio': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'WARNING',
+        }
     }
 }
 
 # Tastypie settings
 TASTYPIE_DEFAULT_FORMATS = ['json']
 
-# DAFWA config
-DAFWA_UPLOAD = env('DAFWA_UPLOAD', False)
-DAFWA_UPLOAD_HOST = env('DAFWA_UPLOAD_HOST', 'host')
-DAFWA_UPLOAD_USER = env('DAFWA_UPLOAD_USER', 'username')
-DAFWA_UPLOAD_PASSWORD = env('DAFWA_UPLOAD_PASSWORD', 'password')
-DAFWA_UPLOAD_DIR = env('DAFWA_UPLOAD_DIR', '/inbound')
-
 # Sentry configuration
 if env('SENTRY_DSN', False):
     SENTRY_CONFIG = {'dsn': env('SENTRY_DSN')}
+
+MEDIA_ROOT = os.path.join(BASE_DIR,"media")
+MEDIA_URL = "/media/"
