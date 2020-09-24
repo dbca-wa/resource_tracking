@@ -1,5 +1,5 @@
 # Prepare the base environment.
-FROM python:3.7-slim-buster as builder_base_rt
+FROM python:3.7.8-slim-buster as builder_base_rt
 MAINTAINER asi@dbca.wa.gov.au
 RUN apt-get update -y \
   && apt-get upgrade -y \
@@ -15,10 +15,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Install the project.
 FROM python_libs_rt
-COPY gunicorn.py manage.py pollstations.py ./
+COPY gunicorn.py manage.py ./
 COPY resource_tracking ./resource_tracking
 COPY tracking ./tracking
-COPY weather ./weather
 RUN python manage.py collectstatic --noinput
 # Run the application as the www-data user.
 USER www-data
