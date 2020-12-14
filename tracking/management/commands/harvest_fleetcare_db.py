@@ -1,8 +1,5 @@
+from django.core.management.base import BaseCommand, CommandError
 from tracking.harvest import save_fleetcare_db
-from django.core.management.base import BaseCommand
-
-import logging
-LOGGER = logging.getLogger('tracking_points')
 
 
 class Command(BaseCommand):
@@ -10,9 +7,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
-        LOGGER.info('Harvesting Fleetcare tracking data')
+        self.stdout.write("Harvesting Fleetcare tracking data")
         try:
             out = save_fleetcare_db()
-            LOGGER.info("Harvested {} from Fleetcare; created {}, updated {}, ignored {}".format(*out))
+            self.stdout.write(self.style.SUCCESS("Harvested {} from Fleetcare; created {}, updated {}, ignored {}".format(*out)))
         except Exception as e:
-            LOGGER.error(e)
+            raise CommandError(e)
