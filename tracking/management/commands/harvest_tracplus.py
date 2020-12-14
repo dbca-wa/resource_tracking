@@ -1,18 +1,15 @@
+from django.core.management.base import BaseCommand, CommandError
 from tracking.harvest import save_tracplus
-from django.core.management.base import BaseCommand
 
-import logging
-LOGGER = logging.getLogger('tracking_points')
 
 class Command(BaseCommand):
     help = "Runs harvest_tracking_trackplus to harvest points"
 
     def handle(self, *args, **options):
-        
-        LOGGER.info('Harvesting TracPlus feed')
+
+        self.stdout.write("Harvesting TracPlus feed")
         try:
-            save_tracplus()
+            out = save_tracplus()
+            self.stdout.write(self.style.SUCCESS("Update {} TracPlus units; total {}".format(*out)))
         except Exception as e:
-            LOGGER.error(e)
-
-
+            raise CommandError(e)

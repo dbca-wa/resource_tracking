@@ -1,6 +1,5 @@
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.encoding import force_text
 from django.db import connections
@@ -161,7 +160,6 @@ def save_iriditrak(dimap, queueitem):
                     sbd['AL'] = raw[12]
                     # Byte 19,20 is direction in degrees
                     sbd['DR'] = raw[13]
-                LOGGER.debug(str(sbd))
             else:
                 LOGGER.warning("Don't know how to read " + force_text(sbd['EQ']) + " - " + force_text(raw))
                 dimap.flag(msgid)
@@ -177,13 +175,14 @@ def save_iriditrak(dimap, queueitem):
 
     LoggedPoint.parse_sbd(sbd)
     dimap.delete(msgid)
+    return True
 
 
 def save_dplus(dimap, queueitem):
     msgid, msg = queueitem
     sbd = {"RAW": msg.get_payload().strip().split("|")}
     try:
-        deviceid = sbd["ID"] = int(sbd["RAW"][0])
+        sbd["ID"] = int(sbd["RAW"][0])
         sbd["LT"] = float(sbd["RAW"][4])
         sbd["LG"] = float(sbd["RAW"][5])
         if not lat_long_isvalid(sbd['LT'], sbd['LG']):
@@ -205,6 +204,7 @@ def save_dplus(dimap, queueitem):
         return
 
     dimap.delete(msgid)
+    return True
 
 
 def save_spot(dimap, queueitem):
@@ -236,6 +236,7 @@ def save_spot(dimap, queueitem):
         return
     LoggedPoint.parse_sbd(sbd)
     dimap.delete(msgid)
+    return True
 
 
 def save_tracplus():
@@ -274,7 +275,7 @@ def save_tracplus():
         lp.save()
         if new:
             updated += 1
-    LOGGER.info("Updated {} of {} scanned TracPLUS devices".format(updated, len(latest)))
+    return (updated, len(latest))
 
 
 def save_fleetcare_db():
@@ -293,7 +294,7 @@ def save_fleetcare_db():
         harvested += 1
         seen = timezone.make_aware(parse(data['timestamp'], dayfirst=True))
         device, isnew = Device.objects.get_or_create(deviceid=deviceid)
-        if isnew: # default to hiding and restricting to dbca new vehicles
+        if isnew:  # default to hiding and restricting to dbca new vehicles
             device.hidden = True
             device.internal_only = True
             created += 1
@@ -308,7 +309,8 @@ def save_fleetcare_db():
         device.source_device_type = 'fleetcare'
         device.save()
         lp, new = LoggedPoint.objects.get_or_create(device=device, seen=device.seen)
-        if not new: ignored += 1 # Already harvested, save anyway
+        if not new:
+            ignored += 1  # Already harvested, save anyway
         lp.velocity = device.velocity
         lp.heading = device.heading
         lp.altitude = device.altitude
@@ -446,50 +448,56 @@ def save_mp70(dimap, queueitem):
         dimap.flag(msgid)
         return
     dimap.delete(msgid)
+    return True
 
 
-def harvest_tracking_email(request=None):
+def harvest_tracking_email():
     """Download and save tracking point emails.
     """
     dimap = DeferredIMAP(
         host=settings.EMAIL_HOST, user=settings.EMAIL_USER, password=settings.EMAIL_PASSWORD)
     start = timezone.now()
 
-    LOGGER.info('Harvesting IridiTRAK emails')
+    print('Harvesting IridiTRAK emails')
+    created = 0
     emails = retrieve_emails(dimap, '(FROM "sbdservice@sbd.iridium.com" UNFLAGGED)')
     for message in emails:
-        save_iriditrak(dimap, message)
+        out = save_iriditrak(dimap, message)
+        if out:
+            created += 1
     dimap.flush()
+    print('Created {} tracking points'.format(created))
 
-    LOGGER.info('Harvesting DPlus emails')
+    print('Harvesting DPlus emails')
+    created = 0
     emails = retrieve_emails(dimap, '(FROM "Dplus@asta.net.au" UNFLAGGED)')
     for message in emails:
-        save_dplus(dimap, message)
+        out = save_dplus(dimap, message)
+        if out:
+            created += 1
     dimap.flush()
+    print('Created {} tracking points'.format(created))
 
-    LOGGER.info('Harvesting Spot emails')
+    print('Harvesting Spot emails')
+    created = 0
     emails = retrieve_emails(dimap, '(FROM "noreply@findmespot.com" UNFLAGGED)')
     for message in emails:
-        save_spot(dimap, message)
+        out = save_spot(dimap, message)
+        if out:
+            created += 1
     dimap.flush()
+    print('Created {} tracking points'.format(created))
 
-    LOGGER.info('Harvesting MP70 emails')
+    print('Harvesting MP70 emails')
+    created = 0
     emails = retrieve_emails(dimap, '(FROM "sierrawireless_v1@dbca.wa.gov.au" UNFLAGGED)')
     for message in emails:
-        save_mp70(dimap, message)
+        out = save_mp70(dimap, message)
+        if out:
+            created += 1
     dimap.flush()
-
-   # LOGGER.info('Harvesting TracPlus emails')
-   # try:
-    #    save_tracplus()
-    #except Exception as e:
-     #   LOGGER.error(e)
-
-    # DFES feed handled by separate management command
+    print('Created {} tracking points'.format(created))
 
     delta = timezone.now() - start
-    html = "<html><body>Tracking point email harvest run at {} for {}</body></html>".format(start, delta)
-    if request:
-        return HttpResponse(html)
-    else:
-        return
+    print("Tracking point email harvest run at {} for {}".format(start, delta))
+    return
