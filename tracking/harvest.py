@@ -160,7 +160,6 @@ def save_iriditrak(dimap, queueitem):
                     sbd['AL'] = raw[12]
                     # Byte 19,20 is direction in degrees
                     sbd['DR'] = raw[13]
-                LOGGER.debug(str(sbd))
             else:
                 LOGGER.warning("Don't know how to read " + force_text(sbd['EQ']) + " - " + force_text(raw))
                 dimap.flag(msgid)
@@ -176,6 +175,7 @@ def save_iriditrak(dimap, queueitem):
 
     LoggedPoint.parse_sbd(sbd)
     dimap.delete(msgid)
+    return True
 
 
 def save_dplus(dimap, queueitem):
@@ -204,6 +204,7 @@ def save_dplus(dimap, queueitem):
         return
 
     dimap.delete(msgid)
+    return True
 
 
 def save_spot(dimap, queueitem):
@@ -235,6 +236,7 @@ def save_spot(dimap, queueitem):
         return
     LoggedPoint.parse_sbd(sbd)
     dimap.delete(msgid)
+    return True
 
 
 def save_tracplus():
@@ -446,6 +448,7 @@ def save_mp70(dimap, queueitem):
         dimap.flag(msgid)
         return
     dimap.delete(msgid)
+    return True
 
 
 def harvest_tracking_email():
@@ -456,28 +459,44 @@ def harvest_tracking_email():
     start = timezone.now()
 
     print('Harvesting IridiTRAK emails')
+    created = 0
     emails = retrieve_emails(dimap, '(FROM "sbdservice@sbd.iridium.com" UNFLAGGED)')
     for message in emails:
-        save_iriditrak(dimap, message)
+        out = save_iriditrak(dimap, message)
+        if out:
+            created += 1
     dimap.flush()
+    print('Created {} tracking points'.format(created))
 
     print('Harvesting DPlus emails')
+    created = 0
     emails = retrieve_emails(dimap, '(FROM "Dplus@asta.net.au" UNFLAGGED)')
     for message in emails:
-        save_dplus(dimap, message)
+        out = save_dplus(dimap, message)
+        if out:
+            created += 1
     dimap.flush()
+    print('Created {} tracking points'.format(created))
 
     print('Harvesting Spot emails')
+    created = 0
     emails = retrieve_emails(dimap, '(FROM "noreply@findmespot.com" UNFLAGGED)')
     for message in emails:
-        save_spot(dimap, message)
+        out = save_spot(dimap, message)
+        if out:
+            created += 1
     dimap.flush()
+    print('Created {} tracking points'.format(created))
 
     print('Harvesting MP70 emails')
+    created = 0
     emails = retrieve_emails(dimap, '(FROM "sierrawireless_v1@dbca.wa.gov.au" UNFLAGGED)')
     for message in emails:
-        save_mp70(dimap, message)
+        out = save_mp70(dimap, message)
+        if out:
+            created += 1
     dimap.flush()
+    print('Created {} tracking points'.format(created))
 
     delta = timezone.now() - start
     print("Tracking point email harvest run at {} for {}".format(start, delta))
