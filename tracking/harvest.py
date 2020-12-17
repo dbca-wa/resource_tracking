@@ -490,7 +490,7 @@ def harvest_tracking_email():
 
     print('Harvesting MP70 emails')
     created = 0
-    emails = retrieve_emails(dimap, '(FROM "sierrawireless_v1@dbca.wa.gov.au" UNFLAGGED)')
+    emails = retrieve_emails(dimap, '(FROM "sierrawireless_V1@mail.lan.fyi" UNFLAGGED)')
     for message in emails:
         out = save_mp70(dimap, message)
         if out:
