@@ -106,7 +106,7 @@ def save_iriditrak(dimap, queueitem):
         deviceid = int(msg["SUBJECT"].replace('SBD Msg From Unit: ', ''))
     except ValueError:
         dimap.flag(msgid)
-        return
+        return False
     attachment = None
     for part in msg.walk():
         if part.get_content_maintype() != 'multipart':
@@ -163,15 +163,15 @@ def save_iriditrak(dimap, queueitem):
             else:
                 LOGGER.warning("Don't know how to read " + force_text(sbd['EQ']) + " - " + force_text(raw))
                 dimap.flag(msgid)
-                return
+                return False
         except Exception as e:
             LOGGER.error(force_text(e))
             dimap.flag(msgid)
-            return
+            return False
     else:
         LOGGER.warning("Flagging IridiTrak message {}".format(msgid))
         dimap.flag(msgid)
-        return
+        return False
 
     LoggedPoint.parse_sbd(sbd)
     dimap.delete(msgid)
@@ -195,13 +195,13 @@ def save_dplus(dimap, queueitem):
     except ValueError as e:
         LOGGER.error(e)
         dimap.flag(msgid)
-        return
+        return False
     try:
         LoggedPoint.parse_sbd(sbd)
     except Exception as e:
         LOGGER.error(e)
         dimap.flag(msgid)
-        return
+        return False
 
     dimap.delete(msgid)
     return True
@@ -214,7 +214,7 @@ def save_spot(dimap, queueitem):
     else:
         LOGGER.info("Can't find date in " + str(msg.__dict__))
         dimap.flag(msgid)
-        return
+        return False
     try:
         sbd = {
             'ID': msg['X-SPOT-Messenger'],
@@ -233,7 +233,7 @@ def save_spot(dimap, queueitem):
     except ValueError as e:
         LOGGER.error("Couldn't parse {}, error: {}".format(sbd, e))
         dimap.flag(msgid)
-        return
+        return False
     LoggedPoint.parse_sbd(sbd)
     dimap.delete(msgid)
     return True
@@ -241,7 +241,7 @@ def save_spot(dimap, queueitem):
 
 def save_tracplus():
     if not settings.TRACPLUS_URL:
-        return
+        return False
     symbol_map = {
         'Aircraft': 'spotter aircraft',
         'Helicopter': 'rotary aircraft',
@@ -440,13 +440,13 @@ def save_mp70(dimap, queueitem):
     except ValueError as e:
         LOGGER.error(e)
         dimap.flag(msgid)
-        return
+        return False
     try:
         LoggedPoint.parse_sbd(sbd)
     except Exception as e:
         LOGGER.error(e)
         dimap.flag(msgid)
-        return
+        return False
     dimap.delete(msgid)
     return True
 
@@ -500,4 +500,4 @@ def harvest_tracking_email():
 
     delta = timezone.now() - start
     print("Tracking point email harvest run at {} for {}".format(start, delta))
-    return
+    return True
