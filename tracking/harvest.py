@@ -49,10 +49,16 @@ class DeferredIMAP(object):
         self.login()
         if self.flags:
             print("Flagging {} unprocessable emails.".format(len(self.flags)))
-            self.imp.store(",".join(self.flags), '+FLAGS', r'(\Flagged)')
+            try:
+                self.imp.store(",".join(self.flags), '+FLAGS', r'(\Flagged)')
+            except Exception:
+                print('Unable to flag messageset {}'.format(",".join(self.flags)))
         if self.deletions:
             print("Deleting {} processed emails.".format(len(self.deletions)))
-            self.imp.store(",".join(self.deletions), '+FLAGS', r'(\Deleted)')
+            try:
+                self.imp.store(",".join(self.deletions), '+FLAGS', r'(\Deleted)')
+            except Exception:
+                print('Unable to delete messageset {}'.format(",".join(self.deletions)))
             self.logout(expunge=True)
         else:
             self.logout()
