@@ -441,6 +441,7 @@ def save_mp70(dimap, queueitem):
         dimap.flag(msgid)
         return False
     try:
+        LoggedPoint.parse_sbd(sbd)
         dimap.delete(msgid)
         return True
     except Exception as e:
