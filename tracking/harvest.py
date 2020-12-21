@@ -198,13 +198,12 @@ def save_dplus(dimap, queueitem):
         return False
     try:
         LoggedPoint.parse_sbd(sbd)
+        dimap.delete(msgid)
+        return True
     except Exception as e:
         LOGGER.error(e)
         dimap.flag(msgid)
         return False
-
-    dimap.delete(msgid)
-    return True
 
 
 def save_spot(dimap, queueitem):
@@ -437,66 +436,75 @@ def save_mp70(dimap, queueitem):
         sbd["VL"] = int(sbd["RAW"][4])
         sbd["DR"] = int(sbd["RAW"][5])
         sbd["TY"] = 'other'
-    except ValueError as e:
-        LOGGER.error(e)
-        dimap.flag(msgid)
-        return False
-    try:
-        LoggedPoint.parse_sbd(sbd)
     except Exception as e:
         LOGGER.error(e)
         dimap.flag(msgid)
         return False
-    dimap.delete(msgid)
-    return True
+    try:
+        dimap.delete(msgid)
+        return True
+    except Exception as e:
+        LOGGER.error(e)
+        dimap.flag(msgid)
+        return False
 
 
-def harvest_tracking_email():
+def harvest_tracking_email(device_type=None):
     """Download and save tracking point emails.
     """
     dimap = DeferredIMAP(
         host=settings.EMAIL_HOST, user=settings.EMAIL_USER, password=settings.EMAIL_PASSWORD)
     start = timezone.now()
-
-    print('Harvesting IridiTRAK emails')
     created = 0
-    emails = retrieve_emails(dimap, '(FROM "sbdservice@sbd.iridium.com" UNFLAGGED)')
-    for message in emails:
-        out = save_iriditrak(dimap, message)
-        if out:
-            created += 1
-    dimap.flush()
-    print('Created {} tracking points'.format(created))
+    flagged = 0
 
-    print('Harvesting DPlus emails')
-    created = 0
-    emails = retrieve_emails(dimap, '(FROM "Dplus@asta.net.au" UNFLAGGED)')
-    for message in emails:
-        out = save_dplus(dimap, message)
-        if out:
-            created += 1
-    dimap.flush()
-    print('Created {} tracking points'.format(created))
+    if device_type == 'iriditrak':
+        print('Harvesting IridiTRAK emails')
+        emails = retrieve_emails(dimap, '(FROM "sbdservice@sbd.iridium.com" UNFLAGGED)')
+        for message in emails:
+            out = save_iriditrak(dimap, message)
+            if out:
+                created += 1
+            else:
+                flagged += 1
+        dimap.flush()
+        print('Created {} tracking points, flagged {} emails'.format(created, flagged))
 
-    print('Harvesting Spot emails')
-    created = 0
-    emails = retrieve_emails(dimap, '(FROM "noreply@findmespot.com" UNFLAGGED)')
-    for message in emails:
-        out = save_spot(dimap, message)
-        if out:
-            created += 1
-    dimap.flush()
-    print('Created {} tracking points'.format(created))
+    if device_type == 'dplus':
+        print('Harvesting DPlus emails')
+        emails = retrieve_emails(dimap, '(FROM "Dplus@asta.net.au" UNFLAGGED)')
+        for message in emails:
+            out = save_dplus(dimap, message)
+            if out:
+                created += 1
+            else:
+                flagged += 1
+        dimap.flush()
+        print('Created {} tracking points, flagged {} emails'.format(created, flagged))
 
-    print('Harvesting MP70 emails')
-    created = 0
-    emails = retrieve_emails(dimap, '(FROM "sierrawireless_V1@mail.lan.fyi" UNFLAGGED)')
-    for message in emails:
-        out = save_mp70(dimap, message)
-        if out:
-            created += 1
-    dimap.flush()
-    print('Created {} tracking points'.format(created))
+    if device_type == 'spot':
+        print('Harvesting Spot emails')
+        emails = retrieve_emails(dimap, '(FROM "noreply@findmespot.com" UNFLAGGED)')
+        for message in emails:
+            out = save_spot(dimap, message)
+            if out:
+                created += 1
+            else:
+                flagged += 1
+        dimap.flush()
+        print('Created {} tracking points, flagged {} emails'.format(created, flagged))
+
+    if device_type == 'mp70':
+        print('Harvesting MP70 emails')
+        emails = retrieve_emails(dimap, '(FROM "sierrawireless_V1@mail.lan.fyi" UNFLAGGED)')
+        for message in emails:
+            out = save_mp70(dimap, message)
+            if out:
+                created += 1
+            else:
+                flagged += 1
+        dimap.flush()
+        print('Created {} tracking points, flagged {} emails'.format(created, flagged))
 
     delta = timezone.now() - start
     print("Tracking point email harvest run at {} for {}".format(start, delta))
