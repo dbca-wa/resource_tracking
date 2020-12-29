@@ -182,9 +182,9 @@ def save_iriditrak(dimap, queueitem):
         dimap.flag(msgid)
         return False
 
-    LoggedPoint.parse_sbd(sbd)
+    point = LoggedPoint.parse_sbd(sbd)
     dimap.delete(msgid)
-    return True
+    return point
 
 
 def save_dplus(dimap, queueitem):
@@ -206,9 +206,9 @@ def save_dplus(dimap, queueitem):
         dimap.flag(msgid)
         return False
     try:
-        LoggedPoint.parse_sbd(sbd)
+        point = LoggedPoint.parse_sbd(sbd)
         dimap.delete(msgid)
-        return True
+        return point
     except Exception as e:
         print(e)
         dimap.flag(msgid)
@@ -242,9 +242,10 @@ def save_spot(dimap, queueitem):
         print("Error: couldn't parse {}, error: {}".format(sbd, e))
         dimap.flag(msgid)
         return False
-    LoggedPoint.parse_sbd(sbd)
+
+    point = LoggedPoint.parse_sbd(sbd)
     dimap.delete(msgid)
-    return True
+    return point
 
 
 def save_tracplus():
@@ -450,9 +451,9 @@ def save_mp70(dimap, queueitem):
         dimap.flag(msgid)
         return False
     try:
-        LoggedPoint.parse_sbd(sbd)
+        point = LoggedPoint.parse_sbd(sbd)
         dimap.delete(msgid)
-        return True
+        return point
     except Exception as e:
         print(e)
         dimap.flag(msgid)
