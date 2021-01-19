@@ -7,7 +7,7 @@ import logging
 from django.contrib.auth.models import Group, User
 from django.contrib.gis.db import models
 from django.utils import timezone
-from django.utils.encoding import force_text 
+from django.utils.encoding import force_text
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.dispatch import receiver
 from django.db.models.signals import pre_save, post_save
@@ -123,7 +123,8 @@ SOURCE_DEVICE_TYPE_CHOICES = (
     ("dfes", "DFES"),
     ("mp70", "MP70"),
     ("fleetcare", "fleetcare"),
-    ("other", "Other")
+    ("other", "Other"),
+    ("fleetcare_error", "Fleetcare (error)")
 )
 
 
