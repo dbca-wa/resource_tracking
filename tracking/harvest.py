@@ -290,7 +290,7 @@ def save_tracplus():
 def save_fleetcare_db():
     cursor = connections['fcare'].cursor()
     cursor.execute("select * from logentry limit 20000")
-    harvested, ignored, updated, created = 0, 0, 0, 0
+    harvested, ignored, updated, created, errors = 0, 0, 0, 0, 0
     rows = cursor.fetchall()
     for rowid, filename, blobtime, jsondata in rows:
         try:
@@ -301,23 +301,43 @@ def save_fleetcare_db():
             print("Error: {}: {}".format(rowid, e))
             continue
         harvested += 1
-        seen = timezone.make_aware(parse(data['timestamp'], dayfirst=True))
+
         device, isnew = Device.objects.get_or_create(deviceid=deviceid)
         if isnew:  # default to hiding and restricting to dbca new vehicles
             device.hidden = True
             device.internal_only = True
             created += 1
-        updated += 1
-        device.point = "POINT ({} {})".format(*data['GPS']['coordinates'])
-        if not device.seen or seen > device.seen:
-            device.seen = seen
-        device.registration = data["vehicleRego"]
-        device.velocity = int(float(data["readings"]["vehicleSpeed"]) * 1000)
-        device.altitude = int(float(data["readings"]["vehicleAltitude"]))
-        device.heading = int(float(data["readings"]["vehicleHeading"]))
+        else:
+            updated += 1
+
+        seen_no_tz = parse(data['timestamp'], dayfirst=True)  # No TZ, on purpose.
+        date_error = False
+        # Parse the Fleetcare timestamp into [int(dd), int(mm), int(yyyy)] and compare it to another string
+        # output via stftime in order to check that the `parse` utility hasn't been too clever
+        # and delivered a valid date from an "impossible" date format.
+        # Context: at one point Fleetcare was delivering timestamps in US date format, but the
+        # parse utility still gave us valid dates (even though we specify dayfirst=True).
+        # We also don't trust them to deliver zero-padded day and month values (or not).
+        if not ([int(d) for d in data["timestamp"].split(" ")[0].split("/")] == [int(d) for d in seen_no_tz.strftime("%d/%m/%Y").split("/")]):
+            date_error = True
+            errors += 1
+            print("Timestamp error for data: {}".format(data))
+
+        seen = timezone.make_aware(seen_no_tz)
         device.source_device_type = 'fleetcare'
+        # Only update device details if we trust the parsed timestamp.
+        if not date_error:
+            # Only update device details if the tracking data timestamp is newer than the last-seen.
+            if not device.seen or seen > device.seen:
+                device.seen = seen
+                device.point = "POINT ({} {})".format(*data['GPS']['coordinates'])
+                device.registration = data["vehicleRego"]
+                device.velocity = int(float(data["readings"]["vehicleSpeed"]) * 1000)
+                device.altitude = int(float(data["readings"]["vehicleAltitude"]))
+                device.heading = int(float(data["readings"]["vehicleHeading"]))
         device.save()
-        lp, new = LoggedPoint.objects.get_or_create(device=device, seen=device.seen)
+
+        lp, new = LoggedPoint.objects.get_or_create(device=device, seen=seen)
         if not new:
             ignored += 1  # Already harvested, save anyway
         lp.velocity = device.velocity
@@ -325,11 +345,16 @@ def save_fleetcare_db():
         lp.altitude = device.altitude
         lp.point = device.point
         lp.seen = device.seen
-        lp.source_device_type = device.source_device_type
+        # If we think that we have an error with the parsed date, set the source_device_type as
+        # "fleetcare_error" to flag the LoggedPoint for investigation later.
+        if date_error:
+            lp.source_device_type = 'fleetcare_error'
+        else:
+            lp.source_device_type = device.source_device_type
         lp.raw = jsondata
         lp.save()
         cursor.execute("delete from logentry where id = %s", [rowid])
-    return harvested, created, updated, ignored
+    return harvested, created, updated, ignored, errors
 
 
 def save_dfes_avl():

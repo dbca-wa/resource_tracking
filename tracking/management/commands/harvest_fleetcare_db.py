@@ -10,6 +10,6 @@ class Command(BaseCommand):
         self.stdout.write("Harvesting Fleetcare tracking data")
         try:
             out = save_fleetcare_db()
-            self.stdout.write(self.style.SUCCESS("Harvested {} from Fleetcare; created {}, updated {}, ignored {}".format(*out)))
+            self.stdout.write(self.style.SUCCESS("Harvested {} from Fleetcare; created {}, updated {}, ignored {}, errors {}".format(*out)))
         except Exception as e:
             raise CommandError(e)
