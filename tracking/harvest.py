@@ -312,11 +312,12 @@ def save_fleetcare_db(staging_table='logentry',loggedpoint_model=LoggedPoint,lim
     suspicious_table = "tracking_loggedpoint_suspicious"
 
     dbutils.create_table(connection,"public",suspicious_table,"""
-CREATE TABLE {} (
+CREATE TABLE {0} (
     id int ,
     filename varchar(256) not null,
     tablename varchar(128) not null,
-    message varchar(512) not null)""".format(suspicious_table))
+    message varchar(512) not null);
+CREATE UNIQUE INDEX {0}_unindex_1 ON {0} (tablename,id);""".format(suspicious_table))
 
     index = 0
     diff = None
@@ -460,8 +461,6 @@ values
             lp.raw = jsondata
             lp.save()
 
-            cursor.execute("delete from {} where id = {}".format(staging_table,rowid))
-    
             if selected_index is None:
                 dbutils.execute(connection,"""
 INSERT INTO {} 
@@ -480,7 +479,7 @@ values
 INSERT INTO {} 
     (id,filename,tablename,message) 
 values 
-    ({},'{}','{}','The format of the timestamp({}) is '{}', but prefer '{}')""".format(
+    ({},'{}','{}','The format of the timestamp({}) is {}, but prefer {}')""".format(
                     suspicious_table,
                     lp.id,
                     filename,
@@ -489,6 +488,7 @@ values
                     dt_patterns[selected_index],
                     dt_patterns[0]))
 
+            cursor.execute("delete from {} where id = {}".format(staging_table,rowid))
     return harvested, created, updated, overriden, errors,suspicious,skipped
 
 
