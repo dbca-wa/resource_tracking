@@ -16,3 +16,4 @@ Pillow==7.2.0
 numpy==1.19.2
 GDAL==3.1.3
 colour==0.1.5
+git+git://github.com/dbca-wa/data-storage@v3.7.1#egg=data-storage==3.7.1

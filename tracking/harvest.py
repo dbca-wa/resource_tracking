@@ -2,7 +2,7 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from django.utils.encoding import force_text
-from django.db import connections
+from django.db import connections,connection
 
 import csv
 import time
@@ -16,9 +16,15 @@ from datetime import datetime, timedelta
 from dateutil.parser import parse
 
 from tracking.models import Device, LoggedPoint
+from . import dbutils
 
 BATCH_SIZE = 600
 
+def get_fleetcare_creationtime(name):
+    try:
+        return timezone.make_aware(datetime.strptime(name[-24:-5],"%Y-%m-%dT%H:%M:%S"))
+    except Execption as ex:
+        return Exception("Failed to extract datetime from fleetcare filename({}).{}".format(name,str(ex)))
 
 class DeferredIMAP(object):
     '''
@@ -287,74 +293,203 @@ def save_tracplus():
     return (updated, len(latest))
 
 
-def save_fleetcare_db():
-    cursor = connections['fcare'].cursor()
-    cursor.execute("select * from logentry limit 20000")
-    harvested, ignored, updated, created, errors = 0, 0, 0, 0, 0
-    rows = cursor.fetchall()
-    for rowid, filename, blobtime, jsondata in rows:
-        try:
-            data = json.loads(jsondata)
-            assert data["format"] == "dynamics"
-            deviceid = "fc_" + data["vehicleID"]
-        except Exception as e:
-            print("Error: {}: {}".format(rowid, e))
-            continue
-        harvested += 1
+def save_fleetcare_db(staging_table='logentry',loggedpoint_model=LoggedPoint,limit=20000,from_dt=None,to_dt=None):
+    """
+    Used by havester job to harvest data from staging table (logentry) to LoggedPoint, and update Device
+    Used by reharvester logic to harvest data from other staging table to other loggedpoint table , and update device
+    from_dt: only reharvest the data which seen is greater than or equal with from_dt, if not None
+    to_dt: only reharvest the data which seen is less than to_dt, if not None
+    """
 
-        device, isnew = Device.objects.get_or_create(deviceid=deviceid)
-        if isnew:  # default to hiding and restricting to dbca new vehicles
-            device.hidden = True
-            device.internal_only = True
-            created += 1
-        else:
-            updated += 1
+    if staging_table == "logentry":
+        #in harvest mode, the target model must be LoggedPoint, and from_dt and to_dt must be None
+        loggedpoint_model = LoggedPoint
+        from_dt = None
+        to_dt = None
 
-        seen_no_tz = parse(data['timestamp'], dayfirst=True)  # No TZ, on purpose.
-        date_error = False
-        # Parse the Fleetcare timestamp into [int(dd), int(mm), int(yyyy)] and compare it to another string
-        # output via stftime in order to check that the `parse` utility hasn't been too clever
-        # and delivered a valid date from an "impossible" date format.
-        # Context: at one point Fleetcare was delivering timestamps in US date format, but the
-        # parse utility still gave us valid dates (even though we specify dayfirst=True).
-        # We also don't trust them to deliver zero-padded day and month values (or not).
-        if not ([int(d) for d in data["timestamp"].split(" ")[0].split("/")] == [int(d) for d in seen_no_tz.strftime("%d/%m/%Y").split("/")]):
-            date_error = True
-            errors += 1
-            print("Timestamp error for data: {}".format(data))
+    dt_patterns = ["%d/%m/%Y %I:%M:%S %p","%m/%d/%Y %I:%M:%S %p"]
 
-        seen = timezone.make_aware(seen_no_tz)
-        device.source_device_type = 'fleetcare'
-        # Only update device details if we trust the parsed timestamp.
-        if not date_error:
-            # Only update device details if the tracking data timestamp is newer than the last-seen.
-            if not device.seen or seen > device.seen:
+    suspicious_table = "tracking_loggedpoint_suspicious"
+
+    dbutils.create_table(connection,"public",suspicious_table,"""
+CREATE TABLE {0} (
+    id int ,
+    filename varchar(256) not null,
+    tablename varchar(128) not null,
+    message varchar(512) not null);
+CREATE UNIQUE INDEX {0}_unindex_1 ON {0} (tablename,id);""".format(suspicious_table))
+
+    index = 0
+    diff = None
+    min_diff = None
+    selected_index = None
+    dt = None
+    seen = None
+    max_blob_creation_delay = timedelta(days=1)
+    
+    harvested, overriden, updated, created, errors,suspicious,skipped = 0, 0, 0, 0, 0,0,0
+    with connections['fcare'].cursor() as cursor:
+        cursor.execute("select * from {} order by id limit {}".format(staging_table,limit))
+        rows = cursor.fetchall()
+        for rowid, filename, blobtime, jsondata in rows:
+            try:
+                data = json.loads(jsondata)
+                assert data["format"] == "dynamics"
+                deviceid = "fc_" + data["vehicleID"]
+            except Exception as e:
+                print("Error: {}: {}".format(rowid, e))
+                dbutils.execute(connection,"""
+INSERT INTO {} 
+    (id,filename,tablename,message) 
+values 
+    ({},'{}','{}','Error:{}')""".format(
+                    suspicious_table,
+                    null,
+                    filename,
+                    staging_table,
+                    e))
+                cursor.execute("delete from {} where id = {}".format(staging_table,rowid))
+                continue
+
+            #blobtime is the creation_time or last_modified_time of blob data which is not reliable. so extract the timestamp from filename
+            blobtime = get_fleetcare_creationtime(filename)
+            harvested += 1
+
+            #try to parse the timestamp string to datetime object.
+            #the format of the timestamp should be 'dd/mm/yyyy HH:MM:SS AM/PM', but sometimes , it can also be 'mm/dd/yyyy HH:MM:SS AM/PM',
+            #to handle this issue, the following logic try to parse the datetime with two patterns, and choose the datatime which is close to blobtime.
+            #if the choosed pattern is not the prefered one, will insert a row into table 'tracking_loggedpoint_suspicious'
+            #if can't parse the timestamp with all possible patterns, set the source device type to 'fleetcare_error', and also insert a row into table 'tracking_loggepoint_suspicious'
+            index = 0
+            diff = None
+            min_diff = None
+            selected_index = None
+            dt = None
+            seen = None
+            while index < len(dt_patterns):
+                try:
+                    dt = timezone.make_aware(datetime.strptime(data['timestamp'], dt_patterns[index]))
+                    if not seen:
+                        seen = dt
+                        min_diff = seen - blobtime if seen >= blobtime else blobtime - seen
+                        selected_index = index
+                        if min_diff <= max_blob_creation_delay:
+                            break
+                    else:
+                        diff = dt - blobtime if dt >= blobtime else blobtime - dt
+                        if diff < min_diff:
+                            min_diff = diff
+                            seen = dt
+                            selected_index = index
+                            if min_diff <= max_blob_creation_delay:
+                                break
+                except:
+                    pass
+                finally:
+                    index += 1
+    
+            #check whether the data is between from_dt and to_dt
+            if seen:
+                if from_dt and seen < from_dt:
+                    skipped += 1
+                    cursor.execute("delete from {} where id = {}".format(staging_table,rowid))
+                    continue
+                if to_dt and seen >= to_dt:
+                    skipped += 1
+                    cursor.execute("delete from {} where id = {}".format(staging_table,rowid))
+                    continue
+    
+    
+            if selected_index is None:
+                #can't parse the timestamp, use blobtime as placeholder
+                seen = blobtime
+                errors += 1
+            elif selected_index != 0:
+                suspicious += 1
+    
+            device, isnew = Device.objects.get_or_create(deviceid=deviceid)
+            if isnew:  # default to hiding and restricting to dbca new vehicles
+                device.hidden = True
+                device.internal_only = True
+                device.source_device_type = 'fleetcare'
+                device.save(update_fields = ["source_device_type","hidden","internal_only"])
+                created += 1
+    
+    
+            # Only update device details if the tracking data timestamp was parsed successfully
+            if selected_index is not None and (not device.seen or seen > device.seen):
+                device.source_device_type = 'fleetcare'
                 device.seen = seen
                 device.point = "POINT ({} {})".format(*data['GPS']['coordinates'])
                 device.registration = data["vehicleRego"]
                 device.velocity = int(float(data["readings"]["vehicleSpeed"]) * 1000)
                 device.altitude = int(float(data["readings"]["vehicleAltitude"]))
                 device.heading = int(float(data["readings"]["vehicleHeading"]))
-        device.save()
+                device.save()
+                if not isnew:
+                    updated += 1
+            elif device.source_device_type != 'fleetcare':
+                device.source_device_type = 'fleetcare'
+                device.save(update_fields = ["source_device_type"])
+    
+            while True:
+                lp, new = loggedpoint_model.objects.get_or_create(device=device, seen=seen)
+                if new:
+                    break
+                elif selected_index is None:
+                    #error data
+                    if lp.source_device_type == 'fleetcare_error':
+                        overriden += 1  # Already harvested, save anyway
+                        break
+                    else:
+                        #alreay have a correct data with the same 'seen',add 1 seconds and try to save it again
+                        seen += timedelta(milliseconds=1)
+                else:
+                    overriden += 1  # Already harvested, save anyway
+                    break
+                
+            lp.velocity = device.velocity
+            lp.heading = device.heading
+            lp.altitude = device.altitude
+            lp.point = device.point
+            # If we think that we have an error with the parsed date, set the source_device_type as
+            # "fleetcare_error" to flag the LoggedPoint for investigation later.
+            if selected_index is None:
+                lp.source_device_type = 'fleetcare_error'
+            else:
+                lp.source_device_type = device.source_device_type
+            lp.raw = jsondata
+            lp.save()
 
-        lp, new = LoggedPoint.objects.get_or_create(device=device, seen=seen)
-        if not new:
-            ignored += 1  # Already harvested, save anyway
-        lp.velocity = device.velocity
-        lp.heading = device.heading
-        lp.altitude = device.altitude
-        lp.point = device.point
-        lp.seen = device.seen
-        # If we think that we have an error with the parsed date, set the source_device_type as
-        # "fleetcare_error" to flag the LoggedPoint for investigation later.
-        if date_error:
-            lp.source_device_type = 'fleetcare_error'
-        else:
-            lp.source_device_type = device.source_device_type
-        lp.raw = jsondata
-        lp.save()
-        cursor.execute("delete from logentry where id = %s", [rowid])
-    return harvested, created, updated, ignored, errors
+            if selected_index is None:
+                dbutils.execute(connection,"""
+INSERT INTO {} 
+    (id,filename,tablename,message) 
+values 
+    ({},'{}','{}','Failed to parse the timestamp({}) with patterns({})')""".format(
+                    suspicious_table,
+                    lp.id,
+                    filename,
+                    loggedpoint_model._meta.db_table,
+                    data['timestamp'],
+                    dt_patterns))
+            elif selected_index != 0:
+                #suspicious data
+                dbutils.execute(connection,"""
+INSERT INTO {} 
+    (id,filename,tablename,message) 
+values 
+    ({},'{}','{}','The format of the timestamp({}) is {}, but prefer {}')""".format(
+                    suspicious_table,
+                    lp.id,
+                    filename,
+                    loggedpoint_model._meta.db_table,
+                    data['timestamp'],
+                    dt_patterns[selected_index],
+                    dt_patterns[0]))
+
+            cursor.execute("delete from {} where id = {}".format(staging_table,rowid))
+    return harvested, created, updated, overriden, errors,suspicious,skipped
 
 
 def save_dfes_avl():
