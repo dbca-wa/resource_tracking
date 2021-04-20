@@ -185,6 +185,7 @@ class Device(BasePoint):
     other_details = models.TextField(null=True, blank=True)
     internal_only = models.BooleanField(default=False, verbose_name="Internal to DBCA only")
     hidden = models.BooleanField(default=False, verbose_name="Hidden/private use")
+    deleted = models.BooleanField(default=False, verbose_name="Deleted?")
 
     @property
     def age_minutes(self):
@@ -300,6 +301,7 @@ class LoggedPoint(BasePoint):
             self.device.altitude = self.altitude
             self.device.message = self.message
             self.device.source_device_type = self.source_device_type
+            self.device.deleted = False
             self.device.save()
         return self
 

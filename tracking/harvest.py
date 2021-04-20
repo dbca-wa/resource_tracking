@@ -2,7 +2,7 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from django.utils.encoding import force_text
-from django.db import connections,connection
+from django.db import connections,connection,transaction
 
 import csv
 import time
@@ -253,14 +253,15 @@ def save_spot(dimap, queueitem):
     dimap.delete(msgid)
     return point
 
+tracplus_symbol_map = {
+    'Aircraft': 'spotter aircraft',
+    'Helicopter': 'rotary aircraft',
+}
 
 def save_tracplus():
     if not settings.TRACPLUS_URL:
         return False
-    symbol_map = {
-        'Aircraft': 'spotter aircraft',
-        'Helicopter': 'rotary aircraft',
-    }
+    
     content = requests.get(settings.TRACPLUS_URL).content.decode('utf-8')
     latest = list(csv.DictReader(content.split('\r\n')))
     updated = 0
@@ -276,8 +277,9 @@ def save_tracplus():
         device.seen = timezone.make_aware(datetime.strptime(row["Transmitted"], "%Y-%m-%d %H:%M:%S"), pytz.timezone("UTC"))
         device.point = "POINT ({} {})".format(row["Longitude"], row["Latitude"])
         device.source_device_type = 'tracplus'
-        if row['Asset Type'] in symbol_map:
-            device.symbol = symbol_map[row['Asset Type']]
+        device.deleted = False
+        if row['Asset Type'] in tracplus_symbol_map:
+            device.symbol = tracplus_symbol_map[row['Asset Type']]
         device.save()
         lp, new = LoggedPoint.objects.get_or_create(device=device, seen=device.seen)
         lp.velocity = device.velocity
@@ -425,12 +427,18 @@ values
                 device.velocity = int(float(data["readings"]["vehicleSpeed"]) * 1000)
                 device.altitude = int(float(data["readings"]["vehicleAltitude"]))
                 device.heading = int(float(data["readings"]["vehicleHeading"]))
+                device.deleted = False
                 device.save()
                 if not isnew:
                     updated += 1
             elif device.source_device_type != 'fleetcare':
                 device.source_device_type = 'fleetcare'
-                device.save(update_fields = ["source_device_type"])
+                device.deleted = False
+                device.save(update_fields = ["source_device_type","deleted"])
+            elif device.deleted:
+                device.deleted = False
+                device.save(update_fields = ["deleted"])
+                
     
             while True:
                 lp, new = loggedpoint_model.objects.get_or_create(device=device, seen=seen)
@@ -569,6 +577,7 @@ def save_dfes_avl():
             device.seen = seen
             device.point = "POINT ({} {})".format(row['geometry']['coordinates'][0], row['geometry']['coordinates'][1])
             device.source_device_type = 'dfes'
+            device.deleted = False
             device.save()
 
             LoggedPoint.objects.create(
@@ -680,3 +689,153 @@ def harvest_tracking_email(device_type=None):
     delta = timezone.now() - start
     print("Tracking point email harvest run at {} for {} seconds".format(start, delta.seconds))
     return True
+
+def recreate_fleetcare_device_from_raw(device,raw):
+    data = json.loads(raw)
+    device.deviceid = "fc_" + data["vehicleID"]
+
+    device.hidden = True
+    device.internal_only = True
+    device.registration = data["vehicleRego"]
+
+def recreate_tracplus_device_from_raw(device,raw):
+    data = json.loads(raw)
+    device.deviceid = data["Device IMEI"]
+    device.callsign = data["Asset Name"]
+    device.callsign_display = data["Asset Name"]
+    device.model = data["Asset Model"]
+    device.registration = data["Asset Regn"][:32]
+    device.deleted = True
+    if data['Asset Type'] in tracplus_symbol_map:
+        device.symbol = tracplus_symbol_map[data['Asset Type']]
+    
+def recreate_iriditrak_device_from_raw(device,raw):
+    sbd = json.loads(raw)
+    device.deviceid=sbd["ID"]
+
+def recreate_dplus_device_from_raw(device,raw):
+    sbd = json.loads(raw)
+    device.deviceid=sbd["ID"]
+
+def recreate_spot_device_from_raw(device,raw):
+    sbd = json.loads(raw)
+    device.deviceid=sbd["ID"]
+
+def recreate_mp70_device_from_raw(device,raw):
+    sbd = json.loads(raw)
+    device.deviceid=sbd["ID"]
+
+def recreate_dfes_device_from_raw(device,raw):
+    data = json.loads(raw)
+    prop = data["properties"]
+    device.deviceid = str(prop["TrackerID"]).strip()
+    device.callsign = prop["VehicleName"]
+    device.callsign_display = prop["VehicleName"]
+    device.model = prop["Model"]
+    device.registration = 'DFES - ' + prop["Registration"][:32]
+    device.symbol = (prop["VehicleType"]).strip()
+    if device.symbol in ['2.4 BROADACRE', '2.4 RURAL', '3.4', '4.4', '1.4 RURAL', '2.4 URBAN', '3.4 RURAL', '3.4 SSSBFT', '3.4 URBAN', '4.4 BROADACRE', '4.4 RURAL']:
+        device.symbol = 'gang truck'
+    elif device.symbol == 'LIGHT TANKER':
+        device.symbol = 'light unit'
+    elif device.symbol in ['BUS 10 SEATER', 'BUS 21 SEATER', 'BUS 22 SEATER', 'INCIDENT CONTROL VEHICLE', 'MINI BUS 12 SEATER']:
+        device.symbol = 'comms bus'
+    elif device.symbol in ['GENERAL RESCUE TRUCK', 'HAZMAT STRUCTURAL RESCUE', 'RESCUE VEHICLE', 'ROAD CRASH RESCUE TRUCK', 'SPECIALIST EQUIPMENT TENDER', 'TRUCK']:
+        device.symbol = 'tender'
+    elif device.symbol in ['Crew Cab Utility w canopy', 'FIRST RESPONSE UNIT', 'FIRST RESPONSE VEHICLE', 'UTILITY', 'Utility']:
+        device.symbol = '4 wheel drive ute'
+    elif device.symbol in ['CAR (4WD)', 'PERSONNEL CARRIER', 'PERSONNEL CARRIER 11 SEATER', 'PERSONNEL CARRIER 5 SEATER', 'PERSONNEL CARRIER 6 SEATER']:
+        device.symbol = '4 wheel drive passenger'
+    elif device.symbol == 'CAR':
+        device.symbol = '2 wheel drive'
+    else:
+        device.symbol = 'unknown'
+    if device.registration.strip() == 'DFES -':
+        device.registration = 'DFES - No Rego'
+
+def recreate_device_from_raw(condition=None):
+    failed_devices = []
+    recreated_devices = []
+    update_devices = []
+    
+    with connection.cursor() as cursor:
+        if condition:
+            cursor.execute("select distinct a.device_id from (select * from tracking_loggedpoint where {}) a left join tracking_device b on a.device_id = b.id where b.id is null".format(condition))
+        else:
+            cursor.execute("select distinct a.device_id from tracking_loggedpoint a left join tracking_device b on a.device_id = b.id where b.id is null")
+        rows = cursor.fetchall()
+        device_ids = []
+        for row in rows:
+            device_ids.append(int(row[0]))
+
+        for device_id in device_ids:
+            cursor.execute("select device_id,point,heading,velocity,altitude,seen,message,source_device_type,raw from tracking_loggedpoint where device_id = {} order by seen desc limit 1".format(device_id))
+            device_id,point,heading,velocity,altitude,seen,message,source_device_type,raw = cursor.fetchone()
+            device = Device(
+                id=device_id,
+                point=point,
+                heading=heading,
+                velocity=velocity,
+                altitude=altitude,
+                seen=seen,
+                message=message,
+                source_device_type=source_device_type,
+                deleted=True
+            )
+            if source_device_type == "tracplus":
+                recreate_tracplus_device_from_raw(device,raw)
+            elif source_device_type == "iriditrak":
+                recreate_iriditrak_device_from_raw(device,raw)
+            elif source_device_type == "dplus":
+                recreate_dplus_device_from_raw(device,raw)
+            elif source_device_type == "spot":
+                recreate_spot_device_from_raw(device,raw)
+            elif source_device_type == "dfes":
+                recreate_dfes_device_from_raw(device,raw)
+            elif source_device_type == "mp70":
+                recreate_mp70_device_from_raw(device,raw)
+            elif source_device_type == "fleetcare":
+                recreate_fleetcare_device_from_raw(device,raw)
+            elif source_device_type == "fleetcare_error":
+                device.source_device_type = "fleetcare"
+                recreate_fleetcare_device_from_raw(device,raw)
+            else:
+                print("Source device type({}) Not Support".format(source_device_type))
+                continue
+            try:
+                with transaction.atomic():
+                    device.save()
+                recreated_devices.append(device)
+            except Exception as ex:
+                new_device = Device.objects.filter(deviceid=device.deviceid).first()
+                if new_device:
+                    #new device object is created for the same resource.
+                    cursor.execute("update tracking_loggedpoint set device_id={1} where device_id={0};".format(device.id,new_device.id))
+                    connection.commit()
+                    update_devices.append((device,new_device))
+                else:
+                    failed_devices.append((device,str(ex)))
+
+        if recreated_devices:
+            for device in recreated_devices:
+                print("Recreate device:{}".format(" , ".join("{}={}".format(column,getattr(device,column)) for column in ("id","deviceid","source_device_type","callsign","callsign_display","registration","internal_only","symbol","point","heading","velocity","altitude","seen","message","hidden","deleted"))))
+
+        if update_devices:
+            for device,new_device in update_devices:
+                print("Replace the device({}) with device({}) in table tracking_loggedpoint".format(device.id,new_device.id))
+
+        if failed_devices:
+            failed_devices.sort(key=lambda o:o[1].id if o[1] else o[0].id)
+            print("\n===============================================================")
+            print("Failed to create {} devices".format(len(failed_devices)))
+            for device,msg in failed_devices:
+                print("Failed to recreate device:{}".format(
+                    " , ".join("{}={}".format(column,getattr(device,column)) for column in ("id","deviceid","source_device_type","callsign","callsign_display","registration","internal_only","symbol","point","heading","velocity","altitude","seen","message","hidden","deleted"))
+                ))
+                print("\t{}".format(msg))
+                print("-----------------------------------------------------------------")
+                    
+
+
+
+    

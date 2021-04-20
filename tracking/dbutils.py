@@ -29,6 +29,11 @@ def execute(conn,sql,log=False):
             print("{1} rows are affected by executing the sql ({0}).".format(sql,rows))
         return rows
 
+def executeDDL(conn,sql,log=False):
+    with conn.cursor() as cur:
+        cur.execute(sql )
+        if log:
+            print("succeed to execute the sql ({0}).".format(sql))
 
 def count(conn,schema=None,table=None,sql=None,log=False):
     with conn.cursor() as cur:
@@ -39,4 +44,20 @@ def count(conn,schema=None,table=None,sql=None,log=False):
 
         return rows
 
+def get(conn,sql,log=False):
+    """
+    Return the found row  if have; otherwise return None
+    """
+    with conn.cursor() as cur:
+        cur.execute(sql)
+        row = cursor.fetchone()
+        if log:
+            if row:
+                print("found one row by sql ({0}),{1}".format(sql,row))
+            else:
+                print("no row found by sql ({0})".format(sql))
+
+
+        return row
+   
 
