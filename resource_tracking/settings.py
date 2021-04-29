@@ -1,6 +1,7 @@
 from dbca_utils.utils import env
 import dj_database_url
 import os
+from datetime import timedelta
 from pathlib import Path
 
 # Project paths
@@ -29,6 +30,7 @@ DFES_OUT_OF_ORDER_BUFFER = int(env('DFES_OUT_OF_ORDER_BUFFER') or 300)
 PROD_SCARY_WARNING = env('PROD_SCARY_WARNING', False)
 DEVICE_HTTP_CACHE_TIMEOUT = env('DEVICE_HTTP_CACHE_TIMEOUT', 60)
 HISTORY_HTTP_CACHE_TIMEOUT = env('HISTORY_HTTP_CACHE_TIMEOUT', 60)
+FUTURE_DATA_OFFSET = timedelta(seconds=int(env('FUTURE_DATA_OFFSET') or 900))
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',

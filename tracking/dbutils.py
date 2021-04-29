@@ -1,5 +1,8 @@
 import traceback
 
+
+from django.db import connections,connection,transaction
+
 def table_exists(cur,schema,table_name,log=False):
     cur.execute("SELECT count(*) FROM pg_catalog.pg_class a join pg_catalog.pg_namespace b on a.relnamespace = b.oid WHERE b.nspname='{}' and a.relname='{}' and a.relkind='r'".format(schema,table_name))
     row = cur.fetchone()
@@ -59,5 +62,31 @@ def get(conn,sql,log=False):
 
 
         return row
+
+def executeFile(filename,batch=100):
+    with open(filename,"r") as f:
+        transaction.set_autocommit(True)
+        rows = 0
+        sqls = []
+        with connection.cursor() as cur:
+            sql = f.readline()
+            while sql:
+                sql = sql.strip()
+                if sql:
+                    sqls.append(sql)
+                    if len(sqls) == batch:
+                        cur.execute("\n".join(sqls))
+                        rows += len(sqls)
+                        sqls.clear()
+                        if rows % 1000 == 0:
+                            print("processed {} lines".format(rows))
+                sql = f.readline()
+
+            cur.execute("\n".join(sqls))
+            rows += len(sqls)
+            print("processed {} lines".format(rows))
+
+
+        
    
 

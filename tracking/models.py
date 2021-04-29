@@ -308,6 +308,24 @@ class LoggedPoint(BasePoint):
     class Meta:
         unique_together = (("device", "seen"),)
 
+class InvalidLoggedPoint(BasePoint):
+    INVALID_RAW_DATA = 1
+    INVALID_TIMESTAMP = 10
+    INVALID_TIMESTAMP_FORMAT = 11
+    FUTURE_DATA = 20
+    CATEGORIES = (
+        (INVALID_RAW_DATA,"Invalid Raw Data"),
+        (INVALID_TIMESTAMP,"Invalid Timestamp"),
+        (INVALID_TIMESTAMP_FORMAT,"Invalid Timestamp Format"),
+        (FUTURE_DATA,"Future Data")
+    )
+    deviceid = models.CharField(max_length=32,null=True,db_index=True)
+    device_id = models.IntegerField(null=True,db_index=True)
+    raw = models.TextField(editable=False)
+    category = models.CharField(max_length=32,choices=CATEGORIES)
+    error_msg = models.TextField()
+    created = models.DateTimeField(auto_now_add=True,db_index=True)
+
 
 @receiver(pre_save, sender=User)
 def user_pre_save(sender, instance, **kwargs):

@@ -3,6 +3,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from django.utils.encoding import force_text
 from django.db import connections,connection,transaction
+from django.contrib.gis.geos import GEOSGeometry
 
 import csv
 import time
@@ -11,11 +12,12 @@ import json
 import email
 import struct
 import requests
+import traceback
 from imaplib import IMAP4_SSL
 from datetime import datetime, timedelta
 from dateutil.parser import parse
 
-from tracking.models import Device, LoggedPoint
+from tracking.models import Device, LoggedPoint,InvalidLoggedPoint
 from . import dbutils
 
 BATCH_SIZE = 600
@@ -295,6 +297,8 @@ def save_tracplus():
     return (updated, len(latest))
 
 
+fleetcare_dt_patterns = ["%d/%m/%Y %I:%M:%S %p","%m/%d/%Y %I:%M:%S %p","%Y/%m/&d %I:%M:%S %p"]
+fleetcare_max_blob_creation_delay = timedelta(days=1)
 def save_fleetcare_db(staging_table='logentry',loggedpoint_model=LoggedPoint,limit=20000,from_dt=None,to_dt=None):
     """
     Used by havester job to harvest data from staging table (logentry) to LoggedPoint, and update Device
@@ -309,25 +313,12 @@ def save_fleetcare_db(staging_table='logentry',loggedpoint_model=LoggedPoint,lim
         from_dt = None
         to_dt = None
 
-    dt_patterns = ["%d/%m/%Y %I:%M:%S %p","%m/%d/%Y %I:%M:%S %p"]
-
-    suspicious_table = "tracking_loggedpoint_suspicious"
-
-    dbutils.create_table(connection,"public",suspicious_table,"""
-CREATE TABLE {0} (
-    id int ,
-    filename varchar(256) not null,
-    tablename varchar(128) not null,
-    message varchar(512) not null);
-CREATE UNIQUE INDEX {0}_unindex_1 ON {0} (tablename,id);""".format(suspicious_table))
-
     index = 0
     diff = None
     min_diff = None
-    selected_index = None
+    date_format_index = None
     dt = None
     seen = None
-    max_blob_creation_delay = timedelta(days=1)
     
     harvested, overriden, updated, created, errors,suspicious,skipped = 0, 0, 0, 0, 0,0,0
     with connections['fcare'].cursor() as cursor:
@@ -340,16 +331,12 @@ CREATE UNIQUE INDEX {0}_unindex_1 ON {0} (tablename,id);""".format(suspicious_ta
                 deviceid = "fc_" + data["vehicleID"]
             except Exception as e:
                 print("Error: {}: {}".format(rowid, e))
-                dbutils.execute(connection,"""
-INSERT INTO {} 
-    (id,filename,tablename,message) 
-values 
-    ({},'{}','{}','Error:{}')""".format(
-                    suspicious_table,
-                    null,
-                    filename,
-                    staging_table,
-                    e))
+                invalid_lp = InvalidLoggedPoint(
+                    category=InvalidLoggedPoint.INVALID_RAW_DATA,
+                    error_msg="Failed to parse the raw data,file ={}, staging table={}.\r\n{}".format(filename,staging_table,traceback.format_exc()),
+                    raw=jsondata
+                )
+                invalid_lp.save()
                 cursor.execute("delete from {} where id = {}".format(staging_table,rowid))
                 continue
 
@@ -365,25 +352,25 @@ values
             index = 0
             diff = None
             min_diff = None
-            selected_index = None
+            date_format_index = None
             dt = None
             seen = None
-            while index < len(dt_patterns):
+            while index < len(fleetcare_dt_patterns):
                 try:
-                    dt = timezone.make_aware(datetime.strptime(data['timestamp'], dt_patterns[index]))
+                    dt = timezone.make_aware(datetime.strptime(data['timestamp'], fleetcare_dt_patterns[index]))
                     if not seen:
                         seen = dt
                         min_diff = seen - blobtime if seen >= blobtime else blobtime - seen
-                        selected_index = index
-                        if min_diff <= max_blob_creation_delay:
+                        date_format_index = index
+                        if min_diff <= fleetcare_max_blob_creation_delay:
                             break
                     else:
                         diff = dt - blobtime if dt >= blobtime else blobtime - dt
                         if diff < min_diff:
                             min_diff = diff
                             seen = dt
-                            selected_index = index
-                            if min_diff <= max_blob_creation_delay:
+                            date_format_index = index
+                            if min_diff <= fleetcare_max_blob_creation_delay:
                                 break
                 except:
                     pass
@@ -400,15 +387,17 @@ values
                     skipped += 1
                     cursor.execute("delete from {} where id = {}".format(staging_table,rowid))
                     continue
-    
-    
-            if selected_index is None:
+
+            if date_format_index is None:
                 #can't parse the timestamp, use blobtime as placeholder
                 seen = blobtime
+ 
+            future_data = seen >= (timezone.now() + settings.FUTURE_DATA_OFFSET)
+            if date_format_index is None or future_data:
                 errors += 1
-            elif selected_index != 0:
+            elif date_format_index != 0:
                 suspicious += 1
-    
+
             device, isnew = Device.objects.get_or_create(deviceid=deviceid)
             if isnew:  # default to hiding and restricting to dbca new vehicles
                 device.hidden = True
@@ -417,20 +406,28 @@ values
                 device.save(update_fields = ["source_device_type","hidden","internal_only"])
                 created += 1
     
-    
+            point = "POINT ({} {})".format(*data['GPS']['coordinates'])
+            velocity = int(float(data["readings"]["vehicleSpeed"]) * 1000)
+            altitude = int(float(data["readings"]["vehicleAltitude"]))
+            heading = int(float(data["readings"]["vehicleHeading"]))
             # Only update device details if the tracking data timestamp was parsed successfully
-            if selected_index is not None and (not device.seen or seen > device.seen):
+            if  not device.seen or seen > device.seen:
                 device.source_device_type = 'fleetcare'
-                device.seen = seen
-                device.point = "POINT ({} {})".format(*data['GPS']['coordinates'])
-                device.registration = data["vehicleRego"]
-                device.velocity = int(float(data["readings"]["vehicleSpeed"]) * 1000)
-                device.altitude = int(float(data["readings"]["vehicleAltitude"]))
-                device.heading = int(float(data["readings"]["vehicleHeading"]))
                 device.deleted = False
-                device.save()
-                if not isnew:
-                    updated += 1
+                device.registration = data["vehicleRego"]
+                if future_data:
+                    device.save(update_fields=["source_device_type","registration","deleted"])
+                elif  date_format_index is None:
+                    device.save(update_fields=["source_device_type","registration","deleted"])
+                else:
+                    device.seen = seen
+                    device.point = point
+                    device.velocity = velocity
+                    device.altitude = altitude
+                    device.heading = heading
+                    device.save()
+                    if not isnew:
+                        updated += 1
             elif device.source_device_type != 'fleetcare':
                 device.source_device_type = 'fleetcare'
                 device.deleted = False
@@ -438,63 +435,65 @@ values
             elif device.deleted:
                 device.deleted = False
                 device.save(update_fields = ["deleted"])
-                
-    
-            while True:
-                lp, new = loggedpoint_model.objects.get_or_create(device=device, seen=seen)
-                if new:
-                    break
-                elif selected_index is None:
-                    #error data
-                    if lp.source_device_type == 'fleetcare_error':
+
+            invalid_lp = None
+            if future_data:
+                lp = InvalidLoggedPoint(seen=seen,device_id = device.id,deviceid = device.deviceid,category=InvalidLoggedPoint.FUTURE_DATA,error_msg="This data is happened in the future.")
+                invalid_lp = lp
+            else:
+                while True:
+                    lp, new = loggedpoint_model.objects.get_or_create(device=device, seen=seen)
+                    if new:
+                        break
+                    elif date_format_index is None:
+                        #error data
+                        if lp.source_device_type == 'fleetcare_error':
+                            overriden += 1  # Already harvested, save anyway
+                            break
+                        else:
+                            #alreay have a correct data with the same 'seen',add 1 seconds and try to save it again
+                            seen += timedelta(milliseconds=1)
+                    else:
                         overriden += 1  # Already harvested, save anyway
                         break
-                    else:
-                        #alreay have a correct data with the same 'seen',add 1 seconds and try to save it again
-                        seen += timedelta(milliseconds=1)
-                else:
-                    overriden += 1  # Already harvested, save anyway
-                    break
                 
-            lp.velocity = device.velocity
-            lp.heading = device.heading
-            lp.altitude = device.altitude
-            lp.point = device.point
+            lp.velocity = velocity
+            lp.heading = heading
+            lp.altitude = altitude
+            lp.point = point
             # If we think that we have an error with the parsed date, set the source_device_type as
             # "fleetcare_error" to flag the LoggedPoint for investigation later.
-            if selected_index is None:
+            if date_format_index is None:
                 lp.source_device_type = 'fleetcare_error'
             else:
                 lp.source_device_type = device.source_device_type
             lp.raw = jsondata
             lp.save()
 
-            if selected_index is None:
-                dbutils.execute(connection,"""
-INSERT INTO {} 
-    (id,filename,tablename,message) 
-values 
-    ({},'{}','{}','Failed to parse the timestamp({}) with patterns({})')""".format(
-                    suspicious_table,
-                    lp.id,
-                    filename,
-                    loggedpoint_model._meta.db_table,
-                    data['timestamp'],
-                    dt_patterns))
-            elif selected_index != 0:
-                #suspicious data
-                dbutils.execute(connection,"""
-INSERT INTO {} 
-    (id,filename,tablename,message) 
-values 
-    ({},'{}','{}','The format of the timestamp({}) is {}, but prefer {}')""".format(
-                    suspicious_table,
-                    lp.id,
-                    filename,
-                    loggedpoint_model._meta.db_table,
-                    data['timestamp'],
-                    dt_patterns[selected_index],
-                    dt_patterns[0]))
+            if date_format_index is None or date_format_index != 0:
+                if invalid_lp:
+                    invalid_lp.id = None
+                else:
+                    invalid_lp = InvalidLoggedPoint(
+                        seen = lp.seen,
+                        device_id = device.id,
+                        deviceid = device.deviceid,
+                        velocity = lp.velocity,
+                        heading = lp.heading,
+                        altitude = lp.altitude,
+                        point = lp.point,
+                        source_device_type = lp.source_device_type,
+                        raw = lp.raw
+                    )
+
+                if date_format_index is None :
+                    invalid_lp.category =InvalidLoggedPoint.INVALID_TIMESTAMP,
+                    invalid_lp.error_msg = 'Failed to parse the timestamp({}) with patterns({}). file = {}'.format(data['timestamp'],fleetcare_dt_patterns,filename)
+                elif date_format_index != 0:
+                    invalid_lp.category =InvalidLoggedPoint.INVALID_TIMESTAMP_FORMAT,
+                    invalid_lp.error_msg = 'The format of the timestamp({}) is {}, but prefer {}. file = {}'.format(data['timestamp'],fleetcare_dt_patterns[date_format_index],fleetcare_dt_patterns[0],filename)
+
+                invalid_lp.save()
 
             cursor.execute("delete from {} where id = {}".format(staging_table,rowid))
     return harvested, created, updated, overriden, errors,suspicious,skipped
@@ -709,19 +708,7 @@ def recreate_tracplus_device_from_raw(device,raw):
     if data['Asset Type'] in tracplus_symbol_map:
         device.symbol = tracplus_symbol_map[data['Asset Type']]
     
-def recreate_iriditrak_device_from_raw(device,raw):
-    sbd = json.loads(raw)
-    device.deviceid=sbd["ID"]
-
-def recreate_dplus_device_from_raw(device,raw):
-    sbd = json.loads(raw)
-    device.deviceid=sbd["ID"]
-
-def recreate_spot_device_from_raw(device,raw):
-    sbd = json.loads(raw)
-    device.deviceid=sbd["ID"]
-
-def recreate_mp70_device_from_raw(device,raw):
+def recreate_sbd_device_from_raw(device,raw):
     sbd = json.loads(raw)
     device.deviceid=sbd["ID"]
 
@@ -785,15 +772,15 @@ def recreate_device_from_raw(condition=None):
             if source_device_type == "tracplus":
                 recreate_tracplus_device_from_raw(device,raw)
             elif source_device_type == "iriditrak":
-                recreate_iriditrak_device_from_raw(device,raw)
+                recreate_sbd_device_from_raw(device,raw)
             elif source_device_type == "dplus":
-                recreate_dplus_device_from_raw(device,raw)
+                recreate_sbd_device_from_raw(device,raw)
             elif source_device_type == "spot":
-                recreate_spot_device_from_raw(device,raw)
+                recreate_sbd_device_from_raw(device,raw)
             elif source_device_type == "dfes":
                 recreate_dfes_device_from_raw(device,raw)
             elif source_device_type == "mp70":
-                recreate_mp70_device_from_raw(device,raw)
+                recreate_sbd_device_from_raw(device,raw)
             elif source_device_type == "fleetcare":
                 recreate_fleetcare_device_from_raw(device,raw)
             elif source_device_type == "fleetcare_error":
@@ -837,5 +824,250 @@ def recreate_device_from_raw(condition=None):
                     
 
 
+
+    
+def parse_fleetcare_data_from_raw(raw,basetime=timezone.now()):
+    
+    data = json.loads(raw)
+
+    #try to parse the timestamp string to datetime object.
+    #the format of the timestamp should be 'dd/mm/yyyy HH:MM:SS AM/PM', but sometimes , it can also be 'mm/dd/yyyy HH:MM:SS AM/PM',
+    #to handle this issue, the following logic try to parse the datetime with two patterns, and choose the datatime which is close to basetime
+    #if the choosed pattern is not the prefered one, will insert a row into table 'tracking_loggedpoint_suspicious'
+    #if can't parse the timestamp with all possible patterns, set the source device type to 'fleetcare_error', and also insert a row into table 'tracking_loggepoint_suspicious'
+    index = 0
+    diff = None
+    min_diff = None
+    date_format_index = None
+    dt = None
+    seen = None
+    basetime = basetime or timezone.now()
+    
+    while index < len(fleetcare_dt_patterns):
+        try:
+            dt = timezone.make_aware(datetime.strptime(data['timestamp'], fleetcare_dt_patterns[index]))
+            if not seen:
+                seen = dt
+                min_diff = seen - basetime if seen >= basetime else basetime - seen
+                date_format_index = index
+                if min_diff <= fleetcare_max_blob_creation_delay:
+                    break
+            else:
+                diff = dt - basetime if dt >= basetime else basetime - dt
+                if diff < min_diff:
+                    min_diff = diff
+                    seen = dt
+                    date_format_index = index
+                    if min_diff <= fleetcare_max_blob_creation_delay:
+                        break
+        except:
+            pass
+        finally:
+            index += 1
+    
+    result = {
+        "point": "POINT ({} {})".format(*data['GPS']['coordinates']),
+        "velocity" : int(float(data["readings"]["vehicleSpeed"]) * 1000),
+        "altitude" : int(float(data["readings"]["vehicleAltitude"])),
+        "heading" : int(float(data["readings"]["vehicleHeading"]))
+    }
+    if seen:
+        result["seen"] = seen
+
+    return result
+
+
+def parse_tracplus_data_from_raw(raw):
+    data = json.loads(raw)
+    return {
+        "velocity" : int(data["Speed"]) * 1000,
+        "altitude" : data["Altitude"],
+        "heading" : data["Track"],
+        "seen" : timezone.make_aware(datetime.strptime(data["Transmitted"], "%Y-%m-%d %H:%M:%S"), pytz.timezone("UTC")),
+        "point" : "POINT ({} {})".format(data["Longitude"], data["Latitude"])
+    }
+
+def parse_sbd_data_from_raw(raw):
+    sbd = json.loads(raw)
+    return {
+        "point" : 'POINT({LG} {LT})'.format(**sbd),
+        "seen" : timezone.make_aware(datetime.fromtimestamp(float(sbd['TU'])), pytz.timezone("UTC")),
+        "heading" : abs(sbd.get("DR", self.heading)),
+        "velocity" : abs(sbd.get("VL", self.heading)),
+        "altitude" : int(sbd.get("AL", self.altitude))
+    }
+
+def parse_dfes_data_from_raw(device,raw):
+    data = json.loads(raw)
+    prop = data["properties"]
+    return {
+        "velocity": int(prop["Speed"]) * 1000,
+        "heading" : prop["Direction"],
+        "seen" : timezone.make_aware(datetime.strptime(prop["Time"], "%Y-%m-%dT%H:%M:%S.%fZ"), pytz.timezone("UTC")),
+        "point" : "POINT ({} {})".format(row['geometry']['coordinates'][0], row['geometry']['coordinates'][1]),
+    }
+
+def update_loggedpoint_from_raw(table="tracking_loggedpoint",source_device_types=None,batch=3000,update=False,max_process_rows=999999999,min_rowid=None,max_rowid=None,basetimes=None):
+    """
+    basetimes used by fleetcare to fix datetime format issue, it is a list of tuple( (min id,max id),basetime)
+    """
+    failed_rows = []
+
+    processed_max_rowid = min_rowid
+    processed_rows = 0
+    changed_dates = set()
+    update_sql_file = "./update_{}.sql".format(table)
+    update_log_file = "./update_{}.log".format(table)
+    changed_dates_file = "./changed_dates_{}.txt".format(table)
+
+    f_update_sql = open(update_sql_file,"w")
+    f_update_log = open(update_log_file,"w")
+    
+    if basetimes:
+        basetimes.sort(key=lambda o:o[0][0] or 0)
+        for o in basetimes:
+            if not isinstance(o[1],datetime):
+                o[1] = timezone.make_aware(datetime.strptime(o[1],"%Y-%m-%d %H:%M:%S"))
+            elif timezone.is_naive(o[1]):
+                o[1] = timezone.make_aware(o[1])
+            else:
+                o[1] = timezone.localtime(o[1])
+        print("basetimes = {}".format(basetimes))
+
+    basetime_index = 0
+
+    try:
+        with connection.cursor() as cursor:
+            while processed_rows < max_process_rows:
+                limit = batch
+                if source_device_types and processed_max_rowid:
+                    if isinstance(source_device_types,(list,tuple)):
+                        querysql = "select id,source_device_type,seen,point,heading,altitude,velocity,raw from {0} where id > {1} AND source_device_type in ({2}) order by id asc limit {3};".format(
+                            table,
+                            processed_max_rowid,
+                            ",".join("'{}'".format(t) for t in source_device_types),
+                            limit
+                        )
+                    else:
+                        querysql = "select id,source_device_type,seen,point,heading,altitude,velocity,raw from {0} where id > {1} AND source_device_type = '{2}' order by id asc limit {3};".format(
+                            table,processed_max_rowid,source_device_types,limit
+                        )
+                elif source_device_types:
+                    if isinstance(source_device_types,(list,tuple)):
+                        querysql = "select id,source_device_type,seen,point,heading,altitude,velocity,raw from {0} where source_device_type in ({1}) order by id asc limit {2};".format(
+                            table,
+                            ",".join("'{}'".format(t) for t in source_device_types),
+                            limit
+                        )
+                    else:
+                        querysql = "select id,source_device_type,seen,point,heading,altitude,velocity,raw from {0} where source_device_type = '{1}' order by id asc limit {2};".format(table,source_device_types,limit)
+                elif processed_max_rowid:
+                    querysql = "select id,source_device_type,seen,point,heading,altitude,velocity,raw from {0} where id > {1} order by id asc limit {2};".format(table,processed_max_rowid,limit)
+                else:
+                    querysql = "select id,source_device_type,seen,point,heading,altitude,velocity,raw from {0} order by id asc limit {1};".format(table,limit)
+                print("query logged points with sql \r\n\t{}".format(querysql))
+                cursor.execute(querysql)
+                rows = cursor.fetchall()
+                if not rows:
+                    #all rows are processed
+                    break
+                for rowid,source_device_type,seen,point,heading,altitude,velocity,raw in rows:
+                    processed_max_rowid = rowid
+                    if max_rowid and rowid > max_rowid:
+                        break
+                    if source_device_type == "tracplus":
+                        data = parse_tracplus_data_from_raw(raw)
+                    elif source_device_type == "iriditrak":
+                        data = parse_sbd_data_from_raw(raw)
+                    elif source_device_type == "dplus":
+                        data = parse_sbd_data_from_raw(raw)
+                    elif source_device_type == "spot":
+                        data = parse_sbd_data_from_raw(raw)
+                    elif source_device_type == "dfes":
+                        data = parse_dfes_data_from_raw(raw)
+                    elif source_device_type == "mp70":
+                        data = parse_sbd_data_from_raw(raw)
+                    elif source_device_type in ("fleetcare","fleetcare_error"):
+                        basetime = None
+                        if basetimes :
+                            while basetime_index < len(basetimes):
+                                if (not basetimes[basetime_index][0][0] or rowid >= basetimes[basetime_index][0][0]) and (not basetimes[basetime_index][0][1] or rowid <= basetimes[basetime_index][0][1]):
+                                    basetime = basetimes[basetime_index][1]
+                                    break
+                                else:
+                                    basetime_index += 1
+
+                        data = parse_fleetcare_data_from_raw(raw,basetime=basetime)
+                    else:
+                        print("Source device type({}) Not Support".format(source_device_type))
+                        continue
+                    changed_columns = []
+                    seen = timezone.localtime(seen)
+                    for name,value,to_dbvalue in [
+                        ("seen",seen,lambda v:"'{}'".format(v.strftime("%Y-%m-%dT%H:%M:%S.%f+08"))),
+                        ("point",point,lambda v :"ST_PointFromText('{}',4326)".format(v)),
+                        ("heading",heading,lambda v:str(v)),
+                        ("altitude",altitude,lambda v:str(v)),
+                        ("velocity",velocity,lambda v :str(v))
+                    ]:
+                        if name not in data:
+                            #not parsed, ignore
+                            continue
+                        if name == "point":
+                            value = GEOSGeometry(value).wkt
+                            data["point"] = GEOSGeometry(data["point"]).wkt
+    
+                        if data[name] != value:
+                            changed_columns.append((name,data[name],value,to_dbvalue(data[name])))
+                    
+                    if not changed_columns:
+                        #not data was changed
+                        continue
+                    if seen:
+                        changed_dates.add(timezone.localtime(seen).date())
+                    if data.get("seen"):
+                        changed_dates.add(timezone.localtime(data.get("seen")).date())
+        
+                    update_sql = "UPDATE {0} SET {2} WHERE id={1};--{3}".format(
+                        table,
+                        rowid,
+                        ",".join("{}={}".format(name,str(db_value)) for name,value,old_value,db_value in changed_columns),
+                        ",".join("{}:{} -> {}".format(name,old_value,value) for name,value,old_value,db_value in changed_columns)
+                    )
+                    f_update_sql.write(update_sql)
+                    f_update_sql.write("\n")
+                    if update:
+                        try:
+                            cursor.execute(update_sql)
+                            connection.commit()
+                            f_update_log.write("updated row: rowid = {0},changed columns = {1}\r\n{3}\r\n\t{2}\n\n".format(rowid,changed_columns,update_sql,raw))
+                        except Exception as ex:
+                            failed_rows.append((rowid,changed_columns,update_sql,raw,str(ex)))
+                    else:
+                        f_update_log.write("found row: rowid = {0}, changed columns = {1}\r\n{3}\r\n\t{2}\n\n".format(rowid,changed_columns,update_sql,raw))
+
+    
+                    processed_rows += 1
+                    if processed_rows >= max_process_rows:
+                        break
+
+                if max_rowid and processed_max_rowid > max_rowid:
+                    break
+
+        if failed_rows:
+            f_update_log.write("\n=====================================================\n")
+            f_update_log.write("Failed to process {} rows\n".format(len(failed_rows)))
+            for rowid,changed_columns,update_sql,raw,message in failed_rows:
+                f_update_log.write("rowid = {0}, changed columns = {1}, message={4}\r\n{3}\r\n\t{2}\n".format(rowid,changed_columns,update_sql,raw,message))
+
+    finally:
+        with open(changed_dates_file,"a") as f:
+            date_list = list(changed_dates)
+            date_list.sort()
+            for d in date_list:
+                f.write(d.strftime("%Y-%m-%d"))
+                f.write("\n")
+        f_update_sql.close()
+        f_update_log.close()
 
     
