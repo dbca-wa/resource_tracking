@@ -185,6 +185,7 @@ class Device(BasePoint):
     other_details = models.TextField(null=True, blank=True)
     internal_only = models.BooleanField(default=False, verbose_name="Internal to DBCA only")
     hidden = models.BooleanField(default=False, verbose_name="Hidden/private use")
+    deleted = models.BooleanField(default=False, verbose_name="Deleted?")
 
     @property
     def age_minutes(self):
@@ -300,11 +301,30 @@ class LoggedPoint(BasePoint):
             self.device.altitude = self.altitude
             self.device.message = self.message
             self.device.source_device_type = self.source_device_type
+            self.device.deleted = False
             self.device.save()
         return self
 
     class Meta:
         unique_together = (("device", "seen"),)
+
+class InvalidLoggedPoint(BasePoint):
+    INVALID_RAW_DATA = 1
+    INVALID_TIMESTAMP = 10
+    INVALID_TIMESTAMP_FORMAT = 11
+    FUTURE_DATA = 20
+    CATEGORIES = (
+        (INVALID_RAW_DATA,"Invalid Raw Data"),
+        (INVALID_TIMESTAMP,"Invalid Timestamp"),
+        (INVALID_TIMESTAMP_FORMAT,"Invalid Timestamp Format"),
+        (FUTURE_DATA,"Future Data")
+    )
+    deviceid = models.CharField(max_length=32,null=True,db_index=True)
+    device_id = models.IntegerField(null=True,db_index=True)
+    raw = models.TextField(editable=False)
+    category = models.CharField(max_length=32,choices=CATEGORIES)
+    error_msg = models.TextField()
+    created = models.DateTimeField(auto_now_add=True,db_index=True)
 
 
 @receiver(pre_save, sender=User)
