@@ -328,6 +328,9 @@ def save_fleetcare_db(staging_table='logentry',loggedpoint_model=LoggedPoint,lim
             try:
                 data = json.loads(jsondata)
                 assert data["format"] == "dynamics"
+                assert data["timestamp"]
+                assert data['GPS']['coordinates'] and len(data['GPS']['coordinates']) == 2
+                assert data["readings"] is not None
                 deviceid = "fc_" + data["vehicleID"]
             except Exception as e:
                 print("Error: {}: {}".format(rowid, e))
@@ -407,14 +410,29 @@ def save_fleetcare_db(staging_table='logentry',loggedpoint_model=LoggedPoint,lim
                 created += 1
     
             point = "POINT ({} {})".format(*data['GPS']['coordinates'])
-            velocity = int(float(data["readings"]["vehicleSpeed"]) * 1000)
-            altitude = int(float(data["readings"]["vehicleAltitude"]))
-            heading = int(float(data["readings"]["vehicleHeading"]))
+            try:
+                velocity = int(float(data["readings"]["vehicleSpeed"]) * 1000)
+            except Exception as ex:
+                print("{}: Invalid velocity '{}'".format(deviceid,data["readings"].get("vehicleSpeed")))
+                velocity = 0
+
+            try:
+                altitude = int(float(data["readings"]["vehicleAltitude"]))
+            except Exception as ex:
+                print("{}: Invalid altitude '{}'".format(deviceid,data["readings"].get("vehicleAltitude")))
+                altitude = 0
+
+            try:
+                heading = int(float(data["readings"]["vehicleHeading"]))
+            except Exception as ex:
+                print("{}: Invalid heading '{}'".format(deviceid,data["readings"].get("vehicleHeading")))
+                heading = 0
+
             # Only update device details if the tracking data timestamp was parsed successfully
             if  not device.seen or seen > device.seen:
                 device.source_device_type = 'fleetcare'
                 device.deleted = False
-                device.registration = data["vehicleRego"]
+                device.registration = data.get("vehicleRego")
                 if future_data:
                     device.save(update_fields=["source_device_type","registration","deleted"])
                 elif  date_format_index is None:
