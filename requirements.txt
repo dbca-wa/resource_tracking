@@ -1,5 +1,5 @@
 git+git://github.com/dbca-wa/dbca-utils@1.0.0
-Django==2.2.16
+Django==2.2.22
 psycopg2-binary==2.8.6
 django-extensions==3.0.8
 django-dotenv==1.4.2
@@ -12,8 +12,8 @@ django-leaflet==0.26.0
 unicodecsv==0.14.1
 mixer==6.1.3
 requests==2.22.0
-Pillow==7.2.0
+Pillow==8.2.0
 numpy==1.19.2
-GDAL==3.1.3
+GDAL==3.3.0
 colour==0.1.5
 git+git://github.com/dbca-wa/data-storage@v3.7.1#egg=data-storage==3.7.1
