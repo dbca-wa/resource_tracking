@@ -1,6 +1,6 @@
 # Prepare the base environment.
 # We use osgeo/gdal instead of a python base image because of the requirement to install the GDAL library.
-FROM osgeo/gdal:ubuntu-small-3.1.3 as builder_base_rt
+FROM osgeo/gdal:ubuntu-small-3.3.0 as builder_base_rt
 MAINTAINER asi@dbca.wa.gov.au
 RUN apt-get update -y \
   && apt-get upgrade -y \
