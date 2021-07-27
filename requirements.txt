@@ -17,3 +17,4 @@ numpy==1.19.2
 GDAL==3.3.0
 colour==0.1.5
 git+git://github.com/dbca-wa/data-storage@v3.7.1#egg=data-storage==3.7.1
+urllib3>=1.26.5 # not directly required, pinned by Snyk to avoid a vulnerability
