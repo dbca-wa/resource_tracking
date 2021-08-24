@@ -270,7 +270,7 @@ class LoggedPoint(BasePoint):
         """
         device = Device.objects.get_or_create(deviceid=sbd["ID"])[0]
         if sbd.get("LG", 0) == 0 or sbd.get("LT", 0) == 0:
-            LOGGER.warn("Bad geometry for {}, discarding".format(device))
+            # LOGGER.warning ("Bad geometry for {}, discarding".format(device))
             return None
         seen = timezone.make_aware(datetime.fromtimestamp(float(sbd['TU'])), pytz.timezone("UTC"))
         # Ignore any duplicate LoggedPoint objects (should only be for accidental duplicate harvests or historical devices).
@@ -292,7 +292,7 @@ class LoggedPoint(BasePoint):
             self.raw = json.dumps(sbd)
             self.save()
         else:
-            LOGGER.info("LoggedPoint {} found to be a duplicate.".format(self))
+            LOGGER.warning("LoggedPoint {} found to be a duplicate.".format(self))
         if self.device.seen is None or self.seen > self.device.seen:
             self.device.seen = self.seen
             self.device.point = self.point
@@ -308,23 +308,24 @@ class LoggedPoint(BasePoint):
     class Meta:
         unique_together = (("device", "seen"),)
 
+
 class InvalidLoggedPoint(BasePoint):
     INVALID_RAW_DATA = 1
     INVALID_TIMESTAMP = 10
     INVALID_TIMESTAMP_FORMAT = 11
     FUTURE_DATA = 20
     CATEGORIES = (
-        (INVALID_RAW_DATA,"Invalid Raw Data"),
-        (INVALID_TIMESTAMP,"Invalid Timestamp"),
-        (INVALID_TIMESTAMP_FORMAT,"Invalid Timestamp Format"),
-        (FUTURE_DATA,"Future Data")
+        (INVALID_RAW_DATA, "Invalid Raw Data"),
+        (INVALID_TIMESTAMP, "Invalid Timestamp"),
+        (INVALID_TIMESTAMP_FORMAT, "Invalid Timestamp Format"),
+        (FUTURE_DATA, "Future Data")
     )
-    deviceid = models.CharField(max_length=32,null=True,db_index=True)
-    device_id = models.IntegerField(null=True,db_index=True)
+    deviceid = models.CharField(max_length=32, null=True, db_index=True)
+    device_id = models.IntegerField(null=True, db_index=True)
     raw = models.TextField(editable=False)
-    category = models.CharField(max_length=32,choices=CATEGORIES)
+    category = models.CharField(max_length=32, choices=CATEGORIES)
     error_msg = models.TextField()
-    created = models.DateTimeField(auto_now_add=True,db_index=True)
+    created = models.DateTimeField(auto_now_add=True, db_index=True)
 
 
 @receiver(pre_save, sender=User)

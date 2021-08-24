@@ -107,6 +107,11 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_DIRS = (
+    os.path.join(BASE_DIR, 'radio', 'static'),
+    os.path.join(BASE_DIR, 'resource_tracking', 'static'),
+    os.path.join(BASE_DIR, 'tracking', 'static'),
+)
 
 
 # Logging settings - log to stdout/stderr

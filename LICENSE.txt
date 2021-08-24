@@ -1,4 +1,4 @@
-Copyright (c) 2014 Department of Parks and Wildlife
+Copyright (c) 2021 Department of Parks and Wildlife
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
