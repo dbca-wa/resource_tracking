@@ -232,7 +232,12 @@ def save_iriditrak(dimap, queueitem):
 
 def save_dplus(dimap, queueitem):
     msgid, msg = queueitem
-    sbd = {"RAW": msg.get_payload().strip().split("|")}
+    try:
+        sbd = {"RAW": msg.get_payload().strip().split("|")}
+    except AttributeError as e:
+        # If we can't parse the raw payload, discard the message.
+        dimap.flag(msgid)
+        return False
     try:
         sbd["ID"] = int(sbd["RAW"][0])
         sbd["LT"] = float(sbd["RAW"][4])
