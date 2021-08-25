@@ -797,7 +797,12 @@ def save_mp70(dimap, queueitem):
         N681260193011034,12.09,-031.99275,+115.88458,0,0,01/11/2019 06:57:40
     """
     msgid, msg = queueitem
-    sbd = {"RAW": msg.get_payload().strip().split(",")}
+    try:
+        sbd = {"RAW": msg.get_payload().strip().split(",")}
+    except:
+        # If we can't parse the raw payload, discard the message.
+        dimap.flag(msgid)
+        return False
     try:
         sbd["ID"] = sbd["RAW"][0]
         sbd["LT"] = float(sbd["RAW"][2])
