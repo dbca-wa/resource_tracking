@@ -7,18 +7,20 @@ from django.db import connections, connection, transaction
 from django.contrib.gis.geos import GEOSGeometry
 
 import csv
-import time
-import pytz
-import json
 import email
-import struct
-import requests
-import traceback
 from imaplib import IMAP4_SSL
+import json
+import logging
+import pytz
+import requests
+import struct
+import time
+import traceback
 
 from tracking.models import Device, LoggedPoint, InvalidLoggedPoint
 
 BATCH_SIZE = 600
+LOGGER = logging.getLogger('tracking')
 
 
 def get_fleetcare_creationtime(name):
@@ -61,17 +63,17 @@ class DeferredIMAP(object):
     def flush(self):
         self.login()
         if self.flags:
-            print("Flagging {} unprocessable emails.".format(len(self.flags)))
+            LOGGER.info("Flagging {} unprocessable emails.".format(len(self.flags)))
             try:
                 self.imp.store(",".join(self.flags), "+FLAGS", r"(\Flagged)")
-            except Exception:
-                print("Unable to flag messageset {}".format(",".join(self.flags)))
+            except:
+                LOGGER.error("Unable to flag messageset {}".format(",".join(self.flags)))
         if self.deletions:
-            print("Deleting {} processed emails.".format(len(self.deletions)))
+            LOGGER.info("Deleting {} processed emails.".format(len(self.deletions)))
             try:
                 self.imp.store(",".join(self.deletions), "+FLAGS", r"(\Deleted)")
-            except Exception:
-                print("Unable to delete messageset {}".format(",".join(self.deletions)))
+            except:
+                LOGGER.error("Unable to delete messageset {}".format(",".join(self.deletions)))
             self.logout(expunge=True)
         else:
             self.logout()
@@ -101,8 +103,8 @@ def retrieve_emails(dimap, search):
     try:
         typ, responses = dimap.fetch(",".join(textids[-BATCH_SIZE:]), "(BODY.PEEK[])")
     except Exception as e:
-        print(e)
-        print("Unable to fetch messageset {}".format(",".join(textids[-BATCH_SIZE:])))
+        # In the event of an invalid fetch, return nothing.
+        LOGGER.info("Unable to fetch messageset {}".format(",".join(textids[-BATCH_SIZE:])))
         return []
     # If protocol error, just return.
     if typ != "OK":
@@ -115,7 +117,7 @@ def retrieve_emails(dimap, search):
             msgid = int(resp_decoded_msgid.split(" ")[0])
             msg = email.message_from_string(resp_decoded_msg)
             messages.append((msgid, msg))
-    print("Fetched {}/{} messages for {}.".format(len(messages), len(textids), search))
+    LOGGER.info("Fetched {}/{} messages for {}.".format(len(messages), len(textids), search))
     return messages
 
 
@@ -143,7 +145,7 @@ def save_iriditrak(dimap, queueitem):
             email.utils.parsedate(received[0].split(";")[-1].strip())
         )
     else:
-        print("Can't find date in " + str(msg.__dict__))
+        LOGGER.info("Can't find date in " + str(msg.__dict__))
     sbd = {"ID": deviceid, "TU": timestamp, "TY": "iriditrak"}
     # BEAM binary message, 10byte or 20byte
     if len(attachment) <= 20:
@@ -208,20 +210,15 @@ def save_iriditrak(dimap, queueitem):
                     # Byte 19,20 is direction in degrees
                     sbd["DR"] = raw[13]
             else:
-                print(
-                    "Error: don't know how to read "
-                    + force_text(sbd["EQ"])
-                    + " - "
-                    + force_text(raw)
-                )
+                LOGGER.warning("Unable to read {} - {}".format(force_text(sbd["EQ"]), force_text(raw)))
                 dimap.flag(msgid)
                 return False
         except Exception as e:
-            print(force_text(e))
+            LOGGER.exception("Error while parsing Iriditrak message ID {}".format(msgid))
             dimap.flag(msgid)
             return False
     else:
-        print("Flagging IridiTrak message {}".format(msgid))
+        LOGGER.info("Flagging IridiTrak message {}".format(msgid))
         dimap.flag(msgid)
         return False
 
@@ -252,15 +249,15 @@ def save_dplus(dimap, queueitem):
         sbd["AL"] = int(sbd["RAW"][9])
         sbd["TY"] = "dplus"
     except ValueError as e:
-        print(e)
+        LOGGER.exception("Error while parsing DPlus message ID {}".format(msgid))
         dimap.flag(msgid)
         return False
     try:
         point = LoggedPoint.parse_sbd(sbd)
         dimap.delete(msgid)
         return point
-    except Exception as e:
-        print(e)
+    except:
+        LOGGER.exception("Error while parsing DPlus message ID {}".format(msgid))
         dimap.flag(msgid)
         return False
 
@@ -270,7 +267,7 @@ def save_spot(dimap, queueitem):
     if "DATE" in msg:
         timestamp = time.mktime(email.utils.parsedate(msg["DATE"]))
     else:
-        print("Can't find date in " + str(msg.__dict__))
+        LOGGER.warning("Can't find date in " + str(msg.__dict__))
         dimap.flag(msgid)
         return False
     try:
@@ -289,7 +286,7 @@ def save_spot(dimap, queueitem):
         if not lat_long_isvalid(sbd["LT"], sbd["LG"]):
             raise ValueError("Lon/Lat {},{} is not valid.".format(sbd["LG"], sbd["LT"]))
     except ValueError as e:
-        print("Error: couldn't parse {}, error: {}".format(sbd, e))
+        LOGGER.exception("Error: couldn't parse {}, error: {}".format(sbd, e))
         dimap.flag(msgid)
         return False
 
@@ -308,9 +305,11 @@ def save_tracplus():
     if not settings.TRACPLUS_URL:
         return False
 
+    LOGGER.info("Harvesting TracPlus feed")
     content = requests.get(settings.TRACPLUS_URL).content.decode("utf-8")
     latest = list(csv.DictReader(content.split("\r\n")))
     updated = 0
+
     for row in latest:
         device = Device.objects.get_or_create(deviceid=row["Device IMEI"])[0]
         device.callsign = row["Asset Name"]
@@ -341,7 +340,8 @@ def save_tracplus():
         lp.save()
         if new:
             updated += 1
-    return (updated, len(latest))
+
+    LOGGER.info("Update {} TracPlus units; total {}".format(updated, len(latest)))
 
 
 fleetcare_dt_patterns = [
@@ -352,16 +352,10 @@ fleetcare_dt_patterns = [
 fleetcare_max_blob_creation_delay = timedelta(days=1)
 
 
-def save_fleetcare_db(
-    staging_table="logentry",
-    loggedpoint_model=LoggedPoint,
-    limit=20000,
-    from_dt=None,
-    to_dt=None,
-):
+def save_fleetcare_db(staging_table="logentry", loggedpoint_model=LoggedPoint, limit=20000, from_dt=None, to_dt=None):
     """
     Used by havester job to harvest data from staging table (logentry) to LoggedPoint, and update Device
-    Used by reharvester logic to harvest data from other staging table to other loggedpoint table , and update device
+    Used by reharvester logic to harvest data from other staging table to other loggedpoint table, and update device
     from_dt: only reharvest the data which seen is greater than or equal with from_dt, if not None
     to_dt: only reharvest the data which seen is less than to_dt, if not None
     """
@@ -378,16 +372,9 @@ def save_fleetcare_db(
     date_format_index = None
     dt = None
     seen = None
+    harvested, overriden, updated, created, errors, suspicious, skipped = (0, 0, 0, 0, 0, 0, 0)
+    LOGGER.info("Harvesting tracking data from Fleetcare")
 
-    harvested, overriden, updated, created, errors, suspicious, skipped = (
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-    )
     with connections["fcare"].cursor() as cursor:
         cursor.execute(
             "select * from {} order by id limit {}".format(staging_table, limit)
@@ -404,10 +391,10 @@ def save_fleetcare_db(
                 assert data["readings"] is not None
                 deviceid = "fc_" + data["vehicleID"]
             except Exception as e:
-                print("Error: {}: {}".format(rowid, e))
+                LOGGER.exception(f"Error for rowid {rowid}")
                 invalid_lp = InvalidLoggedPoint(
                     category=InvalidLoggedPoint.INVALID_RAW_DATA,
-                    error_msg="Failed to parse the raw data,file ={}, staging table={}.\r\n{}".format(
+                    error_msg="Failed to parse the raw data, file ={}, staging table={}.\r\n{}".format(
                         filename, staging_table, traceback.format_exc()
                     ),
                     raw=jsondata,
@@ -497,11 +484,12 @@ def save_fleetcare_db(
                 created += 1
 
             point = "POINT ({} {})".format(*data["GPS"]["coordinates"])
+
             try:
                 velocity = int(float(data["readings"]["vehicleSpeed"]) * 1000)
-            except Exception as ex:
-                print(
-                    "{}: Invalid velocity '{}'".format(
+            except:
+                LOGGER.info(
+                    "{}: Invalid velocity '{}', assuming 0".format(
                         deviceid, data["readings"].get("vehicleSpeed")
                     )
                 )
@@ -509,9 +497,9 @@ def save_fleetcare_db(
 
             try:
                 altitude = int(float(data["readings"]["vehicleAltitude"]))
-            except Exception as ex:
-                print(
-                    "{}: Invalid altitude '{}'".format(
+            except:
+                LOGGER.info(
+                    "{}: Invalid altitude '{}', assuming 0".format(
                         deviceid, data["readings"].get("vehicleAltitude")
                     )
                 )
@@ -519,9 +507,9 @@ def save_fleetcare_db(
 
             try:
                 heading = int(float(data["readings"]["vehicleHeading"]))
-            except Exception as ex:
-                print(
-                    "{}: Invalid heading '{}'".format(
+            except:
+                LOGGER.info(
+                    "{}: Invalid heading '{}', assuming 0".format(
                         deviceid, data["readings"].get("vehicleHeading")
                     )
                 )
@@ -590,6 +578,7 @@ def save_fleetcare_db(
             lp.heading = heading
             lp.altitude = altitude
             lp.point = point
+
             # If we think that we have an error with the parsed date, set the source_device_type as
             # "fleetcare_error" to flag the LoggedPoint for investigation later.
             if date_format_index is None:
@@ -632,11 +621,16 @@ def save_fleetcare_db(
                 invalid_lp.save()
 
             cursor.execute("delete from {} where id = {}".format(staging_table, rowid))
-    return harvested, created, updated, overriden, errors, suspicious, skipped
+
+    LOGGER.info(
+        "Harvested {} from Fleetcare; created {}, updated {}, overwrite {}, errors {}, suspicious {}, skipped {}".format(
+            harvested, created, updated, overriden, errors, suspicious, skipped
+        )
+    )
 
 
 def save_dfes_avl():
-    print(
+    LOGGER.info(
         "Query DFES API started, out of order buffer is {} seconds".format(
             settings.DFES_OUT_OF_ORDER_BUFFER
         )
@@ -645,7 +639,7 @@ def save_dfes_avl():
         url=settings.DFES_URL,
         auth=requests.auth.HTTPBasicAuth(settings.DFES_USER, settings.DFES_PASS),
     ).json()["features"]
-    print("Query DFES API complete")
+    LOGGER.info("Query DFES API complete")
 
     latest_seen = None
     try:
@@ -668,6 +662,7 @@ def save_dfes_avl():
     updated = 0
     created = 0
     harvested = 0
+
     for row in latest:
         if row["type"] == "Feature":
             harvested += 1
@@ -780,13 +775,11 @@ def save_dfes_avl():
                 raw=json.dumps(row),
             )
 
-    print(
+    LOGGER.info(
         "Harvested {} from DFES: created {}, updated {}, ignored {}, earliest seen {}, latest seen {}.".format(
             harvested, created, updated, ignored, earliest_seen, latest_seen
         )
     )
-
-    return harvested, created, updated, ignored, earliest_seen, latest_seen
 
 
 def save_mp70(dimap, queueitem):
@@ -815,16 +808,16 @@ def save_mp70(dimap, queueitem):
         sbd["VL"] = int(sbd["RAW"][4])
         sbd["DR"] = int(sbd["RAW"][5])
         sbd["TY"] = "other"
-    except Exception as e:
-        print(e)
+    except:
+        LOGGER.exception("Error while parsing MP70 message ID {}".format(msgid))
         dimap.flag(msgid)
         return False
     try:
         point = LoggedPoint.parse_sbd(sbd)
         dimap.delete(msgid)
         return point
-    except Exception as e:
-        print(e)
+    except:
+        LOGGER.exception("Error while parsing MP70 message ID {}".format(msgid))
         dimap.flag(msgid)
         return False
 
@@ -841,7 +834,7 @@ def harvest_tracking_email(device_type=None):
     flagged = 0
 
     if device_type == "iriditrak":
-        print("Harvesting IridiTRAK emails")
+        LOGGER.info("Harvesting IridiTRAK emails")
         emails = retrieve_emails(dimap, '(FROM "sbdservice@sbd.iridium.com" UNFLAGGED)')
         for message in emails:
             out = save_iriditrak(dimap, message)
@@ -850,10 +843,10 @@ def harvest_tracking_email(device_type=None):
             else:
                 flagged += 1
         dimap.flush()
-        print("Created {} tracking points, flagged {} emails".format(created, flagged))
+        LOGGER.info("Created {} tracking points, flagged {} emails".format(created, flagged))
 
     if device_type == "dplus":
-        print("Harvesting DPlus emails")
+        LOGGER.info("Harvesting DPlus emails")
         emails = retrieve_emails(dimap, '(FROM "Dplus@asta.net.au" UNFLAGGED)')
         for message in emails:
             out = save_dplus(dimap, message)
@@ -862,10 +855,10 @@ def harvest_tracking_email(device_type=None):
             else:
                 flagged += 1
         dimap.flush()
-        print("Created {} tracking points, flagged {} emails".format(created, flagged))
+        LOGGER.info("Created {} tracking points, flagged {} emails".format(created, flagged))
 
     if device_type == "spot":
-        print("Harvesting Spot emails")
+        LOGGER.info("Harvesting Spot emails")
         emails = retrieve_emails(dimap, '(FROM "noreply@findmespot.com" UNFLAGGED)')
         for message in emails:
             out = save_spot(dimap, message)
@@ -874,10 +867,10 @@ def harvest_tracking_email(device_type=None):
             else:
                 flagged += 1
         dimap.flush()
-        print("Created {} tracking points, flagged {} emails".format(created, flagged))
+        LOGGER.info("Created {} tracking points, flagged {} emails".format(created, flagged))
 
     if device_type == "mp70":
-        print("Harvesting MP70 emails")
+        LOGGER.info("Harvesting MP70 emails")
         emails = retrieve_emails(
             dimap, '(FROM "sierrawireless_V1@mail.lan.fyi" UNFLAGGED)'
         )
@@ -888,10 +881,10 @@ def harvest_tracking_email(device_type=None):
             else:
                 flagged += 1
         dimap.flush()
-        print("Created {} tracking points, flagged {} emails".format(created, flagged))
+        LOGGER.info("Created {} tracking points, flagged {} emails".format(created, flagged))
 
     delta = timezone.now() - start
-    print(
+    LOGGER.info(
         "Tracking point email harvest run at {} for {} seconds".format(
             start, delta.seconds
         )
