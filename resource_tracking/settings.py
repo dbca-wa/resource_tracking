@@ -3,6 +3,7 @@ import dj_database_url
 import os
 from datetime import timedelta
 from pathlib import Path
+import sys
 
 # Project paths
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -113,39 +114,26 @@ STATICFILES_DIRS = (
     os.path.join(BASE_DIR, 'tracking', 'static'),
 )
 
-
-# Logging settings - log to stdout/stderr
+# Logging settings - log to stdout
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        'console': {'format': '%(asctime)s %(levelname)-8s %(message)s'},
+        'verbose': {'format': '%(asctime)s %(levelname)-12s %(message)s'},
     },
     'handlers': {
         'console': {
-            'level': 'DEBUG' if DEBUG else 'WARNING',
             'class': 'logging.StreamHandler',
-            'formatter': 'console'
+            'formatter': 'verbose',
+            'stream': sys.stdout,
+            'level': 'INFO',
         },
     },
     'loggers': {
-        'django': {
+        '': {
             'handlers': ['console'],
-            'propagate': True,
+            'level': 'INFO',
         },
-        'django.request': {
-            'handlers': ['console'],
-            'level': 'WARNING',
-            'propagate': False,
-        },
-        'tracking_points': {
-            'handlers': ['console'],
-            'level': 'INFO'
-        },
-        'radio': {
-            'handlers': ['console'],
-            'level': 'DEBUG' if DEBUG else 'WARNING',
-        }
     }
 }
 

@@ -14,7 +14,7 @@ from django.db.models.signals import pre_save, post_save
 from django.core.validators import MaxValueValidator
 from django.forms import ValidationError
 
-LOGGER = logging.getLogger('tracking_points')
+LOGGER = logging.getLogger('tracking')
 
 
 DISTRICT_PERTH_HILLS = 'PHD'
@@ -292,7 +292,7 @@ class LoggedPoint(BasePoint):
             self.raw = json.dumps(sbd)
             self.save()
         else:
-            LOGGER.warning("LoggedPoint {} found to be a duplicate.".format(self))
+            LOGGER.info("LoggedPoint {} found to be a duplicate.".format(self))
         if self.device.seen is None or self.seen > self.device.seen:
             self.device.seen = self.seen
             self.device.point = self.point
