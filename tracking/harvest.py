@@ -791,9 +791,11 @@ def save_mp70(dimap, queueitem):
     """
     msgid, msg = queueitem
     try:
-        sbd = {"RAW": msg.get_payload().strip().split(",")}
+        # Sometimes, MP70 email seems to acquire a newline character sequence mid-payload.
+        sbd = {"RAW": msg.get_payload().replace('=\r\n', '').strip().split(",")}
     except:
         # If we can't parse the raw payload, discard the message.
+        LOGGER.warning("Unable to parse MP70 message payload:\n{}".format(msg.get_payload()))
         dimap.flag(msgid)
         return False
     try:
