@@ -17,12 +17,8 @@ gunicorn = "20.0.4"
 dj-static = "0.0.6"
 django-tastypie = "0.14.3"
 django-geojson = "2.12.0"
-django-leaflet = "0.26.0"
 unicodecsv = "0.14.1"
 requests = "2.22.0"
-Pillow = "8.3.1"
-mixer = "6.1.3"
-numpy = "1.19.2"
 data-storage = {git = "https://github.com/dbca-wa/data-storage.git", rev = "v3.18"}
 
 [tool.poetry.dev-dependencies]
