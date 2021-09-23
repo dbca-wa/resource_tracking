@@ -77,6 +77,10 @@ EMAIL_HOST = env('EMAIL_HOST', 'email.host')
 EMAIL_PORT = env('EMAIL_PORT', 25)
 EMAIL_USER = env('EMAIL_USER', 'username')
 EMAIL_PASSWORD = env('EMAIL_PASSWORD', 'password')
+EMAIL_IRIDITRAK = env('EMAIL_IRIDITRAK', 'sbdservice@sbd.iridium.com')
+EMAIL_DPLUS = env('EMAIL_DPLUS', 'dplus@asta.net.au')
+EMAIL_SPOT = env('EMAIL_SPOT', 'noreply@findmespot.com')
+EMAIL_MP70 = env('EMAIL_MP70', 'sierrawireless_v1@mail.lan.fyi')
 
 
 SERIALIZATION_MODULES = {
