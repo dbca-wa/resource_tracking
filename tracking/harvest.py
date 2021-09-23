@@ -1,3 +1,4 @@
+import csv
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
@@ -5,10 +6,7 @@ from django.utils import timezone
 from django.utils.encoding import force_text
 from django.db import connections, connection, transaction
 from django.contrib.gis.geos import GEOSGeometry
-
-import csv
 import email
-from imaplib import IMAP4_SSL
 import json
 import logging
 import pytz
@@ -17,120 +15,23 @@ import struct
 import time
 import traceback
 
+from tracking import email_utils
 from tracking.models import Device, LoggedPoint, InvalidLoggedPoint
 
-BATCH_SIZE = 600
 LOGGER = logging.getLogger('tracking')
-
-
-def get_fleetcare_creationtime(name):
-    try:
-        return timezone.make_aware(datetime.strptime(name[-24:-5], "%Y-%m-%dT%H:%M:%S"))
-    except Exception as ex:
-        return Exception(
-            "Failed to extract datetime from fleetcare filename({}).{}".format(
-                name, str(ex)
-            )
-        )
-
-
-class DeferredIMAP(object):
-    """
-    Convenience class for maintaining
-    a bit of state about an IMAP server
-    and handling logins/logouts.
-    Note instances aren't threadsafe.
-    """
-
-    def __init__(self, host, user, password):
-        self.deletions = []
-        self.flags = []
-        self.host = host
-        self.user = user
-        self.password = password
-
-    def login(self):
-        self.imp = IMAP4_SSL(self.host)
-        self.imp.login(self.user, self.password)
-        self.imp.select("INBOX")
-
-    def logout(self, expunge=False):
-        if expunge:
-            self.imp.expunge
-        self.imp.close()
-        self.imp.logout()
-
-    def flush(self):
-        self.login()
-        if self.flags:
-            LOGGER.info("Flagging {} unprocessable emails.".format(len(self.flags)))
-            try:
-                self.imp.store(",".join(self.flags), "+FLAGS", r"(\Flagged)")
-            except:
-                LOGGER.error("Unable to flag messageset {}".format(",".join(self.flags)))
-        if self.deletions:
-            LOGGER.info("Deleting {} processed emails.".format(len(self.deletions)))
-            try:
-                self.imp.store(",".join(self.deletions), "+FLAGS", r"(\Deleted)")
-            except:
-                LOGGER.error("Unable to delete messageset {}".format(",".join(self.deletions)))
-            self.logout(expunge=True)
-        else:
-            self.logout()
-        self.flags, self.deletions = [], []
-
-    def delete(self, msgid):
-        self.deletions.append(str(msgid))
-
-    def flag(self, msgid):
-        self.flags.append(str(msgid))
-
-    def __getattr__(self, name):
-        def temp(*args, **kwargs):
-            self.login()
-            result = getattr(self.imp, name)(*args, **kwargs)
-            self.logout()
-            return result
-
-        return temp
-
-
-def retrieve_emails(dimap, search):
-    textids = dimap.search(None, search)[1][0].decode("utf-8").split(" ")
-    # If no emails just return
-    if textids == [""]:
-        return []
-    try:
-        typ, responses = dimap.fetch(",".join(textids[-BATCH_SIZE:]), "(BODY.PEEK[])")
-    except Exception as e:
-        # In the event of an invalid fetch, return nothing.
-        LOGGER.info("Unable to fetch messageset {}".format(",".join(textids[-BATCH_SIZE:])))
-        return []
-    # If protocol error, just return.
-    if typ != "OK":
-        return []
-    messages = []
-    for response in responses:
-        if isinstance(response, tuple):
-            resp_decoded_msgid = response[0].decode("utf-8")
-            resp_decoded_msg = response[1].decode("utf-8")
-            msgid = int(resp_decoded_msgid.split(" ")[0])
-            msg = email.message_from_string(resp_decoded_msg)
-            messages.append((msgid, msg))
-    LOGGER.info("Fetched {}/{} messages for {}.".format(len(messages), len(textids), search))
-    return messages
 
 
 def lat_long_isvalid(lt, lg):
     return lt <= 90 and lt >= -90 and lg <= 180 and lg >= -180
 
 
-def save_iriditrak(dimap, queueitem):
-    msgid, msg = queueitem
+def save_iriditrak(msg):
+    """For a pass-in Iriditrak email and message, parse and create a LoggedPoint.
+    """
     try:
         deviceid = int(msg["SUBJECT"].replace("SBD Msg From Unit: ", ""))
     except ValueError:
-        dimap.flag(msgid)
+        LOGGER.exception("Error while parsing Iriditrak message subject {}".format(msg["SUBJECT"]))
         return False
     attachment = None
     for part in msg.walk():
@@ -210,30 +111,26 @@ def save_iriditrak(dimap, queueitem):
                     # Byte 19,20 is direction in degrees
                     sbd["DR"] = raw[13]
             else:
-                LOGGER.warning("Unable to read {} - {}".format(force_text(sbd["EQ"]), force_text(raw)))
-                dimap.flag(msgid)
+                LOGGER.error("Unable to read {} - {}".format(force_text(sbd["EQ"]), force_text(raw)))
                 return False
-        except Exception as e:
-            LOGGER.exception("Error while parsing Iriditrak message ID {}".format(msgid))
-            dimap.flag(msgid)
+        except:
+            LOGGER.exception("Error while parsing Iriditrak message")
             return False
     else:
-        LOGGER.info("Flagging IridiTrak message {}".format(msgid))
-        dimap.flag(msgid)
+        LOGGER.info("Flagging IridiTrak message as unprocessable")
         return False
 
     point = LoggedPoint.parse_sbd(sbd)
-    dimap.delete(msgid)
     return point
 
 
-def save_dplus(dimap, queueitem):
-    msgid, msg = queueitem
+def save_dplus(msg):
+    """For a pass-in DPlus email and message, parse and create a LoggedPoint.
+    """
     try:
         sbd = {"RAW": msg.get_payload().strip().split("|")}
     except AttributeError as e:
         # If we can't parse the raw payload, discard the message.
-        dimap.flag(msgid)
         return False
     try:
         sbd["ID"] = int(sbd["RAW"][0])
@@ -248,27 +145,24 @@ def save_dplus(dimap, queueitem):
         sbd["DR"] = int(sbd["RAW"][7])
         sbd["AL"] = int(sbd["RAW"][9])
         sbd["TY"] = "dplus"
-    except ValueError as e:
-        LOGGER.exception("Error while parsing DPlus message ID {}".format(msgid))
-        dimap.flag(msgid)
+    except:
+        LOGGER.exception("Error while parsing DPlus message")
         return False
     try:
         point = LoggedPoint.parse_sbd(sbd)
-        dimap.delete(msgid)
         return point
     except:
-        LOGGER.exception("Error while parsing DPlus message ID {}".format(msgid))
-        dimap.flag(msgid)
+        LOGGER.exception("Error while parsing DPlus message")
         return False
 
 
-def save_spot(dimap, queueitem):
-    msgid, msg = queueitem
+def save_spot(msg):
+    """For a pass-in Spot email and message, parse and create a LoggedPoint.
+    """
     if "DATE" in msg:
         timestamp = time.mktime(email.utils.parsedate(msg["DATE"]))
     else:
         LOGGER.warning("Can't find date in " + str(msg.__dict__))
-        dimap.flag(msgid)
         return False
     try:
         sbd = {
@@ -285,13 +179,11 @@ def save_spot(dimap, queueitem):
         }
         if not lat_long_isvalid(sbd["LT"], sbd["LG"]):
             raise ValueError("Lon/Lat {},{} is not valid.".format(sbd["LG"], sbd["LT"]))
-    except ValueError as e:
-        LOGGER.exception("Error: couldn't parse {}, error: {}".format(sbd, e))
-        dimap.flag(msgid)
+    except:
+        LOGGER.exception("Error while parsing Spot message")
         return False
 
     point = LoggedPoint.parse_sbd(sbd)
-    dimap.delete(msgid)
     return point
 
 
@@ -302,6 +194,8 @@ tracplus_symbol_map = {
 
 
 def save_tracplus():
+    """Query the TracPlus API, create logged points per device.
+    """
     if not settings.TRACPLUS_URL:
         return False
 
@@ -350,6 +244,17 @@ fleetcare_dt_patterns = [
     "%Y/%m/&d %I:%M:%S %p",
 ]
 fleetcare_max_blob_creation_delay = timedelta(days=1)
+
+
+def get_fleetcare_creationtime(name):
+    try:
+        return timezone.make_aware(datetime.strptime(name[-24:-5], "%Y-%m-%dT%H:%M:%S"))
+    except Exception as ex:
+        return Exception(
+            "Failed to extract datetime from fleetcare filename({}).{}".format(
+                name, str(ex)
+            )
+        )
 
 
 def save_fleetcare_db(staging_table="logentry", loggedpoint_model=LoggedPoint, limit=20000, from_dt=None, to_dt=None):
@@ -782,21 +687,21 @@ def save_dfes_avl():
     )
 
 
-def save_mp70(dimap, queueitem):
+def save_mp70(msg):
     """
+    For a pass-in MP70 email and message, parse and create a LoggedPoint.
+
     mp70/rv50 device type using comma separated output
     Sample email content and associated fields:
         Device_ID, Battery_Voltage, Latitude, Longitude, Speed_km/h, Heading, Time_UTC
         N681260193011034,12.09,-031.99275,+115.88458,0,0,01/11/2019 06:57:40
     """
-    msgid, msg = queueitem
     try:
         # Sometimes, MP70 email seems to acquire a newline character sequence mid-payload.
         sbd = {"RAW": msg.get_payload().replace('=\r\n', '').strip().split(",")}
     except:
         # If we can't parse the raw payload, discard the message.
         LOGGER.warning("Unable to parse MP70 message payload:\n{}".format(msg.get_payload()))
-        dimap.flag(msgid)
         return False
     try:
         sbd["ID"] = sbd["RAW"][0]
@@ -811,79 +716,77 @@ def save_mp70(dimap, queueitem):
         sbd["DR"] = int(sbd["RAW"][5])
         sbd["TY"] = "other"
     except:
-        LOGGER.exception("Error while parsing MP70 message ID {}".format(msgid))
-        dimap.flag(msgid)
+        LOGGER.exception("Error while parsing MP70 message ID")
         return False
     try:
         point = LoggedPoint.parse_sbd(sbd)
-        dimap.delete(msgid)
         return point
     except:
-        LOGGER.exception("Error while parsing MP70 message ID {}".format(msgid))
-        dimap.flag(msgid)
+        LOGGER.exception("Error while parsing MP70 message ID")
         return False
 
 
 def harvest_tracking_email(device_type=None):
-    """Download and save tracking point emails."""
-    dimap = DeferredIMAP(
-        host=settings.EMAIL_HOST,
-        user=settings.EMAIL_USER,
-        password=settings.EMAIL_PASSWORD,
-    )
+    """Download and save tracking point emails.
+    device_type should be one of: iriditrak, dplus, spot, mp70
+    """
+    imap = email_utils.get_imap()
     start = timezone.now()
     created = 0
     flagged = 0
 
     if device_type == "iriditrak":
         LOGGER.info("Harvesting IridiTRAK emails")
-        emails = retrieve_emails(dimap, '(FROM "sbdservice@sbd.iridium.com" UNFLAGGED)')
-        for message in emails:
-            out = save_iriditrak(dimap, message)
-            if out:
-                created += 1
-            else:
-                flagged += 1
-        dimap.flush()
-        LOGGER.info("Created {} tracking points, flagged {} emails".format(created, flagged))
-
-    if device_type == "dplus":
+        status, uids = email_utils.email_get_unread(imap, settings.EMAIL_IRIDITRAK)
+    elif device_type == "dplus":
         LOGGER.info("Harvesting DPlus emails")
-        emails = retrieve_emails(dimap, '(FROM "Dplus@asta.net.au" UNFLAGGED)')
-        for message in emails:
-            out = save_dplus(dimap, message)
-            if out:
-                created += 1
-            else:
-                flagged += 1
-        dimap.flush()
-        LOGGER.info("Created {} tracking points, flagged {} emails".format(created, flagged))
-
-    if device_type == "spot":
+        status, uids = email_utils.email_get_unread(imap, settings.EMAIL_DPLUS)
+    elif device_type == "spot":
         LOGGER.info("Harvesting Spot emails")
-        emails = retrieve_emails(dimap, '(FROM "noreply@findmespot.com" UNFLAGGED)')
-        for message in emails:
-            out = save_spot(dimap, message)
-            if out:
-                created += 1
-            else:
-                flagged += 1
-        dimap.flush()
-        LOGGER.info("Created {} tracking points, flagged {} emails".format(created, flagged))
-
-    if device_type == "mp70":
+        status, uids = email_utils.email_get_unread(imap, settings.EMAIL_SPOT)
+    elif device_type == "mp70":
         LOGGER.info("Harvesting MP70 emails")
-        emails = retrieve_emails(
-            dimap, '(FROM "sierrawireless_V1@mail.lan.fyi" UNFLAGGED)'
-        )
-        for message in emails:
-            out = save_mp70(dimap, message)
-            if out:
-                created += 1
-            else:
+        status, uids = email_utils.email_get_unread(imap, settings.EMAIL_MP70)
+
+    if status != 'OK':
+        LOGGER.error('Server response failure: {}'.status)
+    LOGGER.info('Server lists {} unread emails'.format(len(uids)))
+
+    if uids:
+        for uid in uids:
+            # Decode uid to a string if required.
+            if isinstance(uid, bytes):
+                uid = uid.decode('utf-8')
+
+            # Fetch the email message.
+            status, message = email_utils.email_fetch(imap, uid)
+            if status != 'OK':
+                LOGGER.error('Server response failure on fetching email UID {}: {}'.format(uid, status))
+                continue
+            if device_type == "iriditrak":
+                result = save_iriditrak(message)
+            elif device_type == "dplus":
+                result = save_dplus(message)
+            elif device_type == "spot":
+                result = save_spot(message)
+            elif device_type == "mp70":
+                result = save_mp70(message)
+
+            if not result:
+                # If parsing the email failed, flag it and mark it as read.
                 flagged += 1
-        dimap.flush()
-        LOGGER.info("Created {} tracking points, flagged {} emails".format(created, flagged))
+                # status, response = email_utils.email_flag(imap, uid)
+                # status, response = email_utils.email_mark_read(imap, uid)
+                pass
+            else:
+                created += 1
+                # Mark email 'read' and flag it for deletion.
+                # status, response = email_utils.email_mark_read(imap, uid)
+                # status, response = email_utils.email_delete(imap, uid)
+    LOGGER.info("Created {} tracking points, flagged {} emails".format(created, flagged))
+
+    imap.close()
+    imap.logout()
 
     delta = timezone.now() - start
     LOGGER.info(
@@ -897,7 +800,6 @@ def harvest_tracking_email(device_type=None):
 def recreate_fleetcare_device_from_raw(device, raw):
     data = json.loads(raw)
     device.deviceid = "fc_" + data["vehicleID"]
-
     device.hidden = True
     device.internal_only = True
     device.registration = data["vehicleRego"]
