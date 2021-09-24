@@ -1,8 +1,3 @@
-from datetime import datetime
-import pytz
-import json
-import logging
-
 from django.contrib.auth.models import Group, User
 from django.contrib.gis.db import models
 from django.utils import timezone
@@ -12,6 +7,7 @@ from django.dispatch import receiver
 from django.db.models.signals import pre_save, post_save
 from django.core.validators import MaxValueValidator
 from django.forms import ValidationError
+import logging
 
 LOGGER = logging.getLogger('tracking')
 
@@ -261,48 +257,6 @@ class LoggedPoint(BasePoint):
 
     def __str__(self):
         return force_text("{} {}".format(self.device, self.seen))
-
-    @classmethod
-    def parse_sbd(cls, sbd):
-        """
-        Parses an sbd into a persisted LoggedPoint object, also handles duplicates.
-        """
-        device = Device.objects.get_or_create(deviceid=sbd["ID"])[0]
-        if sbd.get("LG", 0) == 0 or sbd.get("LT", 0) == 0:
-            # LOGGER.warning ("Bad geometry for {}, discarding".format(device))
-            return None
-        seen = timezone.make_aware(datetime.fromtimestamp(float(sbd['TU'])), pytz.timezone("UTC"))
-        # Ignore any duplicate LoggedPoint objects (should only be for accidental duplicate harvests or historical devices).
-        try:
-            self, created = cls.objects.get_or_create(device=device, seen=seen)
-        except Exception:
-            LOGGER.exception("ERROR during get_or_create of LoggedPoint: device {}, seen {}".format(device, seen))
-            return None
-        if created:
-            self.point = 'POINT({LG} {LT})'.format(**sbd)
-            self.heading = abs(sbd.get("DR", self.heading))
-            self.velocity = abs(sbd.get("VL", self.heading))
-            self.altitude = int(sbd.get("AL", self.altitude))
-            try:
-                self.message = int(sbd.get("EQ", self.message))
-            except:
-                self.message = 3
-            self.source_device_type = str(sbd.get("TY", self.source_device_type))
-            self.raw = json.dumps(sbd)
-            self.save()
-        else:
-            LOGGER.info("LoggedPoint {} found to be a duplicate.".format(self))
-        if self.device.seen is None or self.seen > self.device.seen:
-            self.device.seen = self.seen
-            self.device.point = self.point
-            self.device.heading = self.heading
-            self.device.velocity = self.velocity
-            self.device.altitude = self.altitude
-            self.device.message = self.message
-            self.device.source_device_type = self.source_device_type
-            self.device.deleted = False
-            self.device.save()
-        return self
 
     class Meta:
         unique_together = (("device", "seen"),)

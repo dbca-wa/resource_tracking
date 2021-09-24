@@ -25,6 +25,53 @@ def lat_long_isvalid(lt, lg):
     return lt <= 90 and lt >= -90 and lg <= 180 and lg >= -180
 
 
+def parse_sbd(sbd):
+    """Parses an sbd into a persisted LoggedPoint object, also handles duplicates.
+    Returns a LoggedPoint instance or None.
+    """
+    device = Device.objects.get_or_create(deviceid=sbd["ID"])[0]
+    if sbd.get("LG", 0) == 0 or sbd.get("LT", 0) == 0:
+        # Assume longitude and/or latitude == 0 is dud geometry.
+        LOGGER.info("Bad geometry: {}".format(sbd))
+        return None
+
+    # Ignore any duplicate LoggedPoint objects (should only be for accidental duplicate harvests or historical devices).
+    seen = timezone.make_aware(datetime.fromtimestamp(float(sbd['TU'])), pytz.timezone("UTC"))
+    try:
+        loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen)
+    except Exception:
+        LOGGER.exception("Exception during get_or_create of LoggedPoint: device {}, seen {}".format(device, seen))
+        return None
+
+    if created:
+        loggedpoint.point = 'POINT({LG} {LT})'.format(**sbd)
+        loggedpoint.heading = abs(sbd.get("DR", loggedpoint.heading))
+        loggedpoint.velocity = abs(sbd.get("VL", loggedpoint.heading))
+        loggedpoint.altitude = int(sbd.get("AL", loggedpoint.altitude))
+        try:
+            loggedpoint.message = int(sbd.get("EQ", loggedpoint.message))
+        except:
+            loggedpoint.message = 3
+        loggedpoint.source_device_type = str(sbd.get("TY", loggedpoint.source_device_type))
+        loggedpoint.raw = json.dumps(sbd)
+        loggedpoint.save()
+    else:
+        LOGGER.info("LoggedPoint {} found to be a duplicate.".format(loggedpoint))
+
+    if loggedpoint.device.seen is None or loggedpoint.seen > loggedpoint.device.seen:
+        loggedpoint.device.seen = loggedpoint.seen
+        loggedpoint.device.point = loggedpoint.point
+        loggedpoint.device.heading = loggedpoint.heading
+        loggedpoint.device.velocity = loggedpoint.velocity
+        loggedpoint.device.altitude = loggedpoint.altitude
+        loggedpoint.device.message = loggedpoint.message
+        loggedpoint.device.source_device_type = loggedpoint.source_device_type
+        loggedpoint.device.deleted = False
+        loggedpoint.device.save()
+
+    return loggedpoint
+
+
 def save_iriditrak(msg):
     """For a pass-in Iriditrak email and message, parse and create a LoggedPoint.
     """
@@ -120,7 +167,7 @@ def save_iriditrak(msg):
         LOGGER.info("Flagging IridiTrak message as unprocessable")
         return False
 
-    point = LoggedPoint.parse_sbd(sbd)
+    point = parse_sbd(sbd)
     return point
 
 
@@ -149,7 +196,7 @@ def save_dplus(msg):
         LOGGER.exception("Error while parsing DPlus message")
         return False
     try:
-        point = LoggedPoint.parse_sbd(sbd)
+        point = parse_sbd(sbd)
         return point
     except:
         LOGGER.exception("Error while parsing DPlus message")
@@ -183,7 +230,7 @@ def save_spot(msg):
         LOGGER.exception("Error while parsing Spot message")
         return False
 
-    point = LoggedPoint.parse_sbd(sbd)
+    point = parse_sbd(sbd)
     return point
 
 
@@ -719,7 +766,7 @@ def save_mp70(msg):
         LOGGER.exception("Error while parsing MP70 message ID")
         return False
     try:
-        point = LoggedPoint.parse_sbd(sbd)
+        point = parse_sbd(sbd)
         return point
     except:
         LOGGER.exception("Error while parsing MP70 message ID")
@@ -773,18 +820,15 @@ def harvest_tracking_email(device_type=None):
                 result = save_mp70(message)
 
             if not result:
-                # If parsing the email failed, flag it and mark it as read.
                 flagged += 1
-                # status, response = email_utils.email_flag(imap, uid)
-                # status, response = email_utils.email_mark_read(imap, uid)
-                pass
             else:
                 created += 1
-                # Mark email 'read' and flag it for deletion.
-                # status, response = email_utils.email_mark_read(imap, uid)
-                # status, response = email_utils.email_delete(imap, uid)
-    LOGGER.info("Created {} tracking points, flagged {} emails".format(created, flagged))
 
+            # Mark email as read and flag it for deletion.
+            status, response = email_utils.email_mark_read(imap, uid)
+            status, response = email_utils.email_delete(imap, uid)
+
+    LOGGER.info("Created {} tracking points, flagged {} emails".format(created, flagged))
     imap.close()
     imap.logout()
 
