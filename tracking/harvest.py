@@ -582,6 +582,9 @@ def save_fleetcare_db(staging_table="logentry", loggedpoint_model=LoggedPoint, l
 
 
 def save_dfes_avl():
+    if not settings.DFES_URL:
+        return
+
     LOGGER.info(
         "Query DFES API started, out of order buffer is {} seconds".format(
             settings.DFES_OUT_OF_ORDER_BUFFER

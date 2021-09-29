@@ -1,8 +1,8 @@
 from datetime import timedelta, datetime
-from django.conf.urls import url
 from django.core.serializers import serialize
 from django.http import HttpResponse
 from django.views.generic import View
+from django.urls import path
 from django.utils.decorators import method_decorator
 from django.utils import timezone
 from django.contrib.gis.geos import LineString
@@ -199,7 +199,7 @@ class RouteView(LoggedPointView):
 
 
 geojson_patterns = [
-    url(r'^devices.geojson$', DevicesView.as_view()),
-    url(r'^loggedpoint/(?P<deviceid>[0-9]+).geojson$', HistoryView.as_view()),
-    url(r'^route/(?P<deviceid>[0-9]+).geojson$', RouteView.as_view()),
+    path('devices.geojson', DevicesView.as_view()),
+    path('loggedpoint/<int:device_id>.geojson', HistoryView.as_view()),
+    path('route/<int:device_id>.geojson', RouteView.as_view()),
 ]
