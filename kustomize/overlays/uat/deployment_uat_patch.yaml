@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resourcetracking-deployment
+  labels:
+    app: resourcetracking-uat
+spec:
+  selector:
+    matchLabels:
+      app: resourcetracking-uat
+  template:
+    metadata:
+      labels:
+        app: resourcetracking-uat
+    spec:
+      containers:
+      - name: resourcetracking
+        image: ghcr.io/dbca-wa/resource_tracking:latest
+        imagePullPolicy: Always
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: resourcetracking-env-uat
+              key: DATABASE_URL
+        - name: DFES_OUT_OF_ORDER_BUFFER
+          valueFrom:
+            secretKeyRef:
+              name: resourcetracking-env-uat
+              key: DFES_OUT_OF_ORDER_BUFFER
+        - name: DFES_PASS
+          valueFrom:
+            secretKeyRef:
+              name: resourcetracking-env-uat
+              key: DFES_PASS
+        - name: DFES_URL
+          valueFrom:
+            secretKeyRef:
+              name: resourcetracking-env-uat
+              key: DFES_URL
+        - name: DFES_USER
+          valueFrom:
+            secretKeyRef:
+              name: resourcetracking-env-uat
+              key: DFES_USER
+        - name: EMAIL_HOST
+          valueFrom:
+            secretKeyRef:
+              name: resourcetracking-env-uat
+              key: EMAIL_HOST
+        - name: EMAIL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: resourcetracking-env-uat
+              key: EMAIL_PASSWORD
+        - name: FCARE_URL
+          valueFrom:
+            secretKeyRef:
+              name: resourcetracking-env-uat
+              key: FCARE_URL
+        - name: FLEETCARE_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: resourcetracking-env-uat
+              key: FLEETCARE_CONNECTION_STRING
+        - name: FLEETCARE_CONTAINER
+          valueFrom:
+            secretKeyRef:
+              name: resourcetracking-env-uat
+              key: FLEETCARE_CONTAINER
+        - name: KMI_VEHICLE_BASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: resourcetracking-env-uat
+              key: KMI_VEHICLE_BASE_URL
+        - name: TRACPLUS_URL
+          valueFrom:
+            secretKeyRef:
+              name: resourcetracking-env-uat
+              key: TRACPLUS_URL
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: resourcetracking-env-uat
+              key: SECRET_KEY
