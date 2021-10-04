@@ -21,11 +21,11 @@ else:
 INTERNAL_IPS = ['127.0.0.1', '::1']
 ROOT_URLCONF = 'resource_tracking.urls'
 WSGI_APPLICATION = 'resource_tracking.wsgi.application'
-TRACPLUS_URL = env('TRACPLUS_URL', False)
+TRACPLUS_URL = env('TRACPLUS_URL', '')
 KMI_VEHICLE_BASE_URL = env('KMI_VEHICLE_BASE_URL', '')
-DFES_URL = env('DFES_URL', False)
-DFES_USER = env('DFES_USER', False)
-DFES_PASS = env('DFES_PASS', False)
+DFES_URL = env('DFES_URL', '')
+DFES_USER = env('DFES_USER', '')
+DFES_PASS = env('DFES_PASS', '')
 DFES_OUT_OF_ORDER_BUFFER = int(env('DFES_OUT_OF_ORDER_BUFFER') or 300)
 # Add scary warning on device edit page for prod
 PROD_SCARY_WARNING = env('PROD_SCARY_WARNING', False)
@@ -33,6 +33,7 @@ DEVICE_HTTP_CACHE_TIMEOUT = env('DEVICE_HTTP_CACHE_TIMEOUT', 60)
 HISTORY_HTTP_CACHE_TIMEOUT = env('HISTORY_HTTP_CACHE_TIMEOUT', 60)
 FUTURE_DATA_OFFSET = timedelta(seconds=int(env('FUTURE_DATA_OFFSET') or 900))
 INSTALLED_APPS = [
+    'whitenoise.runserver_nostatic',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -46,7 +47,9 @@ INSTALLED_APPS = [
     'tracking',
 ]
 MIDDLEWARE = [
+    'resource_tracking.middleware.HealthCheckMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -70,6 +73,7 @@ TEMPLATES = [
         },
     },
 ]
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
 # Email settings
 ADMINS = ('asi@dbca.wa.gov.au',)
@@ -115,6 +119,8 @@ STATICFILES_DIRS = (
     os.path.join(BASE_DIR, 'resource_tracking', 'static'),
     os.path.join(BASE_DIR, 'tracking', 'static'),
 )
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+WHITENOISE_ROOT = STATIC_ROOT
 
 # Logging settings - log to stdout
 LOGGING = {

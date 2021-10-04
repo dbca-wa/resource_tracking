@@ -1,7 +1,7 @@
 from datetime import timedelta
 from django.conf import settings
-from django.conf.urls import url
 from django.core.exceptions import FieldError
+from django.urls import path
 from django.utils import timezone
 from io import BytesIO
 from tastypie import fields
@@ -67,8 +67,8 @@ class APIResource(ModelResource):
 
     def prepend_urls(self):
         return [
-            url(
-                r"^(?P<resource_name>{})/fields/(?P<field_name>[\w\d_.-]+)/$".format(self._meta.resource_name),
+            path(
+                "<resource_name>/fields/<field_name>/".format(self._meta.resource_name),
                 self.wrap_view('field_values'), name="api_field_values"),
         ]
 
