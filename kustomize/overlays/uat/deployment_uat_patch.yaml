@@ -53,6 +53,11 @@ spec:
             secretKeyRef:
               name: resourcetracking-env-uat
               key: EMAIL_PASSWORD
+        - name: EMAIL_USER
+          valueFrom:
+            secretKeyRef:
+              name: resourcetracking-env-uat
+              key: EMAIL_USER
         - name: FCARE_URL
           valueFrom:
             secretKeyRef:
