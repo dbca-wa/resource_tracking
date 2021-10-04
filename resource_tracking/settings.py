@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'tracking',
 ]
 MIDDLEWARE = [
+    'resource_tracking.middleware.HealthCheckMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
