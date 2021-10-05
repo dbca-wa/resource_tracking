@@ -1,0 +1,16 @@
+bases:
+- ../../base
+namespace: resourcetracking
+nameSuffix: -uat
+secretGenerator:
+- name: resourcetracking-env
+  envs:
+  - .env
+commonLabels:
+  variant: uat
+resources:
+- service.yaml
+- ingress.yaml
+patchesStrategicMerge:
+- deployment_uat_patch.yaml
+- statefulset_uat_patch.yaml

@@ -1,0 +1,5 @@
+namespace: resource-tracking
+resources:
+- deployment.yaml
+- persistentvolumeclaim.yaml
+- statefulset.yaml
