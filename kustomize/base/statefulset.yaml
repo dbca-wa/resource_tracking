@@ -6,21 +6,21 @@ spec:
   replicas: 1
   template:
     spec:
-      initContainers:
-      - name: resourcetracking-db-init
-        image: busybox
-        args:
-        - /bin/sh
-        - -c
-        - mkdir -p /data/data; mkdir -p /data/archivedir; chown -R 999:999 /data
-        volumeMounts:
-        - mountPath: /data
-          name: resourcetracking-db-data
       restartPolicy: Always
       volumes:
-      - name: resourcetracking-db-data
+      - name: resourcetracking-pg14-data
         persistentVolumeClaim:
-          claimName: resourcetracking-db-data
+          claimName: resourcetracking-pg14-data
+      initContainers:
+      - name: resourcetracking-db-init
+        image: postgis/postgis:14-3.1-alpine
+        command:
+        - /bin/bash
+        - -c
+        - mkdir -p /data/data; mkdir -p /data/archivedir; chown -R postgres:postgres /data
+        volumeMounts:
+        - mountPath: /data
+          name: resourcetracking-pg14-data
       containers:
       - name: resourcetracking-db
         image: postgis/postgis:14-3.1-alpine
@@ -36,10 +36,10 @@ spec:
           value: resourcetracking
         volumeMounts:
         - mountPath: /var/lib/postgresql/data
-          name: resourcetracking-db-data
+          name: resourcetracking-pg14-data
           subPath: data
         - mountPath: /archivedir
-          name: resourcetracking-db-data
+          name: resourcetracking-pg14-data
           subPath: archivedir
         resources:
           requests:
