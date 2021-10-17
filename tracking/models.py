@@ -181,6 +181,7 @@ class Device(BasePoint):
     internal_only = models.BooleanField(default=False, verbose_name="Internal to DBCA only")
     hidden = models.BooleanField(default=False, verbose_name="Hidden/private use")
     deleted = models.BooleanField(default=False, verbose_name="Deleted?")
+    fire_type = models.NullBooleanField(default=None, null=True, verbose_name="Fire type")
 
     @property
     def age_minutes(self):
