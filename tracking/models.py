@@ -178,10 +178,10 @@ class Device(BasePoint):
     callsign_display = models.CharField(max_length=50, null=True, blank=True, verbose_name="Callsign")
     contractor_details = models.CharField(max_length=50, null=True, blank=True, help_text="Person engaging contractor is responsible for maintaining contractor resource details")
     other_details = models.TextField(null=True, blank=True)
-    internal_only = models.BooleanField(default=False, verbose_name="Internal to DBCA only")
-    hidden = models.BooleanField(default=False, verbose_name="Hidden/private use")
+    internal_only = models.BooleanField(default=False, verbose_name="'Visible on SSS")
+    hidden = models.BooleanField(default=False, verbose_name="Visible to DFES")
     deleted = models.BooleanField(default=False, verbose_name="Deleted?")
-    fire_type = models.BooleanField(default=None, null=True, verbose_name="Fire type")
+    fire_use = models.BooleanField(default=None, null=True, verbose_name="Fire use")
 
     @property
     def age_minutes(self):
@@ -226,7 +226,8 @@ class Device(BasePoint):
                 self.callsign = abs(int(str(self.callsign)))
             except:
                 raise ValidationError("Callsign must be a number for the selected Symbol type")
-            self.callsign_display = self.get_district_display() + ' ' + str(self.callsign)
+            #self.callsign_display = self.get_district_display() + ' ' + str(self.callsign)
+            self.callsign_display = self.callsign   # Changed by P Maslen on request from Fire to remove Dstrict name from callsign
         else:
             self.callsign_display = self.callsign
 
