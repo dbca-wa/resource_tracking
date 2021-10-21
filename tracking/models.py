@@ -174,7 +174,7 @@ class Device(BasePoint):
     usual_driver = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. John Jones")
     usual_location = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. Karijini National Park")
     current_driver = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. Jodie Jones")
-    callsign = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. 99 for Heavy Duty, Gang Truck or Plant, or free text for other devices")
+    callsign = models.CharField(max_length=50, null=True, blank=True, help_text="")
     callsign_display = models.CharField(max_length=50, null=True, blank=True, verbose_name="Callsign")
     contractor_details = models.CharField(max_length=50, null=True, blank=True, help_text="Person engaging contractor is responsible for maintaining contractor resource details")
     other_details = models.TextField(null=True, blank=True)
@@ -221,7 +221,7 @@ class Device(BasePoint):
     def clean_callsign(self):
         if self.symbol in ("heavy duty", "gang truck", "dozer", "grader", "loader", "tender", "float") and not self.callsign:
             raise ValidationError("Please enter a Callsign number.")
-        if self.callsign and self.symbol in ("heavy duty", "gang truck", "dozer", "grader", "loader", "tender", "float"):
+        """if self.callsign and self.symbol in ("heavy duty", "gang truck", "dozer", "grader", "loader", "tender", "float"):
             try:
                 self.callsign = abs(int(str(self.callsign)))
             except:
@@ -229,7 +229,8 @@ class Device(BasePoint):
             #self.callsign_display = self.get_district_display() + ' ' + str(self.callsign)
             self.callsign_display = self.callsign   # Changed by P Maslen on request from Fire to remove Dstrict name from callsign
         else:
-            self.callsign_display = self.callsign
+            self.callsign_display = self.callsign"""
+        self.callsign_display = self.callsign
 
     def clean_rin_number(self):
         if self.symbol in ("heavy duty", "gang truck", "dozer", "grader", "loader", "tender", "float") and not self.rin_number:
