@@ -8,8 +8,8 @@ spec:
   ports:
   - name: default
     port: 42
-    protocol: TCP
     targetPort: 42
+    protocol: TCP
   selector:
     app: resourcetracking-uat
 ---
@@ -22,8 +22,8 @@ spec:
   ports:
   - name: wsgi
     port: 8080
-    protocol: TCP
     targetPort: 8080
+    protocol: TCP
   selector:
     app: resourcetracking-uat
 ---
@@ -37,7 +37,20 @@ spec:
   ports:
   - name: default
     port: 42
-    protocol: TCP
     targetPort: 42
+    protocol: TCP
+  selector:
+    workloadselector: resourcetracking-db-uat
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: resourcetracking-lb-db
+spec:
+  type: LoadBalancer
+  ports:
+  - name: 5432tcp
+    port: 5432
+    targetPort: 5432
   selector:
     workloadselector: resourcetracking-db-uat
