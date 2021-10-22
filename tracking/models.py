@@ -219,9 +219,9 @@ class Device(BasePoint):
             self.district_display = self.get_district_display()
 
     def clean_callsign(self):
-        if self.symbol in ("heavy duty", "gang truck", "dozer", "grader", "loader", "tender", "float") and not self.callsign:
+        """if self.symbol in ("heavy duty", "gang truck", "dozer", "grader", "loader", "tender", "float") and not self.callsign:
             raise ValidationError("Please enter a Callsign number.")
-        """if self.callsign and self.symbol in ("heavy duty", "gang truck", "dozer", "grader", "loader", "tender", "float"):
+        if self.callsign and self.symbol in ("heavy duty", "gang truck", "dozer", "grader", "loader", "tender", "float"):
             try:
                 self.callsign = abs(int(str(self.callsign)))
             except:
