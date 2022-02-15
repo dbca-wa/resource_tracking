@@ -1,6 +1,5 @@
 bases:
 - ../../base
-namespace: resourcetracking
 nameSuffix: -uat
 secretGenerator:
 - name: resourcetracking-env
