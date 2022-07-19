@@ -1,0 +1,44 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: resourcetracking-harvest-emails
+spec:
+  concurrencyPolicy: Forbid
+  schedule: '*/1 * * * *'
+  successfulJobsHistoryLimit: 10
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: resourcetracking-harvest-emails
+            image: ghcr.io/dbca-wa/resource_tracking:latest
+            imagePullPolicy: IfNotPresent
+            command:
+            - /bin/bash
+            - -c
+            - date; echo Hello from the harvest email cronjob
+            #- python manage.py harvest_tracking_email --device-type=iriditrak; python manage.py harvest_tracking_email --device-type=dplus; python manage.py harvest_tracking_email --device-type=spot; python manage.py harvest_tracking_email --device-type=mp70
+            env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: DATABASE_URL
+            - name: EMAIL_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: EMAIL_HOST
+            - name: EMAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: EMAIL_PASSWORD
+            - name: EMAIL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: EMAIL_USER
+          restartPolicy: Never
