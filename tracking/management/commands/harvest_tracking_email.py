@@ -7,7 +7,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--device-type', action='store', dest='device_type', default=None,
+            '--device-type', action='store', dest='device_type', required=True, default=None,
             help='Tracking device type, one of: iriditrak, dplus, spot, mp70')
 
     def handle(self, *args, **options):
