@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: resourcetracking-db-statefulset
+spec:
+  serviceName: resourcetracking-db-prod
+  selector:
+    matchLabels:
+      workloadselector: resourcetracking-db-prod
+  template:
+    metadata:
+      labels:
+        workloadselector: resourcetracking-db-prod
+    spec:
+      containers:
+      - name: resourcetracking-db
+        env:
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: resourcetracking-env-prod
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_DB
+          value: resourcetracking_prod

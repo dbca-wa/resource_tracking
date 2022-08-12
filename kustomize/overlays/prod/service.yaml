@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: resourcetracking
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - name: default
+    port: 42
+    targetPort: 42
+    protocol: TCP
+  selector:
+    app: resourcetracking-prod
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-resourcetracking
+spec:
+  type: ClusterIP
+  ports:
+  - name: wsgi
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  selector:
+    app: resourcetracking-prod
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: resourcetracking-db
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - name: default
+    port: 42
+    targetPort: 42
+    protocol: TCP
+  selector:
+    workloadselector: resourcetracking-db-prod
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: resourcetracking-lb-db
+spec:
+  type: LoadBalancer
+  ports:
+  - name: 5432tcp
+    port: 5432
+    targetPort: 5432
+  selector:
+    workloadselector: resourcetracking-db-prod
