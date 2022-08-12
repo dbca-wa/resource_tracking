@@ -202,7 +202,7 @@ python-versions = "*"
 
 [[package]]
 name = "django"
-version = "3.2.14"
+version = "3.2.15"
 description = "A high-level Python Web framework that encourages rapid development and clean, pragmatic design."
 category = "main"
 optional = false
@@ -214,8 +214,8 @@ pytz = "*"
 sqlparse = ">=0.2.2"
 
 [package.extras]
-argon2 = ["argon2-cffi (>=19.1.0)"]
 bcrypt = ["bcrypt"]
+argon2 = ["argon2-cffi (>=19.1.0)"]
 
 [[package]]
 name = "django-dotenv"
@@ -658,7 +658,7 @@ brotli = ["brotli"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "53dd57658f0186563802697121624369d505ce3ed27776c5629769dc1e210dc1"
+content-hash = "1609baa77af4a30d47cc3dde23e622b771e314d33854899a2f4adfb7aa70cb57"
 
 [metadata.files]
 appnope = [
