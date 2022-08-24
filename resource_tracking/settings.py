@@ -76,7 +76,6 @@ TEMPLATES = [
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
 # Email settings
-ADMINS = ('asi@dbca.wa.gov.au',)
 EMAIL_HOST = env('EMAIL_HOST', 'email.host')
 EMAIL_PORT = env('EMAIL_PORT', 25)
 EMAIL_USER = env('EMAIL_USER', 'username')
