@@ -11,13 +11,6 @@ import pytz
 from tracking.models import Device, LoggedPoint
 
 
-def index(request):
-    return render(request, "index.html", {
-        "settings": settings,
-        "user": request.user
-    })
-
-
 def device(request, device_id):
     return render(request, "device.html", {
         "device": Device.objects.get(pk=device_id)
