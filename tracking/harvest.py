@@ -1,5 +1,7 @@
 import csv
+from data_storage.azure_blob import AzureBlobStorage
 from datetime import datetime, timedelta
+from dbca_utils.utils import env
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
@@ -17,8 +19,10 @@ import traceback
 
 from tracking import email_utils
 from tracking.models import Device, LoggedPoint, InvalidLoggedPoint
+from . import dbutils
 
 LOGGER = logging.getLogger('tracking')
+DT_PATTERN = "%Y-%m-%d %H:%M:%S"
 
 
 def lat_long_isvalid(lt, lg):
@@ -304,6 +308,137 @@ def get_fleetcare_creationtime(name):
         )
 
 
+def parse_datetime(dt):
+    if not isinstance(dt, datetime):
+        dt_str = dt
+        try:
+            dt = timezone.make_aware(datetime.strptime(dt, DT_PATTERN))
+        except Exception as ex:
+            raise Exception(
+                "Incorrect datetime string({}), correct datetime pattern should be 'YYYY/MM/DD HH:MM:SS'.{}".format(
+                    dt_str, str(ex)
+                )
+            )
+    else:
+        dt = timezone.localtime(dt)
+    return dt
+
+
+def format_datetime(dt):
+    return timezone.localtime(dt).strftime(DT_PATTERN)
+
+
+def to_db_timestamp(dt, with_timezone=False):
+    if with_timezone:
+        return timezone.localtime(dt, timezone=timezone.utc).strftime(
+            "%Y-%m-%d %H:%M:%S+00"
+        )
+    else:
+        return timezone.localtime(dt, timezone=timezone.utc).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+
+
+def import_fleetcare_blobs_to_staging(from_datetime=None, to_datetime=None, staging_table="logentry"):
+    """
+    Import Fleetcare raw data from blob storage to the staging table.
+    """
+    connection_string = env("FLEETCARE_CONNECTION_STRING")
+    if not connection_string:
+        raise Exception("Missing fleetcare blob stroage connection string'")
+
+    container_name = env("FLEETCARE_CONTAINER")
+    if not container_name:
+        raise Exception("Missing fleetcare blob stroage container name")
+
+    # If the from and to values are not passed in, default to the previous five minutes.
+    if not from_datetime and not to_datetime:
+        to_datetime = timezone.localtime()
+        from_datetime = to_datetime - timedelta(seconds=300)
+    from_dt_source = parse_datetime(from_datetime)
+    to_dt_source = parse_datetime(to_datetime)
+    staging_conn = connections["fleetcare"]
+    staging_schema = "public"
+
+    print(
+        "Import logpoints which were created between {} and {} from blob storage to staging table {}".format(
+            format_datetime(from_dt_source),
+            format_datetime(to_dt_source),
+            staging_table,
+        )
+    )
+
+    # Import the data from blob storage to staging database
+    storage = AzureBlobStorage(connection_string, container_name)
+
+    oneday = timedelta(days=1)
+    day = from_dt_source.date()
+    imported_rows = 0
+    start = timezone.now()
+    while day <= to_dt_source.date():
+        day_start = timezone.now()
+        metadatas = storage.list_resources(
+            "{}/{}/{}/".format(day.year, day.month, day.day)
+        )
+        metadatas.sort(key=lambda o: o["name"][-24:-5])
+        day_rows = 0
+        for metadata in metadatas:
+            # Blob data creation_time is not reliable, extract the timestmap from file name
+            creation_time = get_fleetcare_creationtime(metadata["name"])
+            if creation_time >= from_dt_source and creation_time < to_dt_source:
+                content = storage.get_content(metadata["name"]).decode()
+                try:
+                    day_rows += dbutils.execute(
+                        staging_conn,
+                        "INSERT INTO {} (name, created, text) values('{}','{}','{}')".format(
+                            staging_table,
+                            metadata["name"],
+                            to_db_timestamp(creation_time),
+                            content,
+                        ),
+                    )
+                except:
+                    # Failed to insert the data to staging table.
+                    # Check whether the data exists or not, if exists, ignore; otherwise raise exception
+                    # The type of the column 'created' of original table 'logentry' is timestamp without timezone, and its value is utc timestamp
+                    rows = dbutils.count(
+                        staging_conn,
+                        sql="SELECT count(*) FROM {}.{} WHERE name='{}' and created='{}' ".format(
+                            staging_schema,
+                            staging_table,
+                            metadata["name"],
+                            to_db_timestamp(creation_time),
+                        ),
+                    )
+                    if rows:
+                        continue
+                    else:
+                        raise
+
+        print(
+            "{}: Spend {} to import {} rows from blob storage to staging table {}".format(
+                day.strftime("%Y/%m/%d"),
+                str(timezone.now() - day_start),
+                day_rows,
+                staging_table,
+            )
+        )
+
+        imported_rows += day_rows
+
+        day += oneday
+
+    print(
+        "Spend {} to import {} rows from blob storage to staging table {} between {} and {}".format(
+            str(timezone.now() - start),
+            imported_rows,
+            staging_table,
+            format_datetime(from_dt_source),
+            format_datetime(to_dt_source),
+        )
+    )
+
+
 def save_fleetcare_db(staging_table="logentry", loggedpoint_model=LoggedPoint, limit=20000, from_dt=None, to_dt=None):
     """
     Used by havester job to harvest data from staging table (logentry) to LoggedPoint, and update Device
@@ -327,7 +462,7 @@ def save_fleetcare_db(staging_table="logentry", loggedpoint_model=LoggedPoint, l
     harvested, overriden, updated, created, errors, suspicious, skipped = (0, 0, 0, 0, 0, 0, 0)
     LOGGER.info("Harvesting tracking data from Fleetcare")
 
-    with connections["fcare"].cursor() as cursor:
+    with connections["fleetcare"].cursor() as cursor:
         cursor.execute(
             "select * from {} order by id limit {}".format(staging_table, limit)
         )

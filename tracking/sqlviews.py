@@ -1,10 +1,10 @@
-from django.db import connections,connection
+from django.db import connection
 
 from .dbutils import executeDDL
 
 drop_tracking_history_view_sql = "DROP VIEW IF EXISTS tracking_history_view; "
 create_tracking_history_view_sql = """
-CREATE OR REPLACE VIEW tracking_history_view 
+CREATE OR REPLACE VIEW tracking_history_view
 AS
 SELECT lp.point AS wkb_geometry,
     lp.seen,
@@ -32,7 +32,9 @@ SELECT lp.point AS wkb_geometry,
   ORDER BY lp.seen DESC;
 """
 
-drop_tracking_resource_tracking_view_sql = "DROP VIEW IF EXISTS tracking_resource_tracking_view;"
+drop_tracking_resource_tracking_view_sql = (
+    "DROP VIEW IF EXISTS tracking_resource_tracking_view;"
+)
 create_tracking_resource_tracking_view_sql = """
 CREATE OR REPLACE VIEW tracking_resource_tracking_view
 AS
@@ -83,7 +85,9 @@ AS
   WHERE resource_tracking_with_age.age < 168::double precision;
 """
 
-drop_tracking_resource_tracking_ext_view_sql = "DROP VIEW IF EXISTS tracking_resource_tracking_ext_view;"
+drop_tracking_resource_tracking_ext_view_sql = (
+    "DROP VIEW IF EXISTS tracking_resource_tracking_ext_view;"
+)
 create_tracking_resource_tracking_ext_view_sql = """
 CREATE OR REPLACE VIEW tracking_resource_tracking_ext_view
 AS
@@ -119,7 +123,9 @@ SELECT resource_tracking_with_age.id,
   WHERE resource_tracking_with_age.age < 168::double precision;
 """
 
-drop_tracking_resource_tracking_ext_temp_view_sql = "DROP VIEW IF EXISTS tracking_resource_tracking_ext_temp_view;"
+drop_tracking_resource_tracking_ext_temp_view_sql = (
+    "DROP VIEW IF EXISTS tracking_resource_tracking_ext_temp_view;"
+)
 create_tracking_resource_tracking_ext_temp_view_sql = """
 CREATE OR REPLACE VIEW tracking_resource_tracking_ext_temp_view
 AS
@@ -157,28 +163,36 @@ SELECT resource_tracking_with_age.id,
 
 
 def drop_tracking_history_view(log=True):
-    executeDDL(connection,drop_tracking_history_view_sql,log=log)
+    executeDDL(connection, drop_tracking_history_view_sql, log=log)
+
 
 def create_tracking_history_view(log=True):
-    executeDDL(connection,create_tracking_history_view_sql,log=log)
+    executeDDL(connection, create_tracking_history_view_sql, log=log)
+
 
 def drop_tracking_resource_tracking_view(log=True):
-    executeDDL(connection,drop_tracking_resource_tracking_view_sql,log=log)
+    executeDDL(connection, drop_tracking_resource_tracking_view_sql, log=log)
+
 
 def create_tracking_resource_tracking_view(log=True):
-    executeDDL(connection,create_tracking_resource_tracking_view_sql,log=log)
+    executeDDL(connection, create_tracking_resource_tracking_view_sql, log=log)
+
 
 def drop_tracking_resource_tracking_ext_view(log=True):
-    executeDDL(connection,drop_tracking_resource_tracking_ext_view_sql,log=log)
+    executeDDL(connection, drop_tracking_resource_tracking_ext_view_sql, log=log)
+
 
 def create_tracking_resource_tracking_ext_view(log=True):
-    executeDDL(connection,create_tracking_resource_tracking_ext_view_sql,log=log)
+    executeDDL(connection, create_tracking_resource_tracking_ext_view_sql, log=log)
+
 
 def drop_tracking_resource_tracking_ext_temp_view(log=True):
-    executeDDL(connection,drop_tracking_resource_tracking_ext_temp_view_sql,log=log)
+    executeDDL(connection, drop_tracking_resource_tracking_ext_temp_view_sql, log=log)
+
 
 def create_tracking_resource_tracking_ext_temp_view(log=True):
-    executeDDL(connection,create_tracking_resource_tracking_ext_temp_view_sql,log=log)
+    executeDDL(connection, create_tracking_resource_tracking_ext_temp_view_sql, log=log)
+
 
 def create_all_views(log=True):
     create_tracking_history_view(log=log)
@@ -192,4 +206,3 @@ def drop_all_views(log=True):
     drop_tracking_resource_tracking_view(log=log)
     drop_tracking_resource_tracking_ext_view(log=log)
     drop_tracking_resource_tracking_ext_temp_view(log=log)
-
