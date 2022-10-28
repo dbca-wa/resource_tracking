@@ -71,7 +71,7 @@ def import_fleetcare_to_staging_table(
     to_dt_source = to_dt + time_buff
 
     # create the table in staging database
-    staging_conn = connections["fcare"]
+    staging_conn = connections["fleetcare"]
     staging_schema = "public"
     dbutils.create_table(
         staging_conn,
