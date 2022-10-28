@@ -24,7 +24,7 @@ whitenoise = {version = "6.2.0", extras = ["brotli"]}
 [tool.poetry.dev-dependencies]
 ipython = "^7.31.1"
 ipdb = "^0.13.4"
-black = "^21.7b0"
+black = "22.10.0"
 
 [build-system]
 requires = ["poetry>=1.2.2"]
