@@ -27,5 +27,5 @@ ipdb = "^0.13.4"
 black = "22.10.0"
 
 [build-system]
-requires = ["poetry>=1.2.2"]
+requires = ["setuptools", "poetry>=1.2.2"]
 build-backend = "poetry.masonry.api"
