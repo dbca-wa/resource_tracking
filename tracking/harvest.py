@@ -339,7 +339,7 @@ def to_db_timestamp(dt, with_timezone=False):
         )
 
 
-def import_fleetcare_blobs_to_staging(from_datetime, to_datetime, staging_table="logentry"):
+def import_fleetcare_blobs_to_staging(from_datetime=None, to_datetime=None, staging_table="logentry"):
     """
     Import Fleetcare raw data from blob storage to the staging table.
     """
@@ -351,6 +351,10 @@ def import_fleetcare_blobs_to_staging(from_datetime, to_datetime, staging_table=
     if not container_name:
         raise Exception("Missing fleetcare blob stroage container name")
 
+    # If the from and to values are not passed in, default to the previous five minutes.
+    if not from_datetime and not to_datetime:
+        to_datetime = timezone.localtime()
+        from_datetime = to_datetime - timedelta(seconds=300)
     from_dt_source = parse_datetime(from_datetime)
     to_dt_source = parse_datetime(to_datetime)
     staging_conn = connections["fleetcare"]
