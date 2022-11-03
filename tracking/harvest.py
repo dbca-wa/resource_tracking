@@ -345,11 +345,11 @@ def import_fleetcare_blobs_to_staging(from_datetime=None, to_datetime=None, stag
     """
     connection_string = env("FLEETCARE_CONNECTION_STRING")
     if not connection_string:
-        raise Exception("Missing fleetcare blob stroage connection string'")
+        raise Exception("Missing fleetcare blob storage connection string'")
 
     container_name = env("FLEETCARE_CONTAINER")
     if not container_name:
-        raise Exception("Missing fleetcare blob stroage container name")
+        raise Exception("Missing fleetcare blob storage container name")
 
     # If the from and to values are not passed in, default to the previous five minutes.
     if not from_datetime and not to_datetime:
