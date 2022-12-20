@@ -178,8 +178,8 @@ class Device(BasePoint):
     callsign_display = models.CharField(max_length=50, null=True, blank=True, verbose_name="Callsign")
     contractor_details = models.CharField(max_length=50, null=True, blank=True, help_text="Person engaging contractor is responsible for maintaining contractor resource details")
     other_details = models.TextField(null=True, blank=True)
-    internal_only = models.BooleanField(default=False, verbose_name="Visible on SSS")
-    hidden = models.BooleanField(default=False, verbose_name="Visible to DFES")
+    internal_only = models.BooleanField(default=False, help_text="Device will only be shown on internal DBCA resource tracking live view (not to DFES, etc.)")
+    hidden = models.BooleanField(default=False, help_text="Device hidden from DBCA resource tracking live view")
     deleted = models.BooleanField(default=False, verbose_name="Deleted?")
     fire_use = models.BooleanField(default=None, null=True, verbose_name="Fire use")
 
