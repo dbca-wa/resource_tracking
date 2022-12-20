@@ -345,11 +345,11 @@ def import_fleetcare_blobs_to_staging(from_datetime=None, to_datetime=None, stag
     """
     connection_string = env("FLEETCARE_CONNECTION_STRING")
     if not connection_string:
-        raise Exception("Missing fleetcare blob stroage connection string'")
+        raise Exception("Missing fleetcare blob storage connection string'")
 
     container_name = env("FLEETCARE_CONTAINER")
     if not container_name:
-        raise Exception("Missing fleetcare blob stroage container name")
+        raise Exception("Missing fleetcare blob storage container name")
 
     # If the from and to values are not passed in, default to the previous five minutes.
     if not from_datetime and not to_datetime:
@@ -573,7 +573,10 @@ def save_fleetcare_db(staging_table="logentry", loggedpoint_model=LoggedPoint, l
             point = "POINT ({} {})".format(*data["GPS"]["coordinates"])
 
             try:
-                velocity = int(float(data["readings"]["vehicleSpeed"]) * 1000)
+                if data["readings"]["vehicleSpeed"]:
+                    velocity = int(float(data["readings"]["vehicleSpeed"]) * 1000)
+                else:
+                    velocity = 0
             except:
                 LOGGER.info(
                     "{}: Invalid velocity '{}', assuming 0".format(
@@ -583,7 +586,10 @@ def save_fleetcare_db(staging_table="logentry", loggedpoint_model=LoggedPoint, l
                 velocity = 0
 
             try:
-                altitude = int(float(data["readings"]["vehicleAltitude"]))
+                if data["readings"]["vehicleAltitude"]:
+                    altitude = int(float(data["readings"]["vehicleAltitude"]))
+                else:
+                    altitude = 0
             except:
                 LOGGER.info(
                     "{}: Invalid altitude '{}', assuming 0".format(
@@ -593,7 +599,10 @@ def save_fleetcare_db(staging_table="logentry", loggedpoint_model=LoggedPoint, l
                 altitude = 0
 
             try:
-                heading = int(float(data["readings"]["vehicleHeading"]))
+                if data["readings"]["vehicleHeading"]:
+                    heading = int(float(data["readings"]["vehicleHeading"]))
+                else:
+                    heading = 0
             except:
                 LOGGER.info(
                     "{}: Invalid heading '{}', assuming 0".format(
