@@ -15,14 +15,14 @@ class DeviceAdmin(ModelAdmin):
     )
     list_filter = ("symbol", "district", "source_device_type", "hidden", "internal_only")
     search_fields = ("deviceid", "registration", "callsign_display", "rin_display", "symbol", "district_display")
-    readonly_fields = ("deviceid",)
+    readonly_fields = ("deviceid", "source_device_type")
     fieldsets = (
         ("Vehicle/Device details", {
             "description": """<p class="errornote">This is the live tracking database;
             changes made to these fields will apply to the Device Tracking map in all
             variants of the Spatial Support System.</p>
             """ if settings.PROD_SCARY_WARNING else "",
-            "fields": ("deviceid", "district", ("symbol", "callsign", "rin_number"), "registration", "fire_use")
+            "fields": ("deviceid", "source_device_type", "district", "symbol", "callsign", "registration", "rin_number", "fire_use")
         }),
         ("Crew Details", {
             "fields": ("current_driver", "usual_driver", "usual_location")
