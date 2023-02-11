@@ -22,7 +22,7 @@ data-storage = {git = "https://github.com/dbca-wa/data-storage.git", rev = "v3.1
 whitenoise = {version = "6.2.0", extras = ["brotli"]}
 
 [tool.poetry.dev-dependencies]
-ipython = "^7.31.1"
+ipython = "^8.10.0"
 ipdb = "^0.13.4"
 black = "22.10.0"
 
