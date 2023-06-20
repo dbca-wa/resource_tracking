@@ -10,8 +10,8 @@ from pathlib import Path
 d = Path(__file__).resolve().parent
 dot_env = os.path.join(str(d), '.env')
 if os.path.exists(dot_env):
-    from dotenv import read_dotenv
-    read_dotenv()
+    from dotenv import load_dotenv
+    load_dotenv()
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "resource_tracking.settings")
 application = get_wsgi_application()
