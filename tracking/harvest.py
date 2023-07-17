@@ -429,7 +429,7 @@ def import_fleetcare_blobs_to_staging(from_datetime=None, to_datetime=None, stag
         day += oneday
 
     print(
-        "Spend {} to import {} rows from blob storage to staging table {} between {} and {}".format(
+        "Spent {} to import {} rows from blob storage to staging table {} between {} and {}".format(
             str(timezone.now() - start),
             imported_rows,
             staging_table,
