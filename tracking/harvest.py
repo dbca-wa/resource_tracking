@@ -23,6 +23,10 @@ from . import dbutils
 
 LOGGER = logging.getLogger('tracking')
 DT_PATTERN = "%Y-%m-%d %H:%M:%S"
+# Set the logging level for all azure-* libraries (the azure-storage-blob library uses this one).
+# Reference: https://learn.microsoft.com/en-us/azure/developer/python/sdk/azure-sdk-logging
+azure_logger = logging.getLogger("azure")
+azure_logger.setLevel(logging.ERROR)
 
 
 def lat_long_isvalid(lt, lg):
