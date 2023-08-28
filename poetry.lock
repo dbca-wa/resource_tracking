@@ -565,12 +565,12 @@ field = ["django-leaflet (>=0.12)", "jsonfield"]
 
 [[package]]
 name = "django-tastypie"
-version = "0.14.3"
+version = "0.14.5"
 description = "A flexible & capable API layer for Django."
 optional = false
 python-versions = "*"
 files = [
-    {file = "django-tastypie-0.14.3.tar.gz", hash = "sha256:79fbadf81a3cc42cb5304731a88f46c207ae4c8efa7556856356ec916e5b2ec7"},
+    {file = "django-tastypie-0.14.5.tar.gz", hash = "sha256:0f17da085a1583c434dc0fb0ded8dd66c09a512689d0ce705f61629337d5e740"},
 ]
 
 [package.dependencies]
@@ -1109,4 +1109,4 @@ brotli = ["Brotli"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "66c9884afab789dd8a5d43be959fb7cd41f0138c6da98bcbf495ac8a0a4992dd"
+content-hash = "adad959f669fa482d915f6a072724790500c1ab2df49462fc03018acce89129f"
