@@ -1,5 +1,5 @@
+from azure.storage.blob import BlobServiceClient
 import csv
-from data_storage.azure_blob import AzureBlobStorage
 from datetime import datetime, timedelta
 from dbca_utils.utils import env
 from django.conf import settings
@@ -365,7 +365,7 @@ def import_fleetcare_blobs_to_staging(from_datetime=None, to_datetime=None, stag
     staging_schema = "public"
 
     print(
-        "Import logpoints which were created between {} and {} from blob storage to staging table {}".format(
+        "Import tracking data created between {} and {} from blob storage to staging table {}".format(
             format_datetime(from_dt_source),
             format_datetime(to_dt_source),
             staging_table,
@@ -373,32 +373,35 @@ def import_fleetcare_blobs_to_staging(from_datetime=None, to_datetime=None, stag
     )
 
     # Import the data from blob storage to staging database
-    storage = AzureBlobStorage(connection_string, container_name)
+    service_client = BlobServiceClient.from_connection_string(connection_string)
+    container_client = service_client.get_container_client(container=container_name)
 
     oneday = timedelta(days=1)
     day = from_dt_source.date()
     imported_rows = 0
     start = timezone.now()
+
     while day <= to_dt_source.date():
         day_start = timezone.now()
-        metadatas = storage.list_resources(
-            "{}/{}/{}/".format(day.year, day.month, day.day)
-        )
-        metadatas.sort(key=lambda o: o["name"][-24:-5])
+
+        # Only consider blobs for the nominated date.
+        blob_list = container_client.list_blob_names(name_starts_with="{}/{}/{}/".format(day.year, day.month, day.day))
         day_rows = 0
-        for metadata in metadatas:
-            # Blob data creation_time is not reliable, extract the timestmap from file name
-            creation_time = get_fleetcare_creationtime(metadata["name"])
+
+        for blob_name in blob_list:
+            # Extract the timestamp from the blob name
+            creation_time = get_fleetcare_creationtime(blob_name)
             if creation_time >= from_dt_source and creation_time < to_dt_source:
-                content = storage.get_content(metadata["name"]).decode()
+                blob = container_client.download_blob(blob_name)
+                blob_data = blob.readall().decode().strip()
                 try:
                     day_rows += dbutils.execute(
                         staging_conn,
                         "INSERT INTO {} (name, created, text) values('{}','{}','{}')".format(
                             staging_table,
-                            metadata["name"],
+                            blob_name,
                             to_db_timestamp(creation_time),
-                            content,
+                            blob_data,
                         ),
                     )
                 except:
@@ -410,7 +413,7 @@ def import_fleetcare_blobs_to_staging(from_datetime=None, to_datetime=None, stag
                         sql="SELECT count(*) FROM {}.{} WHERE name='{}' and created='{}' ".format(
                             staging_schema,
                             staging_table,
-                            metadata["name"],
+                            blob_name,
                             to_db_timestamp(creation_time),
                         ),
                     )
@@ -420,7 +423,7 @@ def import_fleetcare_blobs_to_staging(from_datetime=None, to_datetime=None, stag
                         raise
 
         print(
-            "{}: Spend {} to import {} rows from blob storage to staging table {}".format(
+            "Spent {} to import {} rows from blob storage to staging table {}".format(
                 day.strftime("%Y/%m/%d"),
                 str(timezone.now() - day_start),
                 day_rows,
@@ -429,7 +432,6 @@ def import_fleetcare_blobs_to_staging(from_datetime=None, to_datetime=None, stag
         )
 
         imported_rows += day_rows
-
         day += oneday
 
     print(
