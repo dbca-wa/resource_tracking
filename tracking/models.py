@@ -130,7 +130,7 @@ class BasePoint(models.Model):
     altitude = models.IntegerField(default=0, help_text="Altitude above sea level in metres", editable=False)
     seen = models.DateTimeField(null=True, editable=False)
     message = models.PositiveIntegerField(default=3, choices=RAW_EQ_CHOICES)
-    source_device_type = models.CharField(max_length=32, choices=SOURCE_DEVICE_TYPE_CHOICES, default="other")
+    source_device_type = models.CharField(max_length=32, choices=SOURCE_DEVICE_TYPE_CHOICES, default="other", db_index=True)
 
     class Meta:
         abstract = True
