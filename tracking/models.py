@@ -268,7 +268,7 @@ class LoggedPoint(models.Model):
     source_device_type = models.CharField(max_length=32, choices=SOURCE_DEVICE_TYPE_CHOICES, default="other", db_index=True)
 
     device = models.ForeignKey(Device, on_delete=models.PROTECT)
-    raw = models.TextField(editable=False, blank=True)
+    raw = models.TextField(editable=False, null=True, blank=True)
 
     def __str__(self):
         return force_text("{} {}".format(self.device, self.seen))
