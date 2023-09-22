@@ -44,8 +44,8 @@ def parse_sbd(sbd):
     """
     device = Device.objects.get_or_create(deviceid=sbd["ID"])[0]
 
-    # Parse the timestamp.
-    seen = datetime.fromtimestamp(float(sbd["TU"])).astimezone(UTC)
+    # Parse the timestamp as UTC.
+    seen = UTC.localize(datetime.fromtimestamp(float(sbd["TU"])))
 
     # Parse the geometry.
     # Assume longitude and/or latitude == 0 is bad.
@@ -64,26 +64,19 @@ def parse_sbd(sbd):
         loggedpoint.heading = abs(sbd.get("DR", loggedpoint.heading))
         loggedpoint.velocity = abs(sbd.get("VL", loggedpoint.heading))
         loggedpoint.altitude = int(sbd.get("AL", loggedpoint.altitude))
-        try:
-            loggedpoint.message = int(sbd.get("EQ", loggedpoint.message))
-        except:
-            loggedpoint.message = 3
         loggedpoint.source_device_type = str(sbd.get("TY", loggedpoint.source_device_type))
         loggedpoint.raw = json.dumps(sbd)
         loggedpoint.save()
-    else:
-        LOGGER.info(f"LoggedPoint {loggedpoint} found to be a duplicate.")
 
-    if loggedpoint.device.seen is None or loggedpoint.seen > loggedpoint.device.seen:
-        loggedpoint.device.seen = loggedpoint.seen
-        loggedpoint.device.point = loggedpoint.point
-        loggedpoint.device.heading = loggedpoint.heading
-        loggedpoint.device.velocity = loggedpoint.velocity
-        loggedpoint.device.altitude = loggedpoint.altitude
-        loggedpoint.device.message = loggedpoint.message
-        loggedpoint.device.source_device_type = loggedpoint.source_device_type
-        loggedpoint.device.deleted = False
-        loggedpoint.device.save()
+    if device.seen is None or loggedpoint.seen > device.seen:
+        device.seen = loggedpoint.seen
+        device.point = loggedpoint.point
+        device.heading = loggedpoint.heading
+        device.velocity = loggedpoint.velocity
+        device.altitude = loggedpoint.altitude
+        device.message = loggedpoint.message
+        device.source_device_type = loggedpoint.source_device_type
+        device.save()
 
     return loggedpoint
 
@@ -944,6 +937,8 @@ def harvest_tracking_email(device_type=None):
             if status != "OK":
                 LOGGER.error(f"Server response failure on fetching email UID {uid}: {status}")
                 continue
+
+            # `result` will be a LoggedPoint, or None
             if device_type == "iriditrak":
                 result = save_iriditrak(message)
             elif device_type == "dplus":
@@ -959,8 +954,8 @@ def harvest_tracking_email(device_type=None):
                 created += 1
 
             # Mark email as read and flag it for deletion.
-            status, response = email_utils.email_mark_read(imap, uid)
-            status, response = email_utils.email_delete(imap, uid)
+            #status, response = email_utils.email_mark_read(imap, uid)
+            #status, response = email_utils.email_delete(imap, uid)
 
     LOGGER.info(f"Created {created} tracking points, flagged {flagged} emails")
     imap.close()
@@ -969,7 +964,7 @@ def harvest_tracking_email(device_type=None):
     delta = timezone.now() - start
     LOGGER.info(
         "Tracking point email harvest run at {} for {} seconds".format(
-            start, delta.seconds
+            start.astimezone(AWST), delta.seconds
         )
     )
     return True
