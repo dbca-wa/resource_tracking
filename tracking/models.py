@@ -259,26 +259,29 @@ class LoggedPoint(models.Model):
     apply different constraints and indexing options on this model.
     It doesn't make sense for a LoggedPoint record to contain a null value for `point` or `seen`.
     """
+    device = models.ForeignKey(Device, on_delete=models.PROTECT)
+    seen = models.DateTimeField(editable=False, db_index=True)
     point = models.PointField(editable=False)
+
     heading = models.PositiveIntegerField(default=0, help_text="Heading in degrees", editable=False)
     velocity = models.PositiveIntegerField(default=0, help_text="Speed in metres/hr", editable=False)
     altitude = models.IntegerField(default=0, help_text="Altitude above sea level in metres", editable=False)
-    seen = models.DateTimeField(editable=False, db_index=True)
     message = models.PositiveIntegerField(default=3, choices=RAW_EQ_CHOICES)
     source_device_type = models.CharField(max_length=32, choices=SOURCE_DEVICE_TYPE_CHOICES, default="other", db_index=True)
 
-    device = models.ForeignKey(Device, on_delete=models.PROTECT)
     raw = models.TextField(editable=False, null=True, blank=True)
 
     def __str__(self):
-        return force_text("{} {}".format(self.device, self.seen))
+        return force_text(f"{self.device} {self.seen}")
 
     class Meta:
-        ordering = ('-seen',)
+        ordering = ("-seen",)
         unique_together = (("device", "seen"),)
 
 
 class InvalidLoggedPoint(BasePoint):
+    """TODO: deprecate model.
+    """
     INVALID_RAW_DATA = 1
     INVALID_TIMESTAMP = 10
     INVALID_TIMESTAMP_FORMAT = 11
