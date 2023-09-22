@@ -5,7 +5,7 @@ on:
     # Publish `master` as `latest` image.
     branches: [master]
     # Publish `1.*` tags as releases.
-    tags: ['1.*']
+    tags: [1.*]
   pull_request:
     branches: [master]
 
@@ -25,7 +25,10 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+        id: checkout-repo
+        with:
+          fetch-depth: 0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Log into registry ${{ env.REGISTRY }}
@@ -37,7 +40,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@v3
+        uses: docker/metadata-action@v4
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           flavor: |

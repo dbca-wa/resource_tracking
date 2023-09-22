@@ -29,30 +29,37 @@ azure_logger = logging.getLogger("azure")
 azure_logger.setLevel(logging.ERROR)
 
 
-def lat_long_isvalid(lt, lg):
-    return lt <= 90 and lt >= -90 and lg <= 180 and lg >= -180
+def validate_lat_lon(latitude, longitude):
+    """Validate passed-in latitude and longitude values.
+    """
+    return latitude <= 90 and latitude >= -90 and longitude <= 180 and longitude >= -180
 
 
 def parse_sbd(sbd):
-    """Parses an sbd into a persisted LoggedPoint object, also handles duplicates.
+    """Parses an SBD into a persisted LoggedPoint object, also handles duplicates.
     Returns a LoggedPoint instance or None.
+
+    SBD is Iridium Short Burst Data: https://www.iridium.com/services/iridium-sbd/
     """
     device = Device.objects.get_or_create(deviceid=sbd["ID"])[0]
-    if sbd.get("LG", 0) == 0 or sbd.get("LT", 0) == 0:
-        # Assume longitude and/or latitude == 0 is dud geometry.
-        LOGGER.info("Bad geometry: {}".format(sbd))
-        return None
 
-    # Ignore any duplicate LoggedPoint objects (should only be for accidental duplicate harvests or historical devices).
-    seen = timezone.make_aware(datetime.fromtimestamp(float(sbd['TU'])), pytz.timezone("UTC"))
+    # Parse the timestamp.
+    seen = datetime.fromtimestamp(float(sbd["TU"])).astimezone(pytz.timezone("UTC"))
+
+    # Parse the geometry.
+    # Assume longitude and/or latitude == 0 is bad.
+    if sbd.get("LG", 0) == 0 or sbd.get("LT", 0) == 0:
+        LOGGER.warning(f"Bad geometry: {sbd}")
+        return None
+    point = "POINT({LG} {LT})".format(**sbd)
+
     try:
-        loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen)
+        loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
     except Exception:
-        LOGGER.exception("Exception during get_or_create of LoggedPoint: device {}, seen {}".format(device, seen))
+        LOGGER.exception(f"Exception during get_or_create of LoggedPoint: device {device}, seen {seen}, point {point}")
         return None
 
     if created:
-        loggedpoint.point = 'POINT({LG} {LT})'.format(**sbd)
         loggedpoint.heading = abs(sbd.get("DR", loggedpoint.heading))
         loggedpoint.velocity = abs(sbd.get("VL", loggedpoint.heading))
         loggedpoint.altitude = int(sbd.get("AL", loggedpoint.altitude))
@@ -64,7 +71,7 @@ def parse_sbd(sbd):
         loggedpoint.raw = json.dumps(sbd)
         loggedpoint.save()
     else:
-        LOGGER.info("LoggedPoint {} found to be a duplicate.".format(loggedpoint))
+        LOGGER.info(f"LoggedPoint {loggedpoint} found to be a duplicate.")
 
     if loggedpoint.device.seen is None or loggedpoint.seen > loggedpoint.device.seen:
         loggedpoint.device.seen = loggedpoint.seen
@@ -80,19 +87,96 @@ def parse_sbd(sbd):
     return loggedpoint
 
 
+def parse_beam_binary(attachment, sbd):
+    """For a passed-in Iriditrak BEAM tracking email attachment and SBD object,
+    attempt to parse attachment for tracking data.
+
+    Reference: https://www.beamcommunications.com/document/342-beam-message-format
+    """
+
+    try:
+        raw = struct.unpack("<BBBBBBBBBBIHHH"[: len(attachment) + 1], attachment)
+        # Byte 1 Equation byte, use to detect type of message
+        sbd["EQ"] = raw[0]
+        # BEAM 10byte and 20byte binary messages
+        if sbd["EQ"] in [1, 2, 3, 4, 18, 19, 25, 26]:
+            # Byte 2: SSSS:GPS:Lat:Lng:Msd (SSSS = SQ, Msd = Most Significant Digit of Longitude)
+            sbd["SQ"] = int("0" + bin(raw[1])[2:][-8:-4], 2)
+            Lat = int(bin(raw[1])[2:][-3]) * "-"
+            Lng = int(bin(raw[1])[2:][-2]) * "-"
+            LngH = bin(raw[1])[2:][-1]
+            # Byte 3,4 (Latitude HHMM)
+            LatH = str(int("0" + bin(raw[2])[2:][-4:], 2)) + str(
+                int("0" + bin(raw[2])[2:][-8:-4], 2)
+            )
+            LatM = str(int("0" + bin(raw[3])[2:][-4:], 2)) + str(
+                int("0" + bin(raw[3])[2:][-8:-4], 2)
+            )
+            # Byte 5,6 (Latitude .MMMM)
+            LatM += (
+                "."
+                + str(int("0" + bin(raw[4])[2:][-4:], 2))
+                + str(int("0" + bin(raw[4])[2:][-8:-4], 2))
+            )
+            LatM += str(int("0" + bin(raw[5])[2:][-4:], 2)) + str(
+                int("0" + bin(raw[5])[2:][-8:-4], 2)
+            )
+            sbd["LT"] = float(Lat + str(int(LatH) + float(LatM) / 60))
+            # Byte 7,8 (Longitude HHMM)
+            LngH += str(int("0" + bin(raw[6])[2:][-4:], 2)) + str(
+                int("0" + bin(raw[6])[2:][-8:-4], 2)
+            )
+            LngM = str(int("0" + bin(raw[7])[2:][-4:], 2)) + str(
+                int("0" + bin(raw[7])[2:][-8:-4], 2)
+            )
+            # Byte 9,10 (Longitude .MMMM)
+            LngM += (
+                "."
+                + str(int("0" + bin(raw[8])[2:][-4:], 2))
+                + str(int("0" + bin(raw[8])[2:][-8:-4], 2))
+            )
+            LngM += str(int("0" + bin(raw[9])[2:][-4:], 2)) + str(
+                int("0" + bin(raw[9])[2:][-8:-4], 2)
+            )
+            sbd["LG"] = float(Lng + str(int(LngH) + float(LngM) / 60))
+            if not validate_lat_lon(sbd["LT"], sbd["LG"]):
+                raise ValueError(f"Lon/Lat {sbd['LG']} {sbd['LT']} is not valid.")
+            if len(raw) == 14:
+                # Byte 11,12,13,14 is unix time, but local to the device??
+                # use email timestamp because within 10 secs and fairly accurate
+                # might have future issues with delayed retransmits
+                sbd["LOCALTU"] = raw[10]
+                # Byte 15,16 are speed in 10 m/h
+                sbd["VL"] = raw[11] * 10
+                # Byte 17,18 is altitude in m above sea level
+                sbd["AL"] = raw[12]
+                # Byte 19,20 is direction in degrees
+                sbd["DR"] = raw[13]
+        else:
+            LOGGER.error("Unable to read {} - {}".format(force_text(sbd["EQ"]), force_text(raw)))
+            return False
+    except:
+        LOGGER.exception("Error while parsing Iriditrak message")
+        return False
+
+    return sbd
+
+
 def save_iriditrak(msg):
-    """For a pass-in Iriditrak email and message, parse and create a LoggedPoint.
+    """For a passed-in Iriditrak email and message, parse and create a LoggedPoint.
     """
     try:
         deviceid = int(msg["SUBJECT"].replace("SBD Msg From Unit: ", ""))
     except ValueError:
         LOGGER.exception("Error while parsing Iriditrak message subject {}".format(msg["SUBJECT"]))
         return False
+
     attachment = None
     for part in msg.walk():
         if part.get_content_maintype() != "multipart":
             attachment = part.get_payload(decode=True)
-    # Make sure email is from iridium and has valid timestamp
+
+    # Make sure email is from Iridium and has valid timestamp.
     received = filter(lambda val: val.find("(HELO sbd.iridium.com)") > -1, msg.values())
     if "DATE" in msg:
         timestamp = time.mktime(email.utils.parsedate(msg["DATE"]))
@@ -102,76 +186,17 @@ def save_iriditrak(msg):
         )
     else:
         LOGGER.info("Can't find date in " + str(msg.__dict__))
+
     sbd = {"ID": deviceid, "TU": timestamp, "TY": "iriditrak"}
-    # BEAM binary message, 10byte or 20byte
+
+    # BEAM binary message, 10 byte or 20 byte.
     if len(attachment) <= 20:
-        try:
-            raw = struct.unpack("<BBBBBBBBBBIHHH"[: len(attachment) + 1], attachment)
-            # Byte 1 Equation byte, use to detect type of message
-            sbd["EQ"] = raw[0]
-            # BEAM 10byte and 20byte binary messages
-            if sbd["EQ"] in [1, 2, 3, 4, 18, 19, 25, 26]:
-                # Byte 2: SSSS:GPS:Lat:Lng:Msd (SSSS = SQ, Msd = Most Significant Digit of Longitude)
-                sbd["SQ"] = int("0" + bin(raw[1])[2:][-8:-4], 2)
-                Lat = int(bin(raw[1])[2:][-3]) * "-"
-                Lng = int(bin(raw[1])[2:][-2]) * "-"
-                LngH = bin(raw[1])[2:][-1]
-                # Byte 3,4 (Latitude HHMM)
-                LatH = str(int("0" + bin(raw[2])[2:][-4:], 2)) + str(
-                    int("0" + bin(raw[2])[2:][-8:-4], 2)
-                )
-                LatM = str(int("0" + bin(raw[3])[2:][-4:], 2)) + str(
-                    int("0" + bin(raw[3])[2:][-8:-4], 2)
-                )
-                # Byte 5,6 (Latitude .MMMM)
-                LatM += (
-                    "."
-                    + str(int("0" + bin(raw[4])[2:][-4:], 2))
-                    + str(int("0" + bin(raw[4])[2:][-8:-4], 2))
-                )
-                LatM += str(int("0" + bin(raw[5])[2:][-4:], 2)) + str(
-                    int("0" + bin(raw[5])[2:][-8:-4], 2)
-                )
-                sbd["LT"] = float(Lat + str(int(LatH) + float(LatM) / 60))
-                # Byte 7,8 (Longitude HHMM)
-                LngH += str(int("0" + bin(raw[6])[2:][-4:], 2)) + str(
-                    int("0" + bin(raw[6])[2:][-8:-4], 2)
-                )
-                LngM = str(int("0" + bin(raw[7])[2:][-4:], 2)) + str(
-                    int("0" + bin(raw[7])[2:][-8:-4], 2)
-                )
-                # Byte 9,10 (Longitude .MMMM)
-                LngM += (
-                    "."
-                    + str(int("0" + bin(raw[8])[2:][-4:], 2))
-                    + str(int("0" + bin(raw[8])[2:][-8:-4], 2))
-                )
-                LngM += str(int("0" + bin(raw[9])[2:][-4:], 2)) + str(
-                    int("0" + bin(raw[9])[2:][-8:-4], 2)
-                )
-                sbd["LG"] = float(Lng + str(int(LngH) + float(LngM) / 60))
-                if not lat_long_isvalid(sbd["LT"], sbd["LG"]):
-                    raise ValueError(
-                        "Lon/Lat {},{} is not valid.".format(sbd["LG"], sbd["LT"])
-                    )
-                if len(raw) == 14:
-                    # Byte 11,12,13,14 is unix time, but local to the device??
-                    # use email timestamp because within 10 secs and fairly accurate
-                    # might have future issues with delayed retransmits
-                    sbd["LOCALTU"] = raw[10]
-                    # Byte 15,16 are speed in 10 m/h
-                    sbd["VL"] = raw[11] * 10
-                    # Byte 17,18 is altitude in m above sea level
-                    sbd["AL"] = raw[12]
-                    # Byte 19,20 is direction in degrees
-                    sbd["DR"] = raw[13]
-            else:
-                LOGGER.error("Unable to read {} - {}".format(force_text(sbd["EQ"]), force_text(raw)))
-                return False
-        except:
-            LOGGER.exception("Error while parsing Iriditrak message")
-            return False
+        sbd = parse_beam_binary(attachment, sbd)
     else:
+        LOGGER.info("Flagging IridiTrak message as unprocessable")
+        return False
+
+    if not sbd:
         LOGGER.info("Flagging IridiTrak message as unprocessable")
         return False
 
@@ -180,7 +205,7 @@ def save_iriditrak(msg):
 
 
 def save_dplus(msg):
-    """For a pass-in DPlus email and message, parse and create a LoggedPoint.
+    """For a passed-in DPlus email and message, parse and create a LoggedPoint.
     """
     try:
         sbd = {"RAW": msg.get_payload().strip().split("|")}
@@ -191,7 +216,7 @@ def save_dplus(msg):
         sbd["ID"] = int(sbd["RAW"][0])
         sbd["LT"] = float(sbd["RAW"][4])
         sbd["LG"] = float(sbd["RAW"][5])
-        if not lat_long_isvalid(sbd["LT"], sbd["LG"]):
+        if not validate_lat_lon(sbd["LT"], sbd["LG"]):
             raise ValueError("Lon/Lat {},{} is not valid.".format(sbd["LG"], sbd["LT"]))
         sbd["TU"] = time.mktime(
             datetime.strptime(sbd["RAW"][1], "%d-%m-%y %H:%M:%S").timetuple()
@@ -212,12 +237,12 @@ def save_dplus(msg):
 
 
 def save_spot(msg):
-    """For a pass-in Spot email and message, parse and create a LoggedPoint.
+    """For a passed-in Spot email and message, parse and create a LoggedPoint.
     """
     if "DATE" in msg:
         timestamp = time.mktime(email.utils.parsedate(msg["DATE"]))
     else:
-        LOGGER.warning("Can't find date in " + str(msg.__dict__))
+        LOGGER.warning(f"Can't find date in {msg.__dict__}")
         return False
     try:
         sbd = {
@@ -232,7 +257,7 @@ def save_spot(msg):
             "VL": 0,
             "TY": "spot",
         }
-        if not lat_long_isvalid(sbd["LT"], sbd["LG"]):
+        if not validate_lat_lon(sbd["LT"], sbd["LG"]):
             raise ValueError("Lon/Lat {},{} is not valid.".format(sbd["LG"], sbd["LT"]))
     except:
         LOGGER.exception("Error while parsing Spot message")
@@ -382,8 +407,6 @@ def import_fleetcare_blobs_to_staging(from_datetime=None, to_datetime=None, stag
     start = timezone.now()
 
     while day <= to_dt_source.date():
-        day_start = timezone.now()
-
         # Only consider blobs for the nominated date.
         blob_list = container_client.list_blob_names(name_starts_with="{}/{}/{}/".format(day.year, day.month, day.day))
         day_rows = 0
@@ -898,8 +921,8 @@ def save_mp70(msg):
         sbd["ID"] = sbd["RAW"][0]
         sbd["LT"] = float(sbd["RAW"][2])
         sbd["LG"] = float(sbd["RAW"][3])
-        if not lat_long_isvalid(sbd["LT"], sbd["LG"]):
-            raise ValueError("Lon/Lat {},{} is not valid.".format(sbd["LG"], sbd["LT"]))
+        if not validate_lat_lon(sbd["LT"], sbd["LG"]):
+            raise ValueError(f"Lon/Lat {sbd['LG']} {sbd['LT']} is not valid.")
         sbd["TU"] = time.mktime(
             datetime.strptime(sbd["RAW"][6], "%m/%d/%Y %H:%M:%S").timetuple()
         )
@@ -907,19 +930,22 @@ def save_mp70(msg):
         sbd["DR"] = int(sbd["RAW"][5])
         sbd["TY"] = "other"
     except:
-        LOGGER.exception("Error while parsing MP70 message ID")
+        LOGGER.exception(f"Error while parsing MP70 message from device ID {sbd['ID']}")
         return False
     try:
         point = parse_sbd(sbd)
+        if not point:
+            LOGGER.warning(f"Bad geometry while parsing MP70 message from device ID {sbd['ID']}")
+            return False
         return point
     except:
-        LOGGER.exception("Error while parsing MP70 message ID")
+        LOGGER.exception(f"Error while parsing MP70 message from device ID {sbd['ID']}")
         return False
 
 
 def harvest_tracking_email(device_type=None):
     """Download and save tracking point emails.
-    device_type should be one of: iriditrak, dplus, spot, mp70
+    `device_type` should be one of: iriditrak, dplus, spot, mp70
     """
     imap = email_utils.get_imap()
     start = timezone.now()
@@ -939,20 +965,20 @@ def harvest_tracking_email(device_type=None):
         LOGGER.info("Harvesting MP70 emails")
         status, uids = email_utils.email_get_unread(imap, settings.EMAIL_MP70)
 
-    if status != 'OK':
-        LOGGER.error('Server response failure: {}'.status)
-    LOGGER.info('Server lists {} unread emails'.format(len(uids)))
+    if status != "OK":
+        LOGGER.error(f"Server response failure: {status}")
+    LOGGER.info(f"Server lists {len(uids)} unread emails")
 
     if uids:
         for uid in uids:
             # Decode uid to a string if required.
             if isinstance(uid, bytes):
-                uid = uid.decode('utf-8')
+                uid = uid.decode("utf-8")
 
             # Fetch the email message.
             status, message = email_utils.email_fetch(imap, uid)
-            if status != 'OK':
-                LOGGER.error('Server response failure on fetching email UID {}: {}'.format(uid, status))
+            if status != "OK":
+                LOGGER.error(f"Server response failure on fetching email UID {uid}: {status}")
                 continue
             if device_type == "iriditrak":
                 result = save_iriditrak(message)
@@ -972,7 +998,7 @@ def harvest_tracking_email(device_type=None):
             status, response = email_utils.email_mark_read(imap, uid)
             status, response = email_utils.email_delete(imap, uid)
 
-    LOGGER.info("Created {} tracking points, flagged {} emails".format(created, flagged))
+    LOGGER.info(f"Created {created} tracking points, flagged {flagged} emails")
     imap.close()
     imap.logout()
 
