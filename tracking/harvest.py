@@ -3,7 +3,6 @@ import csv
 from datetime import datetime, timedelta
 from dbca_utils.utils import env
 from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from django.utils.encoding import force_text
 from django.db import connections, connection, transaction
@@ -24,6 +23,7 @@ from . import dbutils
 LOGGER = logging.getLogger('tracking')
 DT_PATTERN = "%Y-%m-%d %H:%M:%S"
 UTC = pytz.timezone("UTC")
+AWST = pytz.timezone("Australia/Perth")
 # Set the logging level for all azure-* libraries (the azure-storage-blob library uses this one).
 # Reference: https://learn.microsoft.com/en-us/azure/developer/python/sdk/azure-sdk-logging
 azure_logger = logging.getLogger("azure")
@@ -751,153 +751,118 @@ def save_dfes_avl():
     if not settings.DFES_URL:
         return
 
-    LOGGER.info(
-        "Query DFES API started, out of order buffer is {} seconds".format(
-            settings.DFES_OUT_OF_ORDER_BUFFER
-        )
-    )
-    latest = requests.get(
-        url=settings.DFES_URL,
-        auth=requests.auth.HTTPBasicAuth(settings.DFES_USER, settings.DFES_PASS),
-    ).json()["features"]
-    LOGGER.info("Query DFES API complete")
+    LOGGER.info("Query DFES API")
+    resp = requests.get(url=settings.DFES_URL, auth=(settings.DFES_USER, settings.DFES_PASS))
+    resp.raise_for_status()
+    features = resp.json()["features"]
+    LOGGER.info(f"DFES API returned {len(features)} features, processing")
 
-    latest_seen = None
-    try:
-        latest_seen = (
-            Device.objects.filter(source_device_type="dfes", seen__lt=timezone.now())
-            .latest("seen")
-            .seen
-        )
-    except ObjectDoesNotExist:
-        pass
-    # Can't gurantee that messages send by the vechicle will enter into the database in order,
-    # so add 5 minutes to allow disordered message will not be ignored within 5 minutes
-    earliest_seen = None
-    if latest_seen:
-        earliest_seen = latest_seen - timedelta(
-            seconds=settings.DFES_OUT_OF_ORDER_BUFFER
-        )
+    updated_device = 0
+    created_device = 0
+    skipped_device = 0
 
-    ignored = 0
-    updated = 0
-    created = 0
-    harvested = 0
-
-    for row in latest:
+    for row in features:
         if row["type"] == "Feature":
-            harvested += 1
-            prop = row["properties"]
-            if not prop["Time"]:
-                # Time is null, should be a illegal value, ignore it
-                ignored += 1
-                continue
-            seen = datetime.strptime(prop["Time"], "%Y-%m-%dT%H:%M:%S.%fZ").astimezone(UTC)
-            if earliest_seen and seen < earliest_seen:
-                # Already harvested.
-                ignored += 1
-                continue
-            elif latest_seen is None:
-                latest_seen = seen
-            elif seen > latest_seen:
-                latest_seen = seen
-            deviceid = str(prop["TrackerID"]).strip()
-            try:
-                device = Device.objects.get(deviceid=deviceid)
-                if seen == device.seen:
-                    # Already harvested.
-                    ignored += 1
-                    continue
-                updated += 1
-            except ObjectDoesNotExist:
-                device = Device(deviceid=deviceid)
-                created += 1
+            properties = row["properties"]
+            geometry = row["geometry"]
 
-            device.callsign = prop["VehicleName"]
-            device.callsign_display = prop["VehicleName"]
-            device.model = prop["Model"]
-            device.registration = "DFES - " + prop["Registration"][:32]
-            device.symbol = (prop["VehicleType"]).strip()
-            if device.symbol in [
-                "2.4 BROADACRE",
-                "2.4 RURAL",
-                "3.4",
-                "4.4",
-                "1.4 RURAL",
-                "2.4 URBAN",
-                "3.4 RURAL",
-                "3.4 SSSBFT",
-                "3.4 URBAN",
-                "4.4 BROADACRE",
-                "4.4 RURAL",
-            ]:
-                device.symbol = "gang truck"
-            elif device.symbol == "LIGHT TANKER":
-                device.symbol = "light unit"
-            elif device.symbol in [
-                "BUS 10 SEATER",
-                "BUS 21 SEATER",
-                "BUS 22 SEATER",
-                "INCIDENT CONTROL VEHICLE",
-                "MINI BUS 12 SEATER",
-            ]:
-                device.symbol = "comms bus"
-            elif device.symbol in [
-                "GENERAL RESCUE TRUCK",
-                "HAZMAT STRUCTURAL RESCUE",
-                "RESCUE VEHICLE",
-                "ROAD CRASH RESCUE TRUCK",
-                "SPECIALIST EQUIPMENT TENDER",
-                "TRUCK",
-            ]:
-                device.symbol = "tender"
-            elif device.symbol in [
-                "Crew Cab Utility w canopy",
-                "FIRST RESPONSE UNIT",
-                "FIRST RESPONSE VEHICLE",
-                "UTILITY",
-                "Utility",
-            ]:
-                device.symbol = "4 wheel drive ute"
-            elif device.symbol in [
-                "CAR (4WD)",
-                "PERSONNEL CARRIER",
-                "PERSONNEL CARRIER 11 SEATER",
-                "PERSONNEL CARRIER 5 SEATER",
-                "PERSONNEL CARRIER 6 SEATER",
-            ]:
-                device.symbol = "4 wheel drive passenger"
-            elif device.symbol == "CAR":
-                device.symbol = "2 wheel drive"
+            if "Time" not in properties or properties["Time"] is None:
+                skipped_device += 1
+                continue
+
+            deviceid = str(properties["TrackerID"]).strip()
+            device, created = Device.objects.get_or_create(source_device_type="dfes", deviceid=deviceid)
+
+            # Parse the timestamp.
+            seen = datetime.strptime(properties["Time"], "%Y-%m-%dT%H:%M:%S.%fZ").astimezone(AWST)
+
+            # Parse the geometry.
+            point = "POINT ({} {})".format(geometry["coordinates"][0], row["geometry"]["coordinates"][1])
+
+            if created:
+                created_device += 1
+                device.callsign = properties["VehicleName"]
+                device.callsign_display = properties["VehicleName"]
+                device.model = properties["Model"]
+                device.registration = "DFES - " + properties["Registration"][:32]
+                device.symbol = (properties["VehicleType"]).strip()
+                if device.symbol in [
+                    "2.4 BROADACRE",
+                    "2.4 RURAL",
+                    "3.4",
+                    "4.4",
+                    "1.4 RURAL",
+                    "2.4 URBAN",
+                    "3.4 RURAL",
+                    "3.4 SSSBFT",
+                    "3.4 URBAN",
+                    "4.4 BROADACRE",
+                    "4.4 RURAL",
+                ]:
+                    device.symbol = "gang truck"
+                elif device.symbol == "LIGHT TANKER":
+                    device.symbol = "light unit"
+                elif device.symbol in [
+                    "BUS 10 SEATER",
+                    "BUS 21 SEATER",
+                    "BUS 22 SEATER",
+                    "INCIDENT CONTROL VEHICLE",
+                    "MINI BUS 12 SEATER",
+                ]:
+                    device.symbol = "comms bus"
+                elif device.symbol in [
+                    "GENERAL RESCUE TRUCK",
+                    "HAZMAT STRUCTURAL RESCUE",
+                    "RESCUE VEHICLE",
+                    "ROAD CRASH RESCUE TRUCK",
+                    "SPECIALIST EQUIPMENT TENDER",
+                    "TRUCK",
+                ]:
+                    device.symbol = "tender"
+                elif device.symbol in [
+                    "Crew Cab Utility w canopy",
+                    "FIRST RESPONSE UNIT",
+                    "FIRST RESPONSE VEHICLE",
+                    "UTILITY",
+                    "Utility",
+                ]:
+                    device.symbol = "4 wheel drive ute"
+                elif device.symbol in [
+                    "CAR (4WD)",
+                    "PERSONNEL CARRIER",
+                    "PERSONNEL CARRIER 11 SEATER",
+                    "PERSONNEL CARRIER 5 SEATER",
+                    "PERSONNEL CARRIER 6 SEATER",
+                ]:
+                    device.symbol = "4 wheel drive passenger"
+                elif device.symbol == "CAR":
+                    device.symbol = "2 wheel drive"
+                else:
+                    device.symbol = "unknown"
+                if device.registration.strip() == "DFES -":
+                    device.registration = "DFES - No Rego"
+                device.save()
             else:
-                device.symbol = "unknown"
-            if device.registration.strip() == "DFES -":
-                device.registration = "DFES - No Rego"
-            device.velocity = int(prop["Speed"]) * 1000
-            device.heading = prop["Direction"]
-            device.seen = seen
-            device.point = "POINT ({} {})".format(
-                row["geometry"]["coordinates"][0], row["geometry"]["coordinates"][1]
-            )
-            device.source_device_type = "dfes"
-            device.deleted = False
-            device.save()
+                updated_device += 1
 
-            LoggedPoint.objects.create(
-                device=device,
-                seen=device.seen,
-                velocity=device.velocity,
-                heading=device.heading,
-                point=device.point,
-                source_device_type=device.source_device_type,
-                raw=json.dumps(row),
-            )
+            if not device.seen or device.seen < seen:
+                device.seen = seen
+                device.point = point
+                device.velocity = int(properties["Speed"]) * 1000
+                device.heading = properties["Direction"]
+                device.save()
 
-    LOGGER.info(
-        "Harvested {} from DFES: created {}, updated {}, ignored {}, earliest seen {}, latest seen {}.".format(
-            harvested, created, updated, ignored, earliest_seen, latest_seen
-        )
-    )
+            try:
+                loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point, source_device_type="dfes")
+            except Exception:
+                LOGGER.exception(f"Exception during get_or_create of LoggedPoint: device {device}, seen {seen}, point {point}")
+
+            if created:
+                loggedpoint.velocity = int(properties["Speed"]) * 1000
+                loggedpoint.heading = properties["Direction"]
+                loggedpoint.save()
+
+    LOGGER.info(f"Created {created_device}, updated {updated_device}, skipped {skipped_device}")
 
 
 def save_mp70(msg):
