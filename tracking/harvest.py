@@ -23,6 +23,7 @@ from . import dbutils
 
 LOGGER = logging.getLogger('tracking')
 DT_PATTERN = "%Y-%m-%d %H:%M:%S"
+UTC = pytz.timezone("UTC")
 # Set the logging level for all azure-* libraries (the azure-storage-blob library uses this one).
 # Reference: https://learn.microsoft.com/en-us/azure/developer/python/sdk/azure-sdk-logging
 azure_logger = logging.getLogger("azure")
@@ -44,7 +45,7 @@ def parse_sbd(sbd):
     device = Device.objects.get_or_create(deviceid=sbd["ID"])[0]
 
     # Parse the timestamp.
-    seen = datetime.fromtimestamp(float(sbd["TU"])).astimezone(pytz.timezone("UTC"))
+    seen = datetime.fromtimestamp(float(sbd["TU"])).astimezone(UTC)
 
     # Parse the geometry.
     # Assume longitude and/or latitude == 0 is bad.
@@ -282,40 +283,44 @@ def save_tracplus():
     LOGGER.info("Harvesting TracPlus feed")
     content = requests.get(settings.TRACPLUS_URL).content.decode("utf-8")
     latest = list(csv.DictReader(content.split("\r\n")))
-    updated = 0
+    LOGGER.info(f"{len(latest)} records downloaded")
+    updates = 0
 
     for row in latest:
+        # Parse the point as WKT.
+        point = f"POINT ({row['Longitude']} {row['Latitude']})"
+        seen = datetime.strptime(row["Transmitted"], "%Y-%m-%d %H:%M:%S").astimezone(UTC)
+
+        # Create/update the device.
         device = Device.objects.get_or_create(deviceid=row["Device IMEI"])[0]
         device.callsign = row["Asset Name"]
         device.callsign_display = row["Asset Name"]
         device.model = row["Asset Model"]
         device.registration = row["Asset Regn"][:32]
-        device.velocity = int(row["Speed"]) * 1000
+        device.velocity = int(row["Speed"]) * 1000  # Convert km/h to m/h.
         device.altitude = row["Altitude"]
         device.heading = row["Track"]
-        device.seen = timezone.make_aware(
-            datetime.strptime(row["Transmitted"], "%Y-%m-%d %H:%M:%S"),
-            pytz.timezone("UTC"),
-        )
-        device.point = "POINT ({} {})".format(row["Longitude"], row["Latitude"])
+        device.seen = seen
+        device.point = point
         device.source_device_type = "tracplus"
         device.deleted = False
         if row["Asset Type"] in tracplus_symbol_map:
             device.symbol = tracplus_symbol_map[row["Asset Type"]]
         device.save()
-        lp, new = LoggedPoint.objects.get_or_create(device=device, seen=device.seen)
+
+        # Create/update a LoggedPoint.
+        lp, new = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
         lp.velocity = device.velocity
         lp.heading = device.heading
         lp.altitude = device.altitude
-        lp.point = device.point
         lp.seen = device.seen
         lp.source_device_type = device.source_device_type
         lp.raw = json.dumps(row)
         lp.save()
         if new:
-            updated += 1
+            updates += 1
 
-    LOGGER.info("Update {} TracPlus units; total {}".format(updated, len(latest)))
+    LOGGER.info(f"Updated {updates} TracPlus devices")
 
 
 fleetcare_dt_patterns = [
@@ -790,10 +795,7 @@ def save_dfes_avl():
                 # Time is null, should be a illegal value, ignore it
                 ignored += 1
                 continue
-            seen = timezone.make_aware(
-                datetime.strptime(prop["Time"], "%Y-%m-%dT%H:%M:%S.%fZ"),
-                pytz.timezone("UTC"),
-            )
+            seen = datetime.strptime(prop["Time"], "%Y-%m-%dT%H:%M:%S.%fZ").astimezone(UTC)
             if earliest_seen and seen < earliest_seen:
                 # Already harvested.
                 ignored += 1
@@ -1317,10 +1319,7 @@ def parse_tracplus_data_from_raw(raw):
         "velocity": int(data["Speed"]) * 1000,
         "altitude": data["Altitude"],
         "heading": data["Track"],
-        "seen": timezone.make_aware(
-            datetime.strptime(data["Transmitted"], "%Y-%m-%d %H:%M:%S"),
-            pytz.timezone("UTC"),
-        ),
+        "seen": datetime.strptime(data["Transmitted"], "%Y-%m-%d %H:%M:%S").astimezone(UTC),
         "point": "POINT ({} {})".format(data["Longitude"], data["Latitude"]),
     }
 
@@ -1329,9 +1328,7 @@ def parse_sbd_data_from_raw(raw):
     sbd = json.loads(raw)
     return {
         "point": "POINT({LG} {LT})".format(**sbd),
-        "seen": timezone.make_aware(
-            datetime.fromtimestamp(float(sbd["TU"])), pytz.timezone("UTC")
-        ),
+        "seen": datetime.fromtimestamp(float(sbd["TU"])).astimezone(UTC),
         "heading": abs(sbd.get("DR", 0)),
         "velocity": abs(sbd.get("VL", 0)),
         "altitude": int(sbd.get("AL", 0)),
@@ -1344,10 +1341,7 @@ def parse_dfes_data_from_raw(device, raw):
     return {
         "velocity": int(prop["Speed"]) * 1000,
         "heading": prop["Direction"],
-        "seen": timezone.make_aware(
-            datetime.strptime(prop["Time"], "%Y-%m-%dT%H:%M:%S.%fZ"),
-            pytz.timezone("UTC"),
-        ),
+        "seen": datetime.strptime(prop["Time"], "%Y-%m-%dT%H:%M:%S.%fZ").astimezone(UTC),
         "point": "POINT ({} {})".format(
             data["geometry"]["coordinates"][0], data["geometry"]["coordinates"][1]
         ),
