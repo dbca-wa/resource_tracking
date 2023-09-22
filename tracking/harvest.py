@@ -678,9 +678,7 @@ def save_fleetcare_db(staging_table="logentry", loggedpoint_model=LoggedPoint, l
                 invalid_lp = lp
             else:
                 while True:
-                    lp, new = loggedpoint_model.objects.get_or_create(
-                        device=device, seen=seen
-                    )
+                    lp, new = loggedpoint_model.objects.get_or_create(device=device, seen=seen, point=point)
                     if new:
                         break
                     elif date_format_index is None:
@@ -698,7 +696,6 @@ def save_fleetcare_db(staging_table="logentry", loggedpoint_model=LoggedPoint, l
             lp.velocity = velocity
             lp.heading = heading
             lp.altitude = altitude
-            lp.point = point
 
             # If we think that we have an error with the parsed date, set the source_device_type as
             # "fleetcare_error" to flag the LoggedPoint for investigation later.
