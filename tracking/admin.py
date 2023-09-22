@@ -10,7 +10,7 @@ class DeviceAdmin(ModelAdmin):
     actions = None
     date_hierarchy = "seen"
     list_display = (
-        "deviceid", "source_device_type", "registration", "callsign", "rin_display", "symbol", "district_display",
+        "id", "deviceid", "source_device_type", "registration", "callsign", "rin_display", "symbol", "district_display",
         "seen", "hidden", "internal_only",
     )
     list_filter = ("symbol", "district", "source_device_type", "hidden", "internal_only")
