@@ -50,7 +50,6 @@ def parse_sbd(sbd):
     # Parse the geometry.
     # Assume longitude and/or latitude == 0 is bad.
     if sbd.get("LG", 0) == 0 or sbd.get("LT", 0) == 0:
-        LOGGER.warning(f"Bad geometry: {sbd}")
         return None
     point = "POINT({LG} {LT})".format(**sbd)
 
@@ -892,7 +891,7 @@ def save_mp70(msg):
     try:
         point = parse_sbd(sbd)
         if not point:
-            LOGGER.warning(f"Bad geometry while parsing MP70 message from device ID {sbd['ID']}")
+            LOGGER.warning(f"Bad geometry while parsing MP70 message from device ID {sbd['ID']}: {sbd['LT']}, {sbd['LG']}")
             return False
         return point
     except:
@@ -954,8 +953,8 @@ def harvest_tracking_email(device_type=None):
                 created += 1
 
             # Mark email as read and flag it for deletion.
-            #status, response = email_utils.email_mark_read(imap, uid)
-            #status, response = email_utils.email_delete(imap, uid)
+            status, response = email_utils.email_mark_read(imap, uid)
+            status, response = email_utils.email_delete(imap, uid)
 
     LOGGER.info(f"Created {created} tracking points, flagged {flagged} emails")
     imap.close()
