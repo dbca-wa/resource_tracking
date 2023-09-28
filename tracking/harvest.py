@@ -765,8 +765,8 @@ def save_dfes_avl():
             deviceid = str(properties["TrackerID"]).strip()
             device, created = Device.objects.get_or_create(source_device_type="dfes", deviceid=deviceid)
 
-            # Parse the timestamp.
-            seen = datetime.strptime(properties["Time"], "%Y-%m-%dT%H:%M:%S.%fZ").astimezone(AWST)
+            # Parse the timestamp (returns as UTC timestamp).
+            seen = UTC.localize(datetime.strptime(properties["Time"], "%Y-%m-%dT%H:%M:%S.%fZ"))
 
             # Parse the geometry.
             point = "POINT ({} {})".format(geometry["coordinates"][0], row["geometry"]["coordinates"][1])
