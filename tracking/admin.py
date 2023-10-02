@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib.admin import ModelAdmin, register, AdminSite
 from django.urls import reverse
 from django.http import HttpResponseRedirect
-from .models import Device, LoggedPoint
+from .models import Device
 
 
 @register(Device)
@@ -62,20 +62,6 @@ class DeviceSSSAdmin(DeviceAdmin):
 
     def add_view(self, request, obj=None):
         return HttpResponseRedirect(reverse('sss_admin:tracking_device_changelist'))
-
-
-@register(LoggedPoint)
-class LoggedPointAdmin(ModelAdmin):
-    list_display = ("seen", "device")
-    list_filter = ("device__symbol", "device__district")
-    search_fields = ("device__deviceid", "device__registration")
-    date_hierarchy = "seen"
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
 
 
 class TrackingAdminSite(AdminSite):
