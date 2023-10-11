@@ -1,4 +1,3 @@
 resources:
 - deployment.yaml
-- persistentvolumeclaim.yaml
-- statefulset.yaml
+- service.yaml

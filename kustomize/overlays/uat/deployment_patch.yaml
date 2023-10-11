@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: resourcetracking
-        image: ghcr.io/dbca-wa/resource_tracking:latest
+        image: ghcr.io/dbca-wa/resource_tracking
         imagePullPolicy: Always
         env:
         - name: DATABASE_URL
@@ -23,11 +23,11 @@ spec:
             secretKeyRef:
               name: resourcetracking-env-uat
               key: DATABASE_URL
-        - name: DFES_OUT_OF_ORDER_BUFFER
+        - name: SECRET_KEY
           valueFrom:
             secretKeyRef:
               name: resourcetracking-env-uat
-              key: DFES_OUT_OF_ORDER_BUFFER
+              key: SECRET_KEY
         - name: DFES_PASS
           valueFrom:
             secretKeyRef:
@@ -58,11 +58,6 @@ spec:
             secretKeyRef:
               name: resourcetracking-env-uat
               key: EMAIL_USER
-        - name: FCARE_URL
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-uat
-              key: FCARE_URL
         - name: FLEETCARE_CONNECTION_STRING
           valueFrom:
             secretKeyRef:
@@ -83,8 +78,3 @@ spec:
             secretKeyRef:
               name: resourcetracking-env-uat
               key: TRACPLUS_URL
-        - name: SECRET_KEY
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-uat
-              key: SECRET_KEY
