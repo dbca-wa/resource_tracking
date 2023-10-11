@@ -10,6 +10,7 @@ resources:
 - ../../base
 - ingress.yaml
 - pdb.yaml
+- cronjob.yaml
 labels:
 - includeSelectors: true
   pairs:

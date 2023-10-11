@@ -58,11 +58,6 @@ spec:
             secretKeyRef:
               name: resourcetracking-env-prod
               key: EMAIL_USER
-        - name: FCARE_URL
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-prod
-              key: FCARE_URL
         - name: FLEETCARE_CONNECTION_STRING
           valueFrom:
             secretKeyRef:
