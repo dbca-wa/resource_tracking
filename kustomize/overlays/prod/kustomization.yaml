@@ -1,17 +1,19 @@
-bases:
-- ../../base
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 nameSuffix: -prod
 secretGenerator:
 - name: resourcetracking-env
+  type: Opaque
   envs:
   - .env
-commonLabels:
-  variant: prod
 resources:
-- service.yaml
+- ../../base
 - ingress.yaml
-- cronjob_harvest_emails.yaml
-patchesStrategicMerge:
-- deployment_prod_patch.yaml
-- statefulset_prod_patch.yaml
-- persistentvolumeclaim_prod_patch.yaml
+- pdb.yaml
+labels:
+- includeSelectors: true
+  pairs:
+    variant: prod
+patches:
+- path: deployment_patch.yaml
+- path: service_patch.yaml
