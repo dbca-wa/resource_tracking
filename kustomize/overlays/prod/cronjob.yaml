@@ -3,7 +3,7 @@ kind: CronJob
 metadata:
   name: resourcetracking-harvest-email
 spec:
-  schedule: '*/3 * * * *'
+  schedule: '*/2 * * * *'
   concurrencyPolicy: Forbid
   jobTemplate:
     spec:
@@ -11,6 +11,7 @@ spec:
       activeDeadlineSeconds: 300
       template:
         spec:
+          restartPolicy: Never
           containers:
           - name: resourcetracking-harvest-email
             image: ghcr.io/dbca-wa/resource_tracking:1.3.7
@@ -51,4 +52,97 @@ spec:
                 drop:
                   - ALL
               readOnlyRootFilesystem: false
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: resourcetracking-harvest-dfes
+spec:
+  schedule: '* * * * *'
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      parallelism: 1
+      activeDeadlineSeconds: 120
+      template:
+        spec:
           restartPolicy: Never
+          containers:
+          - name: resourcetracking-harvest-email
+            image: ghcr.io/dbca-wa/resource_tracking:1.3.7
+            imagePullPolicy: IfNotPresent
+            command:
+            - /bin/bash
+            - -c
+            - python manage.py harvest_dfes_feed
+            env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: DATABASE_URL
+            - name: DFES_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: DFES_PASS
+            - name: DFES_URL
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: DFES_URL
+            - name: DFES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: DFES_USER
+            securityContext:
+              runAsNonRoot: true
+              privileged: false
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
+              readOnlyRootFilesystem: false
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: resourcetracking-harvest-tracplus
+spec:
+  schedule: '* * * * *'
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      parallelism: 1
+      activeDeadlineSeconds: 120
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+          - name: resourcetracking-harvest-email
+            image: ghcr.io/dbca-wa/resource_tracking:1.3.7
+            imagePullPolicy: IfNotPresent
+            command:
+            - /bin/bash
+            - -c
+            - python manage.py harvest_tracplus
+            env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: DATABASE_URL
+            - name: TRACPLUS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: TRACPLUS_URL
+            securityContext:
+              runAsNonRoot: true
+              privileged: false
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
+              readOnlyRootFilesystem: false
