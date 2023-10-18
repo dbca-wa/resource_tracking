@@ -1,5 +1,5 @@
 # Prepare the base environment.
-FROM python:3.10.12-slim-bookworm as builder_base_rt
+FROM python:3.10.13-slim as builder_base_rt
 MAINTAINER asi@dbca.wa.gov.au
 LABEL org.opencontainers.image.source https://github.com/dbca-wa/resource_tracking
 
@@ -18,7 +18,7 @@ COPY poetry.lock pyproject.toml ./
 RUN poetry config virtualenvs.create false \
   && poetry install --no-interaction --no-ansi --only main
 
-# Install a non-root user.
+# Create a non-root user.
 ARG UID=10001
 ARG GID=10001
 RUN groupadd -g "${GID}" appuser \
