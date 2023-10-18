@@ -10,6 +10,7 @@ spec:
     spec:
       containers:
       - name: resourcetracking
+        image: ghcr.io/dbca-wa/resource_tracking
         env:
         - name: ALLOWED_DOMAINS
           value: ".dbca.wa.gov.au"

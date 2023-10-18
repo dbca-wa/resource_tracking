@@ -15,7 +15,6 @@ spec:
     spec:
       containers:
       - name: resourcetracking
-        image: ghcr.io/dbca-wa/resource_tracking
         imagePullPolicy: Always
         env:
         - name: DATABASE_URL
