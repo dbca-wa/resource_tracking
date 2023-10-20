@@ -1,6 +1,6 @@
 from datetime import timedelta, datetime
 from django.core.serializers import serialize
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseBadRequest
 from django.views.generic import View
 from django.urls import path
 from django.utils.decorators import method_decorator
@@ -16,14 +16,7 @@ class GeojsonView(View):
     Base class for geojosn view
     """
     http_method_names = ['get']
-
     _srid = None
-
-    def __init__(self):
-        """
-        load settings from djago.conf.settings
-        """
-        tmp = self.srid
 
     @method_decorator(logged_in_or_basicauth(realm="Resource Tracking"))
     def dispatch(self, *args, **kwargs):
@@ -44,7 +37,7 @@ class DevicesView(GeojsonView):
 
         return DevicesView._srid
 
-    def get(self, request):
+    def get(self, request, *args, **kwargs):
         """
         generate geojson data
         """
@@ -81,8 +74,7 @@ class DevicesView(GeojsonView):
                 'age_text',
                 'icon'))
 
-        geojson_type = ('application/vnd.geo+json', None)
-        response = HttpResponse(geojson, content_type=geojson_type)
+        response = HttpResponse(geojson, content_type='application/vnd.geo+json')
 
         return response
 
@@ -100,50 +92,50 @@ class LoggedPointView(GeojsonView):
 
         return LoggedPointView._srid
 
-    def get(self, request, deviceid=None):
-        """
-        generate geojson data
-        """
+    def dispatch(self, *args, **kwargs):
+        if "device_id" not in self.kwargs:
+            return HttpResponseBadRequest("Missing device_id")
+
+        return super().dispatch(*args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
         geojson = "{}"
-        try:
-            deviceid = int(deviceid)
-        except:
-            deviceid = None
-        if deviceid:
-            start = request.GET.get("start", default=None)
-            if start is None:
-                # start is missing, use the default value: one day before
+
+        deviceid = kwargs["device_id"]
+        start = request.GET.get("start", default=None)
+
+        if start is None:
+            # start is missing, use the default value: one day before
+            start = timezone.now() - timedelta(days=1)
+        else:
+            try:
+                # parsing the start date with the date format: iso 8601
+                start = datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
+            except:
+                # Failed to parse the start date, use the default value:
+                # one day before
                 start = timezone.now() - timedelta(days=1)
-            else:
-                try:
-                    # parsing the start date with the date format: iso 8601
-                    start = datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
-                except:
-                    # Failed to parse the start date, use the default value:
-                    # one day before
-                    start = timezone.now() - timedelta(days=1)
 
-            end = request.GET.get("end", default=None)
-            if end is not None:
-                try:
-                    # parsing the end date with the date format: iso 8601
-                    end = datetime.strptime(end, "%Y-%m-%d %H:%M:%S")
-                except:
-                    end = None
+        end = request.GET.get("end", default=None)
+        if end is not None:
+            try:
+                # parsing the end date with the date format: iso 8601
+                end = datetime.strptime(end, "%Y-%m-%d %H:%M:%S")
+            except:
+                end = None
 
-            # ignore the bbox
-            q = LoggedPoint.objects.filter(device_id=deviceid)
+        # ignore the bbox
+        q = LoggedPoint.objects.filter(device_id=deviceid)
 
-            if start:
-                q = q.filter(seen__gte=start)
+        if start:
+            q = q.filter(seen__gte=start)
 
-            if end:
-                q = q.filter(seen__lt=end)
+        if end:
+            q = q.filter(seen__lt=end)
 
-            geojson = self.get_geojson(q)
+        geojson = self.get_geojson(q)
 
-        geojson_type = ('application/vnd.geo+json', None)
-        response = HttpResponse(geojson, content_type=geojson_type)
+        response = HttpResponse(geojson, content_type='application/vnd.geo+json')
 
         return response
 
@@ -157,9 +149,7 @@ class HistoryView(LoggedPointView):
     """
 
     def get_geojson(self, q):
-        """
-        generate geojson data
-        """
+
         return serialize('geojson', q, geometry_field='point', srid=self.srid or "4326", properties=(
             'id', 'heading', 'velocity', 'altitude', 'seen', 'raw', 'device_id'))
 
@@ -170,9 +160,6 @@ class RouteView(LoggedPointView):
     """
 
     def get_geojson(self, q):
-        """
-        generate geojson data
-        """
 
         # add linestring spatial data and label to convert point to line.
         start_point = None
