@@ -19,6 +19,7 @@ django-geojson = "4.0.0"
 unicodecsv = "0.14.1"
 whitenoise = {version = "6.5.0", extras = ["brotli"]}
 azure-storage-blob = "12.17.0"
+sentry-sdk = {version = "1.32.0", extras = ["django"]}
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.13.0"

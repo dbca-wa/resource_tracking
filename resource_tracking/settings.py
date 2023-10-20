@@ -146,3 +146,15 @@ LOGGING = {
 
 # Tastypie settings
 TASTYPIE_DEFAULT_FORMATS = ['json']
+
+# Sentry settings
+SENTRY_DSN = env('SENTRY_DSN', None)
+if SENTRY_DSN:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        # Set traces_sample_rate to 1.0 to capture 100%
+        # of transactions for performance monitoring.
+        traces_sample_rate=1.0,
+    )
