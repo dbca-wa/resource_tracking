@@ -549,21 +549,21 @@ Django = ">=3.2"
 
 [[package]]
 name = "django-geojson"
-version = "2.12.0"
+version = "4.0.0"
 description = "Serve vectorial map layers with Django"
 optional = false
-python-versions = "*"
+python-versions = ">=3.5"
 files = [
-    {file = "django-geojson-2.12.0.tar.gz", hash = "sha256:7a892e1f8f17f10ffbced9f737c347eae975eb340cd3f00bc9e3896ecce4135d"},
+    {file = "django-geojson-4.0.0.tar.gz", hash = "sha256:7c2085ef0d4b20f8538dcecb74c614369f5a076e9512c7516699a54c1639cb00"},
+    {file = "django_geojson-4.0.0-py3-none-any.whl", hash = "sha256:0671805adb329137b981be2e3080a81cd6ea413e7e370872d608da8a655d1b9b"},
 ]
 
 [package.dependencies]
-Django = "*"
-six = "*"
+Django = ">=3.2"
 
 [package.extras]
 docs = ["sphinx", "sphinx-autobuild"]
-field = ["django-leaflet (>=0.12)", "jsonfield"]
+field = ["django-leaflet (>=0.12)"]
 
 [[package]]
 name = "django-tastypie"
@@ -1126,4 +1126,4 @@ brotli = ["Brotli"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "7f2ffca06e403274fac0b673c51722b426fbc536ab9bbdfeb6ab51ec4aec85e1"
+content-hash = "54426b22b68dbb6e60297ea880b17a937fe41a21f654766b06a4c4628ddbe952"
