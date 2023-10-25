@@ -43,3 +43,8 @@ class HarvestTestCase(TestCase):
         """Test the parse_beam_payload function
         """
         self.assertTrue(parse_beam_payload(IRIDITRAK_PAYLOAD_VALID))
+
+    def test_parse_spot_message(self):
+        """TODO: test the parse_spot_message function
+        """
+        pass
