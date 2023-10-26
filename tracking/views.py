@@ -1,13 +1,12 @@
 from datetime import datetime, timedelta
 from django.contrib.gis.geos import LineString
 from django.core.serializers import serialize
-from django.urls import reverse
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-import requests
 
+from tracking.api import CSVSerializer
 from tracking.basic_auth import logged_in_or_basicauth
 from tracking.models import Device, LoggedPoint
 
@@ -26,34 +25,32 @@ class DevicesView(GeojsonView):
 
     def get(self, request, *args, **kwargs):
 
+        if "days" in request.GET and request.GET["days"]:
+            days = request.GET["days"]
+        else:
+            days = 14
+
+        qs = Device.objects.filter(seen__gte=timezone.now() - timedelta(days=days))
+
         # CSV format download
         if self.format == "csv":
-            api_url = reverse('api_dispatch_list', kwargs={'api_name': 'v1', 'resource_name': 'device'})
-            params = {'limit': 10000, 'format': 'csv'}
-            # Allow filtering by ``seen_age__lte=<minutes>`` query param
-            if 'deviceid__in' in request.GET:
-                params['deviceid__in'] = request.GET['deviceid__in']
-            if 'seen_age__lte' in request.GET:
-                params['seen_age__lte'] = request.GET['seen_age__lte']
-            r = requests.get(request.build_absolute_uri(api_url), params=params, cookies=request.COOKIES)
+            data = {"objects": []}
+            for device in qs:
+                d = device.__dict__
+                d.pop("_state", None)
+                data["objects"].append(d)
 
-            if not r.status_code == 200:
-                r.raise_for_status()
-
+            serializer = CSVSerializer()
+            content = serializer.to_csv(data)
             timestamp = datetime.strftime(datetime.today(), "%Y-%m-%d_%H%M")
             filename = f'tracking_devices_{timestamp}.csv'
-            response = HttpResponse(r.content, content_type='text/csv')
-            response['Content-Disposition'] = f'attachment; filename={filename}'
-
+            response = HttpResponse(
+                content,
+                content_type='text/csv',
+                headers={'Content-Disposition': f'attachment; filename={filename}'},
+            )
         # GeoJSON format download
         else:
-            if "days" in request.GET and request.GET["days"]:
-                days = request.GET["days"]
-            else:
-                days = 14
-
-            qs = Device.objects.filter(seen__gte=timezone.now() - timedelta(days=days))
-
             geojson = serialize(
                 'geojson',
                 qs,
@@ -76,12 +73,17 @@ class DevicesView(GeojsonView):
                     'age_minutes',
                     'age_colour',
                     'age_text',
-                    'icon'))
+                    'icon',
+                )
+            )
 
             timestamp = datetime.strftime(datetime.today(), "%Y-%m-%d_%H%M")
             filename = f'tracking_devices_{timestamp}.geojson'
-            response = HttpResponse(geojson, content_type='application/vnd.geo+json')
-            response['Content-Disposition'] = f'attachment; filename={filename}'
+            response = HttpResponse(
+                geojson,
+                content_type='application/vnd.geo+json',
+                headers={'Content-Disposition': f'attachment; filename={filename}'},
+            )
 
         return response
 
@@ -143,9 +145,6 @@ class LoggedPointView(GeojsonView):
 
 
 class HistoryView(LoggedPointView):
-    """
-    Process http request and return device's history as geojson
-    """
 
     def get_geojson(self, qs):
 

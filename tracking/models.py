@@ -246,5 +246,5 @@ def user_pre_save(sender, instance, **kwargs):
 def user_post_save(sender, instance, **kwargs):
     # Add users to the 'Edit Resource Tracking Device' group so users can edit Device details
     # NOTE: does not work when saving user in Django Admin
-    g = Group.objects.get(name='Edit Resource Tracking Device')
+    g, created = Group.objects.get_or_create(name='Edit Resource Tracking Device')
     instance.groups.add(g)
