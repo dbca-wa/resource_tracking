@@ -13,10 +13,10 @@ jobs:
     name: Run Django Tests
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      DATABASE_URL: postgis://postgres:postgres@localhost:5432/postgres
     services:
-      db:
-        image: postgres:13-alpine
+      postgres:
+        image: postgis/postgis:13-3.1-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -24,6 +24,15 @@ jobs:
           - 5432:5432
         options: --mount type=tmpfs,destination=/var/lib/postgresql/data --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
+      #----------------------------------------------
+      # Install GDAL into the environment
+      #----------------------------------------------
+      - name: Install GDAL
+        id: install-gdal
+        run: |
+          sudo apt-add-repository ppa:ubuntugis/ubuntugis-unstable
+          sudo apt-get update
+          sudo apt-get install gdal-bin libgdal-dev
       #----------------------------------------------
       # Checkout repo and set up Python
       #----------------------------------------------
