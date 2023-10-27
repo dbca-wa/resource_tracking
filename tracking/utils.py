@@ -41,6 +41,7 @@ def parse_mp70_payload(payload):
             "longitude": float(payload[3]),
             "velocity": int(payload[4]),
             "heading": int(payload[5]),
+            "altitude": 0,
             "timestamp": time.mktime(datetime.strptime(payload[6], "%m/%d/%Y %H:%M:%S").timetuple()),
             "type": "mp70",
         }
@@ -63,6 +64,7 @@ def parse_spot_message(message):
             "longitude": float(message["X-SPOT-Longitude"]),
             "velocity": 0,
             "heading": 0,
+            "altitude": 0,
             "timestamp": time.mktime(parsedate(message["DATE"])),
             "type": "spot",
         }
