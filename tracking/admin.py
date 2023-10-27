@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib.admin import ModelAdmin, register, AdminSite
 from django.urls import reverse
 from django.http import HttpResponseRedirect
-from .models import Device, LoggedPoint
+from .models import Device
 
 
 @register(Device)
@@ -15,14 +15,24 @@ class DeviceAdmin(ModelAdmin):
     )
     list_filter = ("symbol", "district", "source_device_type", "hidden", "internal_only")
     search_fields = ("deviceid", "registration", "callsign_display", "rin_display", "symbol", "district_display")
-    readonly_fields = ("deviceid", "source_device_type")
+    readonly_fields = ("deviceid", "source_device_type", "seen")
     fieldsets = (
         ("Vehicle/Device details", {
             "description": """<p class="errornote">This is the live tracking database;
             changes made to these fields will apply to the Device Tracking map in all
             variants of the Spatial Support System.</p>
             """ if settings.PROD_SCARY_WARNING else "",
-            "fields": ("deviceid", "source_device_type", "district", "symbol", "callsign", "registration", "rin_number", "fire_use")
+            "fields": (
+                "deviceid",
+                "source_device_type",
+                "seen",
+                "district",
+                "symbol",
+                "callsign",
+                "registration",
+                "rin_number",
+                "fire_use",
+            ),
         }),
         ("Crew Details", {
             "fields": ("current_driver", "usual_driver", "usual_location")
@@ -52,20 +62,6 @@ class DeviceSSSAdmin(DeviceAdmin):
 
     def add_view(self, request, obj=None):
         return HttpResponseRedirect(reverse('sss_admin:tracking_device_changelist'))
-
-
-@register(LoggedPoint)
-class LoggedPointAdmin(ModelAdmin):
-    list_display = ("seen", "device")
-    list_filter = ("device__symbol", "device__district")
-    search_fields = ("device__deviceid", "device__registration")
-    date_hierarchy = "seen"
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
 
 
 class TrackingAdminSite(AdminSite):

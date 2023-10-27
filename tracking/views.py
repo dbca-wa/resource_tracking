@@ -1,124 +1,194 @@
-from django.conf import settings
-from django.urls import reverse
-from django.http import HttpResponse
-from django.shortcuts import render
 from datetime import datetime, timedelta
-import requests
-import json
-import unicodecsv
-import pytz
+from django.contrib.gis.geos import LineString
+from django.core.serializers import serialize
+from django.http import HttpResponse, HttpResponseBadRequest
+from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.generic import View
 
+from tracking.api import CSVSerializer
+from tracking.basic_auth import logged_in_or_basicauth
 from tracking.models import Device, LoggedPoint
 
 
-def device(request, device_id):
-    return render(request, "device.html", {
-        "device": Device.objects.get(pk=device_id)
-    })
+class GeojsonView(View):
+    http_method_names = ['get']
+    srid = 4326
+    format = "geojson"
+
+    @method_decorator(logged_in_or_basicauth(realm="Resource Tracking"))
+    def dispatch(self, *args, **kwargs):
+        return super(GeojsonView, self).dispatch(*args, **kwargs)
 
 
-def device_csv(request):
-    """Query the Device API CSV endpoint, return a file attachment.
+class DevicesView(GeojsonView):
+
+    def get(self, request, *args, **kwargs):
+
+        if "days" in request.GET and request.GET["days"]:
+            days = request.GET["days"]
+        else:
+            days = 14
+
+        qs = Device.objects.filter(seen__gte=timezone.now() - timedelta(days=days))
+
+        # CSV format download
+        if self.format == "csv":
+            data = {"objects": []}
+            for device in qs:
+                d = device.__dict__
+                d.pop("_state", None)
+                data["objects"].append(d)
+
+            serializer = CSVSerializer()
+            content = serializer.to_csv(data)
+            timestamp = datetime.strftime(datetime.today(), "%Y-%m-%d_%H%M")
+            filename = f'tracking_devices_{timestamp}.csv'
+            response = HttpResponse(
+                content,
+                content_type='text/csv',
+                headers={'Content-Disposition': f'attachment; filename={filename}'},
+            )
+        # GeoJSON format download
+        else:
+            geojson = serialize(
+                'geojson',
+                qs,
+                geometry_field='point',
+                srid=self.srid,
+                properties=(
+                    'id',
+                    'deviceid',
+                    'name',
+                    'callsign',
+                    'symbol',
+                    'rego',
+                    'make',
+                    'model',
+                    'category',
+                    'heading',
+                    'velocity',
+                    'altitude',
+                    'seen',
+                    'age_minutes',
+                    'age_colour',
+                    'age_text',
+                    'icon',
+                )
+            )
+
+            timestamp = datetime.strftime(datetime.today(), "%Y-%m-%d_%H%M")
+            filename = f'tracking_devices_{timestamp}.geojson'
+            response = HttpResponse(
+                geojson,
+                content_type='application/vnd.geo+json',
+                headers={'Content-Disposition': f'attachment; filename={filename}'},
+            )
+
+        return response
+
+
+class LoggedPointView(GeojsonView):
     """
-    api_url = reverse('api_dispatch_list', kwargs={'api_name': 'v1', 'resource_name': 'device'})
-    params = {'limit': 10000, 'format': 'csv'}
-    # Allow filtering by ``seen_age__lte=<minutes>`` query param
-    if 'deviceid__in' in request.GET:
-        params['deviceid__in'] = request.GET['deviceid__in']
-    if 'seen_age__lte' in request.GET:
-        params['seen_age__lte'] = request.GET['seen_age__lte']
-    r = requests.get(request.build_absolute_uri(api_url), params=params, cookies=request.COOKIES)
+    Process http request and return device's history as geojson
+    """
 
-    if not r.status_code == 200:
-        r.raise_for_status()
+    def dispatch(self, *args, **kwargs):
+        if "device_id" not in self.kwargs:
+            return HttpResponseBadRequest("Missing device_id")
 
-    response = HttpResponse(r.content, content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename=tracking_devices_' + datetime.strftime(datetime.today(), "%Y-%m-%d_%H%M") + '.csv'
-    return response
+        return super().dispatch(*args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        geojson = "{}"
+
+        deviceid = kwargs["device_id"]
+        start = request.GET.get("start", default=None)
+
+        if start is None:
+            # start is missing, use the default value: one day before
+            start = timezone.now() - timedelta(days=1)
+        else:
+            try:
+                # parsing the start date with the date format: iso 8601
+                start = datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
+            except:
+                # Failed to parse the start date, use the default value:
+                # one day before
+                start = timezone.now() - timedelta(days=1)
+
+        end = request.GET.get("end", default=None)
+        if end is not None:
+            try:
+                # parsing the end date with the date format: iso 8601
+                end = datetime.strptime(end, "%Y-%m-%d %H:%M:%S")
+            except:
+                end = None
+
+        # ignore the bbox
+        q = LoggedPoint.objects.filter(device_id=deviceid)
+
+        if start:
+            q = q.filter(seen__gte=start)
+
+        if end:
+            q = q.filter(seen__lt=end)
+
+        geojson = self.get_geojson(q)
+
+        response = HttpResponse(geojson, content_type='application/vnd.geo+json')
+
+        return response
+
+    def get_geojson(q):
+        return "{}"
 
 
-def get_vehicles(request):
-    if request.is_ajax():
-        term = request.GET.get('term', '')
-        r = requests.get(settings.KMI_VEHICLE_BASE_URL + "&CQL_FILTER=rego%20ilike%20%27%25" + term + "%25%27", auth=(settings.EMAIL_USER, settings.EMAIL_PASSWORD))
-        vehicle_features = json.loads(r.content).get('features')
-        results = []
-        for vehicle in vehicle_features:
-            vehicle_json = {}
-            vehicle_json['value'] = vehicle.get('properties').get('rego')
-            vehicle_json['label'] = vehicle.get('properties').get('rego') + ', ' + vehicle.get('properties').get('make_desc') + ', ' +\
-                vehicle.get('properties').get('model_desc') + ', ' + vehicle.get('properties').get('category_desc')
-            results.append(vehicle_json)
-        data = json.dumps(results)
-    else:
-        data = ''
-    mimetype = 'application/json'
-    return HttpResponse(data, mimetype)
+class HistoryView(LoggedPointView):
+
+    def get_geojson(self, qs):
+
+        return serialize(
+            'geojson',
+            qs,
+            geometry_field='point',
+            srid=self.srid,
+            properties=(
+                'id', 'heading', 'velocity', 'altitude', 'seen', 'raw', 'device_id',
+            ),
+        )
 
 
-def export_stop_start_points(request):
+class RouteView(LoggedPointView):
 
-    query_list = []
-    try:
-        fromdate = request.GET['fromdate']
-    except:
-        fromdate = None
-    try:
-        todate = request.GET['todate']
-    except:
-        todate = None
+    def get_geojson(self, q):
 
-    if fromdate and todate:
-        try:
-            fromdate = pytz.timezone("Australia/Perth").localize(datetime.strptime(fromdate, '%d-%m-%Y'))
-            fromdate = fromdate.astimezone(pytz.UTC)
-            todate = pytz.timezone("Australia/Perth").localize(datetime.strptime(todate, '%d-%m-%Y'))
-            todate = todate.astimezone(pytz.UTC)
-        except:
-            pass
-    elif fromdate:
-        try:
-            fromdate = pytz.timezone("Australia/Perth").localize(datetime.strptime(fromdate, '%d-%m-%Y'))
-            fromdate = fromdate.astimezone(pytz.UTC)
-            todate = fromdate + timedelta(days=30)
-        except:
-            pass
-    elif todate:
-        try:
-            todate = pytz.timezone("Australia/Perth").localize(datetime.strptime(todate, '%d-%m-%Y'))
-            todate = todate.astimezone(pytz.UTC)
-            fromdate = todate + timedelta(days=-30)
-        except:
-            pass
-    else:
-        fromdate = pytz.utc.localize(datetime.utcnow()) + timedelta(days=-30)
-        todate = pytz.utc.localize(datetime.utcnow())
+        # add linestring spatial data and label to convert point to line.
+        start_point = None
+        for p in q:
+            if start_point is not None:
+                setattr(
+                    start_point, "route", LineString(
+                        start_point.point, p.point))
+                setattr(
+                    start_point,
+                    "label",
+                    "{0} to {1}".format(
+                        start_point.seen.strftime(
+                            "%H:%M:%S") if start_point.seen else "",
+                        p.seen.strftime("%H:%M:%S") if p.seen else ""))
 
-    fromdatetext = fromdate.astimezone(pytz.timezone("Australia/Perth"))
-    todatetext = todate.astimezone(pytz.timezone("Australia/Perth"))
-    filename = 'SSS_LoggedPoint_{}-{}.csv'.format(fromdatetext.strftime('%Y%m%d'), todatetext.strftime('%Y%m%d'))
-    points = LoggedPoint.objects.filter(seen__gte=fromdate, seen__lte=todate, message__in=(1, 2, 25, 26)).order_by('seen')
+            start_point = p
 
-    for p in points:
-        seen = datetime.strftime(p.seen.astimezone(pytz.timezone("Australia/Perth")), "%d-%m-%Y %H:%M:%S")
-        device_id = p.device.deviceid
-        message = p.get_message_display()
-        latitude = p.point.y
-        longitude = p.point.x
-        vehicle_id = p.device.callsign
-        rego = p.device.registration
-        district = p.device.get_district_display()
-        symbol = p.device.get_symbol_display()
+        # exclude the last point, because the last point is not a line string.
+        q = q[:len(q) - 1]
 
-        query_list.append([seen, device_id, message, latitude, longitude, vehicle_id, rego, district, symbol])
-
-    response = HttpResponse(content_type="text/csv")
-    response['Content-Disposition'] = 'attachment; filename={}'.format(filename)
-
-    writer = unicodecsv.writer(response, quoting=unicodecsv.QUOTE_ALL)
-    writer.writerow(["Seen", "DeviceID", "Message", "Latitude", "Longitude", "VehicleID", "Rego", "District", "Symbol"])
-
-    for row in query_list:
-        writer.writerow([s for s in row])
-
-    return response
+        return serialize(
+            'geojson',
+            q,
+            geometry_field='route',
+            srid=self.srid,
+            properties=(
+                'id', 'heading', 'velocity', 'altitude', 'seen', 'raw', 'device_id', 'label',
+            ),
+        )

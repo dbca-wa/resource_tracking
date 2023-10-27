@@ -119,51 +119,10 @@ SOURCE_DEVICE_TYPE_CHOICES = (
     ("mp70", "MP70"),
     ("fleetcare", "Fleetcare"),
     ("other", "Other"),
-    ("fleetcare_error", "Fleetcare (error)")
 )
 
 
-class BasePoint(models.Model):
-    point = models.PointField(null=True, editable=False)
-    heading = models.PositiveIntegerField(default=0, help_text="Heading in degrees", editable=False)
-    velocity = models.PositiveIntegerField(default=0, help_text="Speed in metres/hr", editable=False)
-    altitude = models.IntegerField(default=0, help_text="Altitude above sea level in metres", editable=False)
-    seen = models.DateTimeField(null=True, editable=False)
-    message = models.PositiveIntegerField(default=3, choices=RAW_EQ_CHOICES)
-    source_device_type = models.CharField(max_length=32, choices=SOURCE_DEVICE_TYPE_CHOICES, default="other", db_index=True)
-
-    class Meta:
-        abstract = True
-        ordering = ['-seen']
-
-    def clean_fields(self, exclude=None):
-        """
-        Override clean_fields to provide model-level validation.
-        """
-        if exclude is None:
-            exclude = []
-
-        errors = {}
-        for f in self._meta.fields:
-            if f.name in exclude:
-                continue
-
-            if hasattr(self, "clean_%s" % f.attname):
-                try:
-                    getattr(self, "clean_%s" % f.attname)()
-                except ValidationError as e:
-                    errors[f.name] = e.error_list
-
-        try:
-            super(BasePoint, self).clean_fields(exclude)
-        except ValidationError as e:
-            errors = e.update_error_dict(errors)
-
-        if errors:
-            raise ValidationError(errors)
-
-
-class Device(BasePoint):
+class Device(models.Model):
     deviceid = models.CharField(max_length=32, unique=True)
     registration = models.CharField(max_length=32, default="No Rego", help_text="e.g. 1QBB157")
     rin_number = models.PositiveIntegerField(validators=[MaxValueValidator(999)], verbose_name="Resource Identification Number (RIN)", null=True, blank=True, help_text="Heavy Duty, Gang Truck or Plant only (HD/GT/P automatically prefixed).")
@@ -182,6 +141,18 @@ class Device(BasePoint):
     hidden = models.BooleanField(default=False, help_text="Device hidden from DBCA resource tracking live view")
     deleted = models.BooleanField(default=False, verbose_name="Deleted?")
     fire_use = models.BooleanField(default=None, null=True, verbose_name="Fire use")
+
+    seen = models.DateTimeField(null=True, editable=False)
+    point = models.PointField(null=True, editable=False)
+
+    heading = models.PositiveIntegerField(default=0, help_text="Heading in degrees", editable=False)
+    velocity = models.PositiveIntegerField(default=0, help_text="Speed in metres/hr", editable=False)
+    altitude = models.IntegerField(default=0, help_text="Altitude above sea level in metres", editable=False)
+    message = models.PositiveIntegerField(default=3, choices=RAW_EQ_CHOICES)
+    source_device_type = models.CharField(max_length=32, choices=SOURCE_DEVICE_TYPE_CHOICES, default="other", db_index=True)
+
+    class Meta:
+        ordering = ('-seen',)
 
     @property
     def age_minutes(self):
@@ -214,29 +185,11 @@ class Device(BasePoint):
     def icon(self):
         return "sss-{}".format(self.symbol.lower().replace(" ", "_"))
 
-    def clean_district(self):
+    def save(self, force_insert=False, force_update=False, *args, **kwargs):
         if self.district:
             self.district_display = self.get_district_display()
-
-    def clean_callsign(self):
-        """if self.symbol in ("heavy duty", "gang truck", "dozer", "grader", "loader", "tender", "float") and not self.callsign:
-            raise ValidationError("Please enter a Callsign number.")
-        if self.callsign and self.symbol in ("heavy duty", "gang truck", "dozer", "grader", "loader", "tender", "float"):
-            try:
-                self.callsign = abs(int(str(self.callsign)))
-            except:
-                raise ValidationError("Callsign must be a number for the selected Symbol type")
-            #self.callsign_display = self.get_district_display() + ' ' + str(self.callsign)
-            self.callsign_display = self.callsign   # Changed by P Maslen on request from Fire to remove Dstrict name from callsign
-        else:
-            self.callsign_display = self.callsign"""
-        self.callsign_display = self.callsign
-
-    def clean_rin_number(self):
-        if self.symbol in ("heavy duty", "gang truck", "dozer", "grader", "loader", "tender", "float") and not self.rin_number:
-            raise ValidationError("Please enter a RIN number.")
-        if self.rin_number and self.symbol not in ("heavy duty", "gang truck", "dozer", "grader", "loader", "tender", "float"):
-            raise ValidationError("Please remove the RIN number or select a symbol from Heavy Duty, Gang Truck, Dozer, Grader, Loader, Tender or Float")
+        if self.callsign:
+            self.callsign_display = self.callsign
         if self.rin_number:
             if self.symbol == "heavy duty":
                 symbol_prefix = "HD"
@@ -246,19 +199,23 @@ class Device(BasePoint):
                 symbol_prefix = "P"
             else:
                 symbol_prefix = ""
-            self.rin_display = symbol_prefix + str(self.rin_number)
+            self.rin_display = f"{symbol_prefix}{self.rin_number}"
         else:
             self.rin_display = None
+        super().save(force_insert, force_update)
+
+    def clean(self):
+        # Clean rin_number
+        if self.rin_number and self.symbol not in ("heavy duty", "gang truck", "dozer", "grader", "loader", "tender", "float"):
+            raise ValidationError("Please remove the RIN number or select a symbol from Heavy Duty, Gang Truck, Dozer, Grader, Loader, Tender or Float")
+        if not self.rin_number and self.symbol in ("heavy duty", "gang truck", "dozer", "grader", "loader", "tender", "float"):
+            raise ValidationError("Please enter a RIN number")
 
     def __str__(self):
-        return force_text("{} {}".format(self.registration, self.deviceid))
+        return f"{self.registration} {self.deviceid}"
 
 
 class LoggedPoint(models.Model):
-    """NOTE: this model previously inherited from BasePoint; this has been altered to be able to
-    apply different constraints and indexing options on this model.
-    It doesn't make sense for a LoggedPoint record to contain a null value for `point` or `seen`.
-    """
     device = models.ForeignKey(Device, on_delete=models.PROTECT)
     seen = models.DateTimeField(editable=False, db_index=True)
     point = models.PointField(editable=False)
@@ -279,27 +236,6 @@ class LoggedPoint(models.Model):
         unique_together = (("device", "seen"),)
 
 
-class InvalidLoggedPoint(BasePoint):
-    """TODO: deprecate model.
-    """
-    INVALID_RAW_DATA = 1
-    INVALID_TIMESTAMP = 10
-    INVALID_TIMESTAMP_FORMAT = 11
-    FUTURE_DATA = 20
-    CATEGORIES = (
-        (INVALID_RAW_DATA, "Invalid Raw Data"),
-        (INVALID_TIMESTAMP, "Invalid Timestamp"),
-        (INVALID_TIMESTAMP_FORMAT, "Invalid Timestamp Format"),
-        (FUTURE_DATA, "Future Data")
-    )
-    deviceid = models.CharField(max_length=32, null=True, db_index=True)
-    device_id = models.IntegerField(null=True, db_index=True)
-    raw = models.TextField(editable=False)
-    category = models.CharField(max_length=32, choices=CATEGORIES)
-    error_msg = models.TextField()
-    created = models.DateTimeField(auto_now_add=True, db_index=True)
-
-
 @receiver(pre_save, sender=User)
 def user_pre_save(sender, instance, **kwargs):
     # Set is_staff to True so users can edit Device details
@@ -310,5 +246,5 @@ def user_pre_save(sender, instance, **kwargs):
 def user_post_save(sender, instance, **kwargs):
     # Add users to the 'Edit Resource Tracking Device' group so users can edit Device details
     # NOTE: does not work when saving user in Django Admin
-    g = Group.objects.get(name='Edit Resource Tracking Device')
+    g, created = Group.objects.get_or_create(name='Edit Resource Tracking Device')
     instance.groups.add(g)
