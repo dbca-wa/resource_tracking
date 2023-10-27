@@ -199,7 +199,7 @@ class Device(models.Model):
                 symbol_prefix = "P"
             else:
                 symbol_prefix = ""
-            self.rin_number = f"{symbol_prefix}{self.rin_number}"
+            self.rin_display = f"{symbol_prefix}{self.rin_number}"
         else:
             self.rin_display = None
         super().save(force_insert, force_update)
