@@ -2,7 +2,6 @@ import csv
 from datetime import datetime
 from django.conf import settings
 from django.utils import timezone
-import json
 import logging
 import pytz
 import requests
@@ -79,8 +78,9 @@ def harvest_tracking_email(device_type, purge_email=False):
             if purge_email:
                 status, response = email_utils.email_mark_read(imap, uid)
                 status, response = email_utils.email_delete(imap, uid)
+                LOGGER.info(f"Flagged {flagged} emails")
 
-    LOGGER.info(f"Created {created} tracking points, flagged {flagged} emails")
+    LOGGER.info(f"Created {created} tracking points")
     imap.close()
     imap.logout()
 
@@ -110,17 +110,21 @@ def save_mp70(message):
 
     device, created = Device.objects.get_or_create(deviceid=data["device_id"])
     seen = data["timestamp"]
-    point = f"POINT({data['longitude']} {data['latitude']})"
+    if not device.seen or device.seen < seen:
+        device.seen = seen
+        device.heading = data["heading"]
+        device.velocity = data["velocity"]
+        device.altitude = data["altitude"]
+        device.save()
 
-    try:
-        loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
-        if not device.seen or device.seen < seen:
-            device.seen = seen
-            device.save()
-        return loggedpoint
-    except Exception:
-        LOGGER.exception(f"Exception during get_or_create of LoggedPoint: device {device}, seen {seen}, point {point}")
-        return None
+    point = f"POINT({data['longitude']} {data['latitude']})"
+    loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point, source_device_type="mp70")
+    loggedpoint.heading = data["heading"]
+    loggedpoint.velocity = data["velocity"]
+    loggedpoint.altitude = data["altitude"]
+    loggedpoint.save()
+
+    return loggedpoint
 
 
 def save_spot(message):
@@ -142,17 +146,21 @@ def save_spot(message):
 
     device, created = Device.objects.get_or_create(deviceid=data["device_id"])
     seen = data["timestamp"]
-    point = f"POINT({data['longitude']} {data['latitude']})"
+    if not device.seen or device.seen < seen:
+        device.seen = seen
+        device.heading = data["heading"]
+        device.velocity = data["velocity"]
+        device.altitude = data["altitude"]
+        device.save()
 
-    try:
-        loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
-        if not device.seen or device.seen < seen:
-            device.seen = seen
-            device.save()
-        return loggedpoint
-    except Exception:
-        LOGGER.exception(f"Exception during get_or_create of LoggedPoint: device {device}, seen {seen}, point {point}")
-        return None
+    point = f"POINT({data['longitude']} {data['latitude']})"
+    loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point, source_device_type="spot")
+    loggedpoint.heading = data["heading"]
+    loggedpoint.velocity = data["velocity"]
+    loggedpoint.altitude = data["altitude"]
+    loggedpoint.save()
+
+    return loggedpoint
 
 
 def save_iriditrak(message):
@@ -174,17 +182,21 @@ def save_iriditrak(message):
 
     device, created = Device.objects.get_or_create(deviceid=data["device_id"])
     seen = data["timestamp"]
-    point = f"POINT({data['longitude']} {data['latitude']})"
+    if not device.seen or device.seen < seen:
+        device.seen = seen
+        device.heading = data["heading"]
+        device.velocity = data["velocity"]
+        device.altitude = data["altitude"]
+        device.save()
 
-    try:
-        loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
-        if not device.seen or device.seen < seen:
-            device.seen = seen
-            device.save()
-        return loggedpoint
-    except Exception:
-        LOGGER.exception(f"Exception during get_or_create of LoggedPoint: device {device}, seen {seen}, point {point}")
-        return None
+    point = f"POINT({data['longitude']} {data['latitude']})"
+    loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point, source_device_type="iriditrak")
+    loggedpoint.heading = data["heading"]
+    loggedpoint.velocity = data["velocity"]
+    loggedpoint.altitude = data["altitude"]
+    loggedpoint.save()
+
+    return loggedpoint
 
 
 def save_dplus(message):
@@ -208,17 +220,21 @@ def save_dplus(message):
 
     device, created = Device.objects.get_or_create(deviceid=data["device_id"])
     seen = data["timestamp"]
-    point = f"POINT({data['longitude']} {data['latitude']})"
+    if not device.seen or device.seen < seen:
+        device.seen = seen
+        device.heading = data["heading"]
+        device.velocity = data["velocity"]
+        device.altitude = data["altitude"]
+        device.save()
 
-    try:
-        loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
-        if not device.seen or device.seen < seen:
-            device.seen = seen
-            device.save()
-        return loggedpoint
-    except Exception:
-        LOGGER.exception(f"Exception during get_or_create of LoggedPoint: device {device}, seen {seen}, point {point}")
-        return None
+    point = f"POINT({data['longitude']} {data['latitude']})"
+    loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point, source_device_type="dplus")
+    loggedpoint.heading = data["heading"]
+    loggedpoint.velocity = data["velocity"]
+    loggedpoint.altitude = data["altitude"]
+    loggedpoint.save()
+
+    return loggedpoint
 
 
 def save_dfes_feed():
@@ -326,15 +342,16 @@ def save_dfes_feed():
                 device.heading = properties["Direction"]
                 device.save()
 
-            try:
-                loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point, source_device_type="dfes")
-            except Exception:
-                LOGGER.exception(f"Exception during get_or_create of LoggedPoint: device {device}, seen {seen}, point {point}")
-
-            if created:
-                loggedpoint.velocity = int(properties["Speed"]) * 1000
-                loggedpoint.heading = properties["Direction"]
-                loggedpoint.save()
+            # Create a new LoggedPoint, if required.
+            if not LoggedPoint.objects.filter(device=device, seen=seen, point=point, source_device_type="dfes").exists():
+                LoggedPoint.objects.create(
+                    device=device,
+                    seen=seen,
+                    point=point,
+                    source_device_type="dfes",
+                    velocity=int(properties["Speed"]) * 1000,
+                    heading=properties["Direction"],
+                )
 
     LOGGER.info(f"Created {created_device}, updated {updated_device}, skipped {skipped_device}")
 
@@ -376,17 +393,18 @@ def save_tracplus_feed():
         if row["Asset Type"] in tracplus_symbol_map:
             device.symbol = tracplus_symbol_map[row["Asset Type"]]
         device.save()
+        updates += 1
 
-        # Create/update a LoggedPoint.
-        lp, new = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
-        lp.velocity = device.velocity
-        lp.heading = device.heading
-        lp.altitude = device.altitude
-        lp.seen = device.seen
-        lp.source_device_type = device.source_device_type
-        lp.raw = json.dumps(row)
-        lp.save()
-        if new:
-            updates += 1
+        # Create a new LoggedPoint, if required.
+        if not LoggedPoint.objects.filter(device=device, seen=seen, point=point, source_device_type="tracplus").exists():
+            LoggedPoint.objects.create(
+                device=device,
+                seen=seen,
+                point=point,
+                source_device_type="tracplus",
+                velocity=device.velocity,
+                heading=device.heading,
+                altitude=device.altitude,
+            )
 
     LOGGER.info(f"Updated {updates} TracPlus devices")
