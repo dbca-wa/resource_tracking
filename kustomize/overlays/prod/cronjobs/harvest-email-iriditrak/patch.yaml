@@ -3,4 +3,4 @@
   value: "* * * * *"
 - op: replace
   path: /spec/jobTemplate/spec/template/spec/containers/0/args
-  value: ["manage.py", "harvest_tracking_email", "--device-type", "iriditrak"]
+  value: ["manage.py", "harvest_tracking_email", "--device-type", "iriditrak", "--purge-email"]
