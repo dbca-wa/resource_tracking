@@ -1,8 +1,12 @@
+import csv
 from django.test import TestCase
+
+from tracking.models import Device
 from tracking.utils import (
     validate_latitude_longitude,
     parse_mp70_payload,
     parse_beam_payload,
+    parse_tracplus_row,
 )
 
 
@@ -12,15 +16,18 @@ MP70_PAYLOAD_VALID = "\r\nN694470090021038,13.74,-031.99252,+115.88450,0,0,10/18
 MP70_PAYLOAD_BAD = "\r\nN690540113021035,12.96,foo,bar,-53,0,10/18/2023 03:12:49\r\n"
 # MP70 payload with invalid data (fails validation).
 MP70_PAYLOAD_INVALID = "\r\nN690540113021035,12.96,+000.00000,+000.00000,-53,0,10/18/2023 03:12:49\r\n"
-# Iriditrak payload with valid data.
+# Iriditrak BEAM payload with valid data.
 IRIDITRAK_PAYLOAD_VALID = b"\x01\xfd3\x12tqa\x901 \x11\xd60e\x00\x00\xbc\x00\x00\x00"
+# TracPlus feed valid payload
+TRAKPLUS_FEED_VALID = """Report ID,Asset Type,Asset Regn,Asset Name,Asset Make,Asset Model,Device ID,Device Serial,Device IMEI,Device Make,Device Model,Transmitted,Received,Latitude,Longitude,Speed,Track,Altitude,Events,GPS Count,DOP,Type of Fix,Message Text,Package,Gateway\r\n1,Aircraft,N293EA Erickson Aero Tanker,,McDonnell Douglas,DC-87,1,L0001,L1001,Flightcell,DZMx,2023-10-30 01:50:44,2023-10-30 01:50:49,44.66921790,-121.149994450,0,0,750,EVT_SCHEDULED,0,1,3D,,,IRIDIUM.SBD.SQS
+"""
 
 
 class HarvestTestCase(TestCase):
     """Unit tests to cover the following harvest formats:
-    - Email payloads: Iriditrak, MP70, Spot
+    - Email payloads: Iriditrak, MP70, Spot (TODO)
+    - TracPlus API
     - DFES API (TODO)
-    - TracPlus API (TODO)
     """
 
     def test_validate_latitude_longitude(self):
@@ -48,3 +55,11 @@ class HarvestTestCase(TestCase):
         """TODO: test the parse_spot_message function
         """
         pass
+
+    def test_parse_tracplus_row(self):
+        """Test the parse_tracplus_row function
+        """
+        self.assertFalse(Device.objects.filter(source_device_type="tracplus").exists())
+        csv_data = csv.DictReader(TRAKPLUS_FEED_VALID.split("\r\n"))
+        row = next(csv_data)
+        self.assertTrue(parse_tracplus_row(row))

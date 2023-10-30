@@ -196,3 +196,20 @@ def parse_dplus_payload(payload):
         return False
 
     return data
+
+
+def parse_tracplus_row(row):
+    data = {
+        "device_id": row["Device IMEI"],
+        "timestamp": datetime.strptime(row["Transmitted"], "%Y-%m-%d %H:%M:%S"),
+        "latitude": float(row["Latitude"]),
+        "longitude": float(row["Longitude"]),
+        "velocity": int(row["Speed"]) * 1000,  # Convert km/h to m/h.
+        "heading": int(row["Track"]),
+        "altitude": int(row["Altitude"]),
+        "type": "tracplus",
+    }
+    # Localise the timestamp as UTC.
+    data["timestamp"] = UTC.localize(data["timestamp"])
+
+    return data

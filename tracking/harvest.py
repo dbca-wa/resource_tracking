@@ -14,6 +14,7 @@ from tracking.utils import (
     parse_spot_message,
     parse_iriditrak_message,
     parse_dplus_payload,
+    parse_tracplus_row,
 )
 
 LOGGER = logging.getLogger('tracking')
@@ -366,45 +367,53 @@ def save_tracplus_feed():
     content = requests.get(settings.TRACPLUS_URL).content.decode("utf-8")
     latest = list(csv.DictReader(content.split("\r\n")))
     LOGGER.info(f"{len(latest)} records downloaded")
-    updates = 0
+    created_device = 0
+    updated_device = 0
     tracplus_symbol_map = {
         "Aircraft": "spotter aircraft",
         "Helicopter": "rotary aircraft",
     }
 
     for row in latest:
-        # Parse the point as WKT.
-        point = f"POINT ({row['Longitude']} {row['Latitude']})"
-        seen = UTC.localize(datetime.strptime(row["Transmitted"], "%Y-%m-%d %H:%M:%S"))
+        data = parse_tracplus_row(row)
 
-        # Create/update the device.
-        device = Device.objects.get_or_create(deviceid=row["Device IMEI"])[0]
-        device.callsign = row["Asset Name"]
-        device.callsign_display = row["Asset Name"]
-        device.model = row["Asset Model"]
-        device.registration = row["Asset Regn"][:32]
-        device.velocity = int(row["Speed"]) * 1000  # Convert km/h to m/h.
-        device.altitude = row["Altitude"]
-        device.heading = row["Track"]
-        device.seen = seen
-        device.point = point
-        device.source_device_type = "tracplus"
-        device.deleted = False
-        if row["Asset Type"] in tracplus_symbol_map:
-            device.symbol = tracplus_symbol_map[row["Asset Type"]]
-        device.save()
-        updates += 1
+        if not data:
+            LOGGER.warning(f"Unable to parse TracPlus feed row: {row['Report ID']}")
+            return None
 
-        # Create a new LoggedPoint, if required.
-        if not LoggedPoint.objects.filter(device=device, seen=seen, point=point, source_device_type="tracplus").exists():
-            LoggedPoint.objects.create(
-                device=device,
-                seen=seen,
-                point=point,
-                source_device_type="tracplus",
-                velocity=device.velocity,
-                heading=device.heading,
-                altitude=device.altitude,
-            )
+        # Validate lat/lon values.
+        if not validate_latitude_longitude(data["latitude"], data["longitude"]):
+            LOGGER.warning(f"Bad geometry while parsing TracPlus data from device {data['device_id']}: {data['latitude']}, {data['longitude']}")
+            return False
 
-    LOGGER.info(f"Updated {updates} TracPlus devices")
+        device, created = Device.objects.get_or_create(deviceid=data["device_id"])
+        if created:
+            created_device += 1
+            device.source_device_type = "tracplus"
+            # Set some additional values on the Device from the CSV row data.
+            device.callsign = row["Asset Name"]
+            device.callsign_display = row["Asset Name"]
+            device.model = row["Asset Model"]
+            device.registration = row["Asset Regn"][:32]
+            if row["Asset Type"] in tracplus_symbol_map:
+                device.symbol = tracplus_symbol_map[row["Asset Type"]]
+            device.save()
+        else:
+            updated_device += 1
+
+        seen = data["timestamp"]
+        if not device.seen or device.seen < seen:
+            device.seen = seen
+            device.heading = data["heading"]
+            device.velocity = data["velocity"]
+            device.altitude = data["altitude"]
+            device.save()
+
+        point = f"POINT({data['longitude']} {data['latitude']})"
+        loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point, source_device_type="tracplus")
+        loggedpoint.heading = data["heading"]
+        loggedpoint.velocity = data["velocity"]
+        loggedpoint.altitude = data["altitude"]
+        loggedpoint.save()
+
+    LOGGER.info(f"Updated {updated_device} TracPlus devices, created {created_device} devices")
