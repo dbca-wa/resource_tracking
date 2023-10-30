@@ -153,11 +153,11 @@ SENTRY_SAMPLE_RATE = env('SENTRY_SAMPLE_RATE', 0.0)  # 0.0 - 1.0
 SENTRY_ENVIRONMENT = env('SENTRY_ENVIRONMENT', None)
 if SENTRY_DSN and SENTRY_ENVIRONMENT:
     import sentry_sdk
+    from importlib import metadata
 
     sentry_sdk.init(
         dsn=SENTRY_DSN,
-        # Set traces_sample_rate to 1.0 to capture 100%
-        # of transactions for performance monitoring.
         traces_sample_rate=SENTRY_SAMPLE_RATE,
         environment=SENTRY_ENVIRONMENT,
+        release=metadata.version("resource_tracking"),
     )
