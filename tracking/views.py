@@ -11,26 +11,33 @@ from tracking.basic_auth import logged_in_or_basicauth
 from tracking.models import Device, LoggedPoint
 
 
-class GeojsonView(View):
-    http_method_names = ['get']
+class SpatialDataView(View):
+    """Base view to return a queryset of spatial data as GeoJSON or CSV.
+    """
+    model = None
+    http_method_names = ["get"]
     srid = 4326
     format = "geojson"
+    geometry_field = None
+    properties = ()
+    filename_prefix = None
 
     @method_decorator(logged_in_or_basicauth(realm="Resource Tracking"))
     def dispatch(self, *args, **kwargs):
-        return super(GeojsonView, self).dispatch(*args, **kwargs)
+        return super(SpatialDataView, self).dispatch(*args, **kwargs)
 
+    def get_filename_prefix(self):
+        if not self.filename_prefix:
+            return self.model._meta.model_name
 
-class DevicesView(GeojsonView):
+        return self.filename_prefix
+
+    def get_queryset(self):
+        return self.model.objects.all()
 
     def get(self, request, *args, **kwargs):
-
-        if "days" in request.GET and request.GET["days"]:
-            days = request.GET["days"]
-        else:
-            days = 14
-
-        qs = Device.objects.filter(seen__gte=timezone.now() - timedelta(days=days))
+        qs = self.get_queryset()
+        filename_prefix = self.get_filename_prefix()
 
         # CSV format download
         if self.format == "csv":
@@ -43,152 +50,160 @@ class DevicesView(GeojsonView):
             serializer = CSVSerializer()
             content = serializer.to_csv(data)
             timestamp = datetime.strftime(datetime.today(), "%Y-%m-%d_%H%M")
-            filename = f'tracking_devices_{timestamp}.csv'
+            filename = f"{filename_prefix}_{timestamp}.csv"
             response = HttpResponse(
                 content,
-                content_type='text/csv',
-                headers={'Content-Disposition': f'attachment; filename={filename}'},
+                content_type="text/csv",
+                headers={"Content-Disposition": f"attachment; filename={filename}"},
             )
         # GeoJSON format download
         else:
             geojson = serialize(
-                'geojson',
+                "geojson",
                 qs,
-                geometry_field='point',
+                geometry_field=self.geometry_field,
                 srid=self.srid,
-                properties=(
-                    'id',
-                    'deviceid',
-                    'name',
-                    'callsign',
-                    'symbol',
-                    'rego',
-                    'make',
-                    'model',
-                    'category',
-                    'heading',
-                    'velocity',
-                    'altitude',
-                    'seen',
-                    'age_minutes',
-                    'age_colour',
-                    'age_text',
-                    'icon',
-                )
+                properties=self.properties,
             )
 
             timestamp = datetime.strftime(datetime.today(), "%Y-%m-%d_%H%M")
-            filename = f'tracking_devices_{timestamp}.geojson'
+            filename = f"{filename_prefix}_{timestamp}.geojson"
             response = HttpResponse(
                 geojson,
-                content_type='application/vnd.geo+json',
-                headers={'Content-Disposition': f'attachment; filename={filename}'},
+                content_type="application/vnd.geo+json",
+                headers={"Content-Disposition": f"attachment; filename={filename}"},
             )
 
         return response
 
 
-class LoggedPointView(GeojsonView):
+class DevicesView(SpatialDataView):
+    """Return structured data about tracking devices seen in the previous n days
+    (14 by default).
     """
-    Process http request and return device's history as geojson
+    model = Device
+    geometry_field = "point"
+    properties = (
+        "id",
+        "deviceid",
+        "name",
+        "callsign",
+        "symbol",
+        "rego",
+        "make",
+        "model",
+        "category",
+        "heading",
+        "velocity",
+        "altitude",
+        "seen",
+        "age_minutes",
+        "age_colour",
+        "age_text",
+        "icon",
+    )
+    filename_prefix = "tracking_devices"
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+
+        if "days" in self.request.GET and self.request.GET["days"]:
+            days = self.request.GET["days"]
+        else:
+            days = 14
+        qs = qs.filter(seen__gte=timezone.now() - timedelta(days=days))
+
+        return qs
+
+
+class DeviceHistoryView(SpatialDataView):
+    """Return structured data of the tracking points for a single device over the previous n days
+    (14 by default).
     """
+    model = LoggedPoint
+    geometry_field = "point"
+    properties = ("id", "heading", "velocity", "altitude", "seen", "raw", "device_id")
 
     def dispatch(self, *args, **kwargs):
         if "device_id" not in self.kwargs:
             return HttpResponseBadRequest("Missing device_id")
-
         return super().dispatch(*args, **kwargs)
 
-    def get(self, request, *args, **kwargs):
-        geojson = "{}"
+    def get_queryset(self):
+        qs = super().get_queryset()
 
-        deviceid = kwargs["device_id"]
-        start = request.GET.get("start", default=None)
+        device_id = self.kwargs["device_id"]
+        qs = qs.filter(device_id=device_id)
 
+        start = self.request.GET.get("start", default=None)
         if start is None:
-            # start is missing, use the default value: one day before
-            start = timezone.now() - timedelta(days=1)
+            # start is missing, use the default value: 14 days before
+            start = timezone.now() - timedelta(days=14)
         else:
             try:
-                # parsing the start date with the date format: iso 8601
+                # Parse the start date as ISO8601 date format
                 start = datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
             except:
-                # Failed to parse the start date, use the default value:
-                # one day before
-                start = timezone.now() - timedelta(days=1)
+                return HttpResponseBadRequest("Bad start format, use ISO8601")
+        qs = qs.filter(seen__gte=start)
 
-        end = request.GET.get("end", default=None)
+        end = self.request.GET.get("end", default=None)
         if end is not None:
             try:
-                # parsing the end date with the date format: iso 8601
+                # Parse the end date as ISO8601 date format
                 end = datetime.strptime(end, "%Y-%m-%d %H:%M:%S")
             except:
-                end = None
+                return HttpResponseBadRequest("Bad end format, use ISO8601")
 
-        # ignore the bbox
-        q = LoggedPoint.objects.filter(device_id=deviceid)
+            qs = qs.filter(seen__lt=end)
 
-        if start:
-            q = q.filter(seen__gte=start)
+        return qs
 
-        if end:
-            q = q.filter(seen__lt=end)
 
-        geojson = self.get_geojson(q)
+class DeviceRouteView(DeviceHistoryView):
+    """Extend the DeviceHistoryView to return a device's route history as a LineString geometry.
+    This view only returns GeoJSON, not CSV.
+    """
+    def get(self, request, *args, **kwargs):
+        """Override this method to return a linestring dataset instead of points.
+        """
+        qs = self.get_queryset()
+        device_id = self.kwargs["device_id"]
+        device = Device.objects.get(pk=device_id)
+        filename_prefix = f"{device.deviceid}_route"
 
-        response = HttpResponse(geojson, content_type='application/vnd.geo+json')
+        start_point = None
+
+        # Modify the query of LoggedPoint objects in-place: set an attribute called `route` on
+        # each point consisting of a LineString geometry having a start and end point.
+        # Start point is the LoggedPoint, end point is the next instance.
+        # Also add a `label` attribute that captures the timestamps of each.
+        for loggedpoint in qs:
+            if start_point is not None:
+                setattr(start_point, "route", LineString(start_point.point, loggedpoint.point))
+                start_label = start_point.seen.strftime("%H:%M:%S")
+                end_label = loggedpoint.seen.strftime("%H:%M:%S")
+                setattr(start_point, "label", f"{start_label} to {end_label}")
+            start_point = loggedpoint
+
+        # Exclude the last loggedpoint in the queryset because it won't have the `route` attribute.
+        qs = qs[:len(qs) - 1]
+
+        geojson = serialize(
+            "geojson",
+            qs,
+            geometry_field="route",
+            srid=self.srid,
+            properties=(
+                "id", "heading", "velocity", "altitude", "seen", "raw", "device_id", "label",
+            ),
+        )
+        timestamp = datetime.strftime(datetime.today(), "%Y-%m-%d_%H%M")
+        filename = f"{filename_prefix}_{timestamp}.geojson"
+        response = HttpResponse(
+            geojson,
+            content_type="application/vnd.geo+json",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
 
         return response
-
-    def get_geojson(q):
-        return "{}"
-
-
-class HistoryView(LoggedPointView):
-
-    def get_geojson(self, qs):
-
-        return serialize(
-            'geojson',
-            qs,
-            geometry_field='point',
-            srid=self.srid,
-            properties=(
-                'id', 'heading', 'velocity', 'altitude', 'seen', 'raw', 'device_id',
-            ),
-        )
-
-
-class RouteView(LoggedPointView):
-
-    def get_geojson(self, q):
-
-        # add linestring spatial data and label to convert point to line.
-        start_point = None
-        for p in q:
-            if start_point is not None:
-                setattr(
-                    start_point, "route", LineString(
-                        start_point.point, p.point))
-                setattr(
-                    start_point,
-                    "label",
-                    "{0} to {1}".format(
-                        start_point.seen.strftime(
-                            "%H:%M:%S") if start_point.seen else "",
-                        p.seen.strftime("%H:%M:%S") if p.seen else ""))
-
-            start_point = p
-
-        # exclude the last point, because the last point is not a line string.
-        q = q[:len(q) - 1]
-
-        return serialize(
-            'geojson',
-            q,
-            geometry_field='route',
-            srid=self.srid,
-            properties=(
-                'id', 'heading', 'velocity', 'altitude', 'seen', 'raw', 'device_id', 'label',
-            ),
-        )
