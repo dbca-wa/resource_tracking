@@ -22,7 +22,7 @@ labels:
       variant: prod
 images:
   - name: ghcr.io/dbca-wa/resource_tracking
-    newTag: 1.4.0
+    newTag: 1.4.1
 patches:
   - path: deployment_patch.yaml
   - path: service_patch.yaml
