@@ -1,5 +1,4 @@
 import csv
-from datetime import datetime
 from django.conf import settings
 from django.utils import timezone
 import logging
@@ -15,6 +14,7 @@ from tracking.utils import (
     parse_iriditrak_message,
     parse_dplus_payload,
     parse_tracplus_row,
+    parse_dfes_feature,
 )
 
 LOGGER = logging.getLogger('tracking')
@@ -238,10 +238,47 @@ def save_dplus(message):
     return loggedpoint
 
 
-def save_dfes_feed():
-    if not settings.DFES_URL:
-        return
+DFES_SYMBOL_MAP = {
+    "2.4 BROADACRE": "gang truck",
+    "2.4 RURAL": "gang truck",
+    "3.4": "gang truck",
+    "4.4": "gang truck",
+    "1.4 RURAL": "gang truck",
+    "2.4 URBAN": "gang truck",
+    "3.4 RURAL": "gang truck",
+    "3.4 SSSBFT": "gang truck",
+    "3.4 URBAN": "gang truck",
+    "4.4 BROADACRE": "gang truck",
+    "4.4 RURAL": "gang truck",
+    "LIGHT TANKER": "light unit",
+    "BUS 10 SEATER": "comms bus",
+    "BUS 21 SEATER": "comms bus",
+    "BUS 22 SEATER": "comms bus",
+    "INCIDENT CONTROL VEHICLE": "comms bus",
+    "MINI BUS 12 SEATER": "comms bus",
+    "GENERAL RESCUE TRUCK": "tender",
+    "HAZMAT STRUCTURAL RESCUE": "tender",
+    "RESCUE VEHICLE": "tender",
+    "ROAD CRASH RESCUE TRUCK": "tender",
+    "SPECIALIST EQUIPMENT TENDER": "tender",
+    "TRUCK": "tender",
+    "Crew Cab Utility w canopy": "4 wheel drive ute",
+    "FIRST RESPONSE UNIT": "4 wheel drive ute",
+    "FIRST RESPONSE VEHICLE": "4 wheel drive ute",
+    "UTILITY": "4 wheel drive ute",
+    "Utility": "4 wheel drive ute",
+    "CAR (4WD)": "4 wheel drive passenger",
+    "PERSONNEL CARRIER": "4 wheel drive passenger",
+    "PERSONNEL CARRIER 11 SEATER": "4 wheel drive passenger",
+    "PERSONNEL CARRIER 5 SEATER": "4 wheel drive passenger",
+    "PERSONNEL CARRIER 6 SEATER": "4 wheel drive passenger",
+    "CAR": "2 wheel drive",
+}
 
+
+def save_dfes_feed():
+    """Download and process the DFES API endpoint (returns GeoJSON).
+    """
     LOGGER.info("Querying DFES API")
     resp = requests.get(url=settings.DFES_URL, auth=(settings.DFES_USER, settings.DFES_PASS))
     resp.raise_for_status()
@@ -251,124 +288,76 @@ def save_dfes_feed():
     updated_device = 0
     created_device = 0
     skipped_device = 0
+    logged_points = 0
 
-    for row in features:
-        if row["type"] == "Feature":
-            properties = row["properties"]
-            geometry = row["geometry"]
+    for feature in features:
+        data = parse_dfes_feature(feature)
 
-            if "Time" not in properties or properties["Time"] is None:
-                skipped_device += 1
-                continue
+        if not data:
+            LOGGER.warning(f"Unable to parse DFES feed feature: {feature['id']}")
+            skipped_device += 1
+            continue
 
-            deviceid = str(properties["TrackerID"]).strip()
-            device, created = Device.objects.get_or_create(source_device_type="dfes", deviceid=deviceid)
+        # Validate lat/lon values.
+        if not validate_latitude_longitude(data["latitude"], data["longitude"]):
+            LOGGER.warning(f"Bad geometry while parsing data for DFES device {data['device_id']}: {data['latitude']}, {data['longitude']}")
+            skipped_device += 1
+            continue
 
-            # Parse the timestamp (returns as UTC timestamp).
-            seen = UTC.localize(datetime.strptime(properties["Time"], "%Y-%m-%dT%H:%M:%S.%fZ"))
-
-            # Parse the geometry.
-            point = "POINT ({} {})".format(geometry["coordinates"][0], row["geometry"]["coordinates"][1])
-
-            if created:
-                created_device += 1
-                device.callsign = properties["VehicleName"]
-                device.callsign_display = properties["VehicleName"]
-                device.model = properties["Model"]
-                device.registration = "DFES - " + properties["Registration"][:32]
-                device.symbol = (properties["VehicleType"]).strip()
-                if device.symbol in [
-                    "2.4 BROADACRE",
-                    "2.4 RURAL",
-                    "3.4",
-                    "4.4",
-                    "1.4 RURAL",
-                    "2.4 URBAN",
-                    "3.4 RURAL",
-                    "3.4 SSSBFT",
-                    "3.4 URBAN",
-                    "4.4 BROADACRE",
-                    "4.4 RURAL",
-                ]:
-                    device.symbol = "gang truck"
-                elif device.symbol == "LIGHT TANKER":
-                    device.symbol = "light unit"
-                elif device.symbol in [
-                    "BUS 10 SEATER",
-                    "BUS 21 SEATER",
-                    "BUS 22 SEATER",
-                    "INCIDENT CONTROL VEHICLE",
-                    "MINI BUS 12 SEATER",
-                ]:
-                    device.symbol = "comms bus"
-                elif device.symbol in [
-                    "GENERAL RESCUE TRUCK",
-                    "HAZMAT STRUCTURAL RESCUE",
-                    "RESCUE VEHICLE",
-                    "ROAD CRASH RESCUE TRUCK",
-                    "SPECIALIST EQUIPMENT TENDER",
-                    "TRUCK",
-                ]:
-                    device.symbol = "tender"
-                elif device.symbol in [
-                    "Crew Cab Utility w canopy",
-                    "FIRST RESPONSE UNIT",
-                    "FIRST RESPONSE VEHICLE",
-                    "UTILITY",
-                    "Utility",
-                ]:
-                    device.symbol = "4 wheel drive ute"
-                elif device.symbol in [
-                    "CAR (4WD)",
-                    "PERSONNEL CARRIER",
-                    "PERSONNEL CARRIER 11 SEATER",
-                    "PERSONNEL CARRIER 5 SEATER",
-                    "PERSONNEL CARRIER 6 SEATER",
-                ]:
-                    device.symbol = "4 wheel drive passenger"
-                elif device.symbol == "CAR":
-                    device.symbol = "2 wheel drive"
-                else:
-                    device.symbol = "unknown"
-                if device.registration.strip() == "DFES -":
-                    device.registration = "DFES - No Rego"
-                device.save()
+        device, created = Device.objects.get_or_create(deviceid=data["device_id"])
+        if created:
+            created_device += 1
+            device.source_device_type = "dfes"
+            # Set some additional values on the Device from the feature data.
+            properties = feature["properties"]
+            device.callsign = properties["VehicleName"]
+            device.callsign_display = properties["VehicleName"]
+            device.model = properties["Model"]
+            if properties["Registration"]:
+                rego = properties["Registration"][:32].strip()
+                device.registration = f"DFES - {rego}"
             else:
-                updated_device += 1
+                device.registration = "DFES - No Rego"
+            vehicle_type = properties["VehicleType"].strip()
+            if vehicle_type in DFES_SYMBOL_MAP:
+                device.symbol = DFES_SYMBOL_MAP[vehicle_type]
+            else:
+                device.symbol = "unknown"
+            device.save()
 
-            if not device.seen or device.seen < seen:
-                device.seen = seen
-                device.point = point
-                device.velocity = int(properties["Speed"]) * 1000
-                device.heading = properties["Direction"]
-                device.save()
+        seen = data["timestamp"]
+        if not device.seen or device.seen < seen:
+            device.seen = seen
+            device.heading = data["heading"]
+            device.velocity = data["velocity"]
+            device.altitude = data["altitude"]
+            device.save()
+            updated_device += 1
 
-            # Create a new LoggedPoint, if required.
-            if not LoggedPoint.objects.filter(device=device, seen=seen, point=point, source_device_type="dfes").exists():
-                LoggedPoint.objects.create(
-                    device=device,
-                    seen=seen,
-                    point=point,
-                    source_device_type="dfes",
-                    velocity=int(properties["Speed"]) * 1000,
-                    heading=properties["Direction"],
-                )
+        point = f"POINT({data['longitude']} {data['latitude']})"
+        loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point, source_device_type="dfes")
+        loggedpoint.heading = data["heading"]
+        loggedpoint.velocity = data["velocity"]
+        loggedpoint.altitude = data["altitude"]
+        loggedpoint.save()
+        if created:
+            logged_points += 1
 
-    LOGGER.info(f"Created {created_device}, updated {updated_device}, skipped {skipped_device}")
+    LOGGER.info(f"Created {created_device}, updated {updated_device}, skipped {skipped_device}, {logged_points} new logged points")
 
 
 def save_tracplus_feed():
     """Query the TracPlus API, create logged points per device.
     """
-    if not settings.TRACPLUS_URL:
-        return False
-
     LOGGER.info("Harvesting TracPlus feed")
     content = requests.get(settings.TRACPLUS_URL).content.decode("utf-8")
     latest = list(csv.DictReader(content.split("\r\n")))
-    LOGGER.info(f"{len(latest)} records downloaded")
+    LOGGER.info(f"{len(latest)} records downloaded, processing")
+
     created_device = 0
     updated_device = 0
+    skipped_device = 0
+    logged_points = 0
     tracplus_symbol_map = {
         "Aircraft": "spotter aircraft",
         "Helicopter": "rotary aircraft",
@@ -379,12 +368,14 @@ def save_tracplus_feed():
 
         if not data:
             LOGGER.warning(f"Unable to parse TracPlus feed row: {row['Report ID']}")
-            return None
+            skipped_device += 1
+            continue
 
         # Validate lat/lon values.
         if not validate_latitude_longitude(data["latitude"], data["longitude"]):
             LOGGER.warning(f"Bad geometry while parsing TracPlus data from device {data['device_id']}: {data['latitude']}, {data['longitude']}")
-            return False
+            skipped_device += 1
+            continue
 
         device, created = Device.objects.get_or_create(deviceid=data["device_id"])
         if created:
@@ -398,8 +389,6 @@ def save_tracplus_feed():
             if row["Asset Type"] in tracplus_symbol_map:
                 device.symbol = tracplus_symbol_map[row["Asset Type"]]
             device.save()
-        else:
-            updated_device += 1
 
         seen = data["timestamp"]
         if not device.seen or device.seen < seen:
@@ -407,6 +396,7 @@ def save_tracplus_feed():
             device.heading = data["heading"]
             device.velocity = data["velocity"]
             device.altitude = data["altitude"]
+            updated_device += 1
             device.save()
 
         point = f"POINT({data['longitude']} {data['latitude']})"
@@ -415,5 +405,7 @@ def save_tracplus_feed():
         loggedpoint.velocity = data["velocity"]
         loggedpoint.altitude = data["altitude"]
         loggedpoint.save()
+        if created:
+            logged_points += 1
 
-    LOGGER.info(f"Updated {updated_device} TracPlus devices, created {created_device} devices")
+    LOGGER.info(f"Updated {updated_device} devices, created {created_device} devices, skipped {skipped_device} devices, {logged_points} new logged points")
