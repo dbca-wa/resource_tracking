@@ -11,25 +11,25 @@ spec:
           containers:
           - name: resourcetracking-cronjob
             imagePullPolicy: Always
-            args: ["manage.py", "harvest_tracking_email", "--device-type", "mp70", "--purge-email"]
+            args: ["manage.py", "harvest_tracking_email", "--device-type", "mp70"]
             env:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: resourcetracking-env-prod
+                  name: resourcetracking-env-uat
                   key: DATABASE_URL
             - name: EMAIL_HOST
               valueFrom:
                 secretKeyRef:
-                  name: resourcetracking-env-prod
+                  name: resourcetracking-env-uat
                   key: EMAIL_HOST
             - name: EMAIL_USER
               valueFrom:
                 secretKeyRef:
-                  name: resourcetracking-env-prod
+                  name: resourcetracking-env-uat
                   key: EMAIL_USER
             - name: EMAIL_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: resourcetracking-env-prod
+                  name: resourcetracking-env-uat
                   key: EMAIL_PASSWORD

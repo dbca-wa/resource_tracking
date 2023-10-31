@@ -182,9 +182,9 @@ def parse_dplus_payload(payload):
 
     try:
         data["device_id"] = int(data["RAW"][0])
+        data["timestamp"] = time.mktime(datetime.strptime(data["RAW"][1], "%d-%m-%y %H:%M:%S").timetuple())
         data["latitude"] = float(data["RAW"][4])
         data["longitude"] = float(data["RAW"][5])
-        data["timestamp"] = time.mktime(datetime.strptime(data["RAW"][1], "%d-%m-%y %H:%M:%S").timetuple())
         data["velocity"] = int(data["RAW"][6]) * 1000
         data["heading"] = int(data["RAW"][7])
         data["altitude"] = int(data["RAW"][9])
@@ -192,6 +192,46 @@ def parse_dplus_payload(payload):
 
         # Localise the timestamp as UTC.
         data["timestamp"] = UTC.localize(datetime.fromtimestamp(float(data["timestamp"])))
+    except:
+        return False
+
+    return data
+
+
+def parse_tracplus_row(row):
+    data = {
+        "device_id": row["Device IMEI"],
+        "timestamp": datetime.strptime(row["Transmitted"], "%Y-%m-%d %H:%M:%S"),
+        "latitude": float(row["Latitude"]),
+        "longitude": float(row["Longitude"]),
+        "velocity": int(row["Speed"]) * 1000,  # Convert km/h to m/h.
+        "heading": int(row["Track"]),
+        "altitude": int(row["Altitude"]),
+        "type": "tracplus",
+    }
+    # Localise the timestamp as UTC.
+    data["timestamp"] = UTC.localize(data["timestamp"])
+
+    return data
+
+
+def parse_dfes_feature(feature):
+    properties = feature["properties"]
+    coordinates = feature["geometry"]["coordinates"]
+
+    try:
+        data = {
+            "device_id": str(properties["TrackerID"]).strip(),
+            "timestamp": datetime.strptime(properties["Time"], "%Y-%m-%dT%H:%M:%S.%fZ"),
+            "longitude": coordinates[0],
+            "latitude": coordinates[1],
+            "velocity": properties["Speed"] * 1000,  # Convert km/h to m/h
+            "heading": properties["Direction"],
+            "altitude": 0,  # DFES feed does not report altiude.
+            "type": "dfes",
+        }
+        # Localise the timestamp as UTC.
+        data["timestamp"] = UTC.localize(data["timestamp"])
     except:
         return False
 

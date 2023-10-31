@@ -16,10 +16,10 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: resourcetracking-env-prod
+                  name: resourcetracking-env-uat
                   key: DATABASE_URL
             - name: TRACPLUS_URL
               valueFrom:
                 secretKeyRef:
-                  name: resourcetracking-env-prod
+                  name: resourcetracking-env-uat
                   key: TRACPLUS_URL
