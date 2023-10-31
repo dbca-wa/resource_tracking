@@ -3,7 +3,7 @@ kind: CronJob
 metadata:
   name: resourcetracking-cronjob
 spec:
-  schedule: "*/2 * * * *"
+  schedule: "* * * * *"
   jobTemplate:
     spec:
       template:
