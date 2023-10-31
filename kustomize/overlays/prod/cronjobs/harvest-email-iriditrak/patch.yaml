@@ -1,6 +1,35 @@
-- op: replace
-  path: /spec/schedule
-  value: "* * * * *"
-- op: replace
-  path: /spec/jobTemplate/spec/template/spec/containers/0/args
-  value: ["manage.py", "harvest_tracking_email", "--device-type", "iriditrak", "--purge-email"]
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: resourcetracking-cronjob
+spec:
+  schedule: "* * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: resourcetracking-cronjob
+            imagePullPolicy: Always
+            args: ["manage.py", "harvest_tracking_email", "--device-type", "iriditrak", "--purge-email"]
+            env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: DATABASE_URL
+            - name: EMAIL_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: EMAIL_HOST
+            - name: EMAIL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: EMAIL_USER
+            - name: EMAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: EMAIL_PASSWORD

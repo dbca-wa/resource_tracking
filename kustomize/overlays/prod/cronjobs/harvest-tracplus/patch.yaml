@@ -1,6 +1,25 @@
-- op: replace
-  path: /spec/schedule
-  value: "* * * * *"
-- op: replace
-  path: /spec/jobTemplate/spec/template/spec/containers/0/args
-  value: ["manage.py", "harvest_tracplus"]
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: resourcetracking-cronjob
+spec:
+  schedule: "* * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: resourcetracking-cronjob
+            imagePullPolicy: Always
+            args: ["manage.py", "harvest_tracplus"]
+            env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: DATABASE_URL
+            - name: TRACPLUS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: TRACPLUS_URL

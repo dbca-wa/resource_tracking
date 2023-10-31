@@ -1,6 +1,35 @@
-- op: replace
-  path: /spec/schedule
-  value: "* * * * *"
-- op: replace
-  path: /spec/jobTemplate/spec/template/spec/containers/0/args
-  value: ["manage.py", "harvest_dfes_feed"]
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: resourcetracking-cronjob
+spec:
+  schedule: "* * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: resourcetracking-cronjob
+            imagePullPolicy: Always
+            args: ["manage.py", "harvest_dfes_feed"]
+            env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: DATABASE_URL
+            - name: DFES_URL
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: DFES_URL
+            - name: DFES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: DFES_USER
+            - name: DFES_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: DFES_PASS
