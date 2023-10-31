@@ -27,11 +27,21 @@ spec:
             secretKeyRef:
               name: resourcetracking-env-uat
               key: SECRET_KEY
-        - name: DFES_PASS
+        - name: EMAIL_HOST
           valueFrom:
             secretKeyRef:
               name: resourcetracking-env-uat
-              key: DFES_PASS
+              key: EMAIL_HOST
+        - name: EMAIL_USER
+          valueFrom:
+            secretKeyRef:
+              name: resourcetracking-env-uat
+              key: EMAIL_USER
+        - name: EMAIL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: resourcetracking-env-uat
+              key: EMAIL_PASSWORD
         - name: DFES_URL
           valueFrom:
             secretKeyRef:
@@ -42,31 +52,11 @@ spec:
             secretKeyRef:
               name: resourcetracking-env-uat
               key: DFES_USER
-        - name: EMAIL_HOST
+        - name: DFES_PASS
           valueFrom:
             secretKeyRef:
               name: resourcetracking-env-uat
-              key: EMAIL_HOST
-        - name: EMAIL_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-uat
-              key: EMAIL_PASSWORD
-        - name: EMAIL_USER
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-uat
-              key: EMAIL_USER
-        - name: FLEETCARE_CONNECTION_STRING
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-uat
-              key: FLEETCARE_CONNECTION_STRING
-        - name: FLEETCARE_CONTAINER
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-uat
-              key: FLEETCARE_CONTAINER
+              key: DFES_PASS
         - name: KMI_VEHICLE_BASE_URL
           valueFrom:
             secretKeyRef:

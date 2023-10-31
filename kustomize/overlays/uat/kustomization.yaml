@@ -2,18 +2,22 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 nameSuffix: -uat
 secretGenerator:
-- name: resourcetracking-env
-  type: Opaque
-  envs:
-  - .env
+  - name: resourcetracking-env
+    type: Opaque
+    envs:
+    - .env
 resources:
-- ../../base
-- ingress.yaml
-- pdb.yaml
+  - ../../base
+  - cronjobs/harvest-dfes
+  - cronjobs/harvest-email-iriditrak
+  - cronjobs/harvest-email-mp70
+  - cronjobs/harvest-tracplus
+  - ingress.yaml
+  - pdb.yaml
 labels:
-- includeSelectors: true
-  pairs:
-    variant: uat
+  - includeSelectors: true
+    pairs:
+      variant: uat
 patches:
-- path: deployment_patch.yaml
-- path: service_patch.yaml
+  - path: deployment_patch.yaml
+  - path: service_patch.yaml
