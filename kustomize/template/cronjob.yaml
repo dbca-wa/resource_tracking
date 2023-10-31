@@ -15,9 +15,12 @@ spec:
           containers:
           - name: resourcetracking-cronjob
             image: ghcr.io/dbca-wa/resource_tracking
-            imagePullPolicy: IfNotPresent
+            imagePullPolicy: Always
             command: ["python"]
             args: ["--version"]
+            env:
+            - name: TZ
+              value: "Australia/Perth"
             securityContext:
               runAsNonRoot: true
               privileged: false

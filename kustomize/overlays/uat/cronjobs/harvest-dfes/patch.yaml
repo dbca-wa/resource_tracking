@@ -3,14 +3,13 @@ kind: CronJob
 metadata:
   name: resourcetracking-cronjob
 spec:
-  schedule: "* * * * *"
+  schedule: "*/2 * * * *"
   jobTemplate:
     spec:
       template:
         spec:
           containers:
           - name: resourcetracking-cronjob
-            imagePullPolicy: Always
             args: ["manage.py", "harvest_dfes_feed"]
             env:
             - name: DATABASE_URL
