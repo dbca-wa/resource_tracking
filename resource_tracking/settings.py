@@ -153,11 +153,12 @@ SENTRY_SAMPLE_RATE = env('SENTRY_SAMPLE_RATE', 0.0)  # 0.0 - 1.0
 SENTRY_ENVIRONMENT = env('SENTRY_ENVIRONMENT', None)
 if SENTRY_DSN and SENTRY_ENVIRONMENT:
     import sentry_sdk
-    from importlib import metadata
+    import tomli
+    project = tomli.load(open(os.path.join(BASE_DIR, "pyproject.toml"), "rb"))
 
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         traces_sample_rate=SENTRY_SAMPLE_RATE,
         environment=SENTRY_ENVIRONMENT,
-        release=metadata.version("resource_tracking"),
+        release=project["tool"]["poetry"]["version"],
     )
