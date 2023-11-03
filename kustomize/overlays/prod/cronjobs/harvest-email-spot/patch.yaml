@@ -10,7 +10,7 @@ spec:
         spec:
           containers:
           - name: resourcetracking-cronjob
-            imagePullPolicy: Always
+            imagePullPolicy: IfNotPresent
             args: ["manage.py", "harvest_tracking_email", "--device-type", "spot", "--purge-email"]
             env:
             - name: DATABASE_URL

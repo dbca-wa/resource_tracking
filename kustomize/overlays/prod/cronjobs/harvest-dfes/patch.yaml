@@ -10,7 +10,7 @@ spec:
         spec:
           containers:
           - name: resourcetracking-cronjob
-            imagePullPolicy: Always
+            imagePullPolicy: IfNotPresent
             args: ["manage.py", "harvest_dfes_feed"]
             env:
             - name: DATABASE_URL

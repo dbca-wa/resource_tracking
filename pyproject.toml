@@ -20,6 +20,7 @@ unicodecsv = "0.14.1"
 whitenoise = {version = "6.5.0", extras = ["brotli"]}
 azure-storage-blob = "12.17.0"
 sentry-sdk = {version = "1.32.0", extras = ["django"]}
+tomli = "2.0.1"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.13.0"
