@@ -79,9 +79,8 @@ def harvest_tracking_email(device_type, purge_email=False):
             if purge_email:
                 status, response = email_utils.email_mark_read(imap, uid)
                 status, response = email_utils.email_delete(imap, uid)
-                LOGGER.info(f"Flagged {flagged} emails")
 
-    LOGGER.info(f"Created {created} tracking points")
+    LOGGER.info(f"Created {created} tracking points, flagged {flagged} emails")
     imap.close()
     imap.logout()
 
