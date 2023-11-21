@@ -59,9 +59,11 @@ DFES_FEED_FEATURE_VALID = """{
 
 class HarvestTestCase(TestCase):
     """Unit tests to cover the following harvest formats:
-    - Email payloads: Iriditrak, MP70, Spot (TODO)
+    - Email payloads: Iriditrak, MP70
     - TracPlus API
-    - DFES API (TODO)
+    - DFES API
+
+    TODO: Email from Spot, DPlus
     """
 
     def test_validate_latitude_longitude(self):

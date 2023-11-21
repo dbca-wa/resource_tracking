@@ -79,9 +79,8 @@ def harvest_tracking_email(device_type, purge_email=False):
             if purge_email:
                 status, response = email_utils.email_mark_read(imap, uid)
                 status, response = email_utils.email_delete(imap, uid)
-                LOGGER.info(f"Flagged {flagged} emails")
 
-    LOGGER.info(f"Created {created} tracking points")
+    LOGGER.info(f"Created {created} tracking points, flagged {flagged} emails")
     imap.close()
     imap.logout()
 
@@ -106,19 +105,21 @@ def save_mp70(message):
 
     # Validate lat/lon values.
     if not validate_latitude_longitude(data["latitude"], data["longitude"]):
-        LOGGER.warning(f"Bad geometry while parsing MP70 message from device {data['device_id']}: {data['latitude']}, {data['longitude']}")
+        LOGGER.info(f"Bad geometry while parsing MP70 message from device {data['device_id']}: {data['latitude']}, {data['longitude']}")
         return False
 
     device, created = Device.objects.get_or_create(deviceid=data["device_id"])
     seen = data["timestamp"]
+    point = f"POINT({data['longitude']} {data['latitude']})"
+
     if not device.seen or device.seen < seen:
         device.seen = seen
+        device.point = point
         device.heading = data["heading"]
         device.velocity = data["velocity"]
         device.altitude = data["altitude"]
         device.save()
 
-    point = f"POINT({data['longitude']} {data['latitude']})"
     loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
     if created:
         loggedpoint.source_device_type = "mp70"
@@ -144,19 +145,21 @@ def save_spot(message):
 
     # Validate lat/lon values.
     if not validate_latitude_longitude(data["latitude"], data["longitude"]):
-        LOGGER.warning(f"Bad geometry while parsing Spot message from device {data['device_id']}: {data['latitude']}, {data['longitude']}")
+        LOGGER.info(f"Bad geometry while parsing Spot message from device {data['device_id']}: {data['latitude']}, {data['longitude']}")
         return False
 
     device, created = Device.objects.get_or_create(deviceid=data["device_id"])
     seen = data["timestamp"]
+    point = f"POINT({data['longitude']} {data['latitude']})"
+
     if not device.seen or device.seen < seen:
         device.seen = seen
+        device.point = point
         device.heading = data["heading"]
         device.velocity = data["velocity"]
         device.altitude = data["altitude"]
         device.save()
 
-    point = f"POINT({data['longitude']} {data['latitude']})"
     loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
     if created:
         loggedpoint.source_device_type = "spot"
@@ -182,19 +185,21 @@ def save_iriditrak(message):
 
     # Validate lat/lon values.
     if not validate_latitude_longitude(data["latitude"], data["longitude"]):
-        LOGGER.warning(f"Bad geometry while parsing Iriditrak message from device {data['device_id']}: {data['latitude']}, {data['longitude']}")
+        LOGGER.info(f"Bad geometry while parsing Iriditrak message from device {data['device_id']}: {data['latitude']}, {data['longitude']}")
         return False
 
     device, created = Device.objects.get_or_create(deviceid=data["device_id"])
     seen = data["timestamp"]
+    point = f"POINT({data['longitude']} {data['latitude']})"
+
     if not device.seen or device.seen < seen:
         device.seen = seen
+        device.point = point
         device.heading = data["heading"]
         device.velocity = data["velocity"]
         device.altitude = data["altitude"]
         device.save()
 
-    point = f"POINT({data['longitude']} {data['latitude']})"
     loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
     if created:
         loggedpoint.source_device_type = "iriditrak"
@@ -222,19 +227,21 @@ def save_dplus(message):
 
     # Validate lat/lon values.
     if not validate_latitude_longitude(data["latitude"], data["longitude"]):
-        LOGGER.warning(f"Bad geometry while parsing DPlus message from device {data['device_id']}: {data['latitude']}, {data['longitude']}")
+        LOGGER.info(f"Bad geometry while parsing DPlus message from device {data['device_id']}: {data['latitude']}, {data['longitude']}")
         return False
 
     device, created = Device.objects.get_or_create(deviceid=data["device_id"])
     seen = data["timestamp"]
+    point = f"POINT({data['longitude']} {data['latitude']})"
+
     if not device.seen or device.seen < seen:
         device.seen = seen
+        device.point = point
         device.heading = data["heading"]
         device.velocity = data["velocity"]
         device.altitude = data["altitude"]
         device.save()
 
-    point = f"POINT({data['longitude']} {data['latitude']})"
     loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
     if created:
         loggedpoint.source_device_type = "dplus"
@@ -308,7 +315,7 @@ def save_dfes_feed():
 
         # Validate lat/lon values.
         if not validate_latitude_longitude(data["latitude"], data["longitude"]):
-            LOGGER.warning(f"Bad geometry while parsing data for DFES device {data['device_id']}: {data['latitude']}, {data['longitude']}")
+            LOGGER.info(f"Bad geometry while parsing data for DFES device {data['device_id']}: {data['latitude']}, {data['longitude']}")
             skipped_device += 1
             continue
 
@@ -334,15 +341,17 @@ def save_dfes_feed():
             device.save()
 
         seen = data["timestamp"]
+        point = f"POINT({data['longitude']} {data['latitude']})"
+
         if not device.seen or device.seen < seen:
             device.seen = seen
+            device.point = point
             device.heading = data["heading"]
             device.velocity = data["velocity"]
             device.altitude = data["altitude"]
             device.save()
             updated_device += 1
 
-        point = f"POINT({data['longitude']} {data['latitude']})"
         loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
         if created:
             loggedpoint.source_device_type = "dfes"
@@ -351,6 +360,8 @@ def save_dfes_feed():
             loggedpoint.altitude = data["altitude"]
             loggedpoint.save()
             logged_points += 1
+        else:
+            skipped_device += 1
 
     LOGGER.info(f"Created {created_device}, updated {updated_device}, skipped {skipped_device}, {logged_points} new logged points")
 
@@ -382,7 +393,7 @@ def save_tracplus_feed():
 
         # Validate lat/lon values.
         if not validate_latitude_longitude(data["latitude"], data["longitude"]):
-            LOGGER.warning(f"Bad geometry while parsing TracPlus data from device {data['device_id']}: {data['latitude']}, {data['longitude']}")
+            LOGGER.info(f"Bad geometry while parsing TracPlus data from device {data['device_id']}: {data['latitude']}, {data['longitude']}")
             skipped_device += 1
             continue
 
@@ -400,15 +411,17 @@ def save_tracplus_feed():
             device.save()
 
         seen = data["timestamp"]
+        point = f"POINT({data['longitude']} {data['latitude']})"
+
         if not device.seen or device.seen < seen:
             device.seen = seen
+            device.point = point
             device.heading = data["heading"]
             device.velocity = data["velocity"]
             device.altitude = data["altitude"]
             updated_device += 1
             device.save()
 
-        point = f"POINT({data['longitude']} {data['latitude']})"
         loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
         if created:
             loggedpoint.source_device_type = "tracplus"
