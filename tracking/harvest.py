@@ -110,14 +110,16 @@ def save_mp70(message):
 
     device, created = Device.objects.get_or_create(deviceid=data["device_id"])
     seen = data["timestamp"]
+    point = f"POINT({data['longitude']} {data['latitude']})"
+
     if not device.seen or device.seen < seen:
         device.seen = seen
+        device.point = point
         device.heading = data["heading"]
         device.velocity = data["velocity"]
         device.altitude = data["altitude"]
         device.save()
 
-    point = f"POINT({data['longitude']} {data['latitude']})"
     loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
     if created:
         loggedpoint.source_device_type = "mp70"
@@ -148,14 +150,16 @@ def save_spot(message):
 
     device, created = Device.objects.get_or_create(deviceid=data["device_id"])
     seen = data["timestamp"]
+    point = f"POINT({data['longitude']} {data['latitude']})"
+
     if not device.seen or device.seen < seen:
         device.seen = seen
+        device.point = point
         device.heading = data["heading"]
         device.velocity = data["velocity"]
         device.altitude = data["altitude"]
         device.save()
 
-    point = f"POINT({data['longitude']} {data['latitude']})"
     loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
     if created:
         loggedpoint.source_device_type = "spot"
@@ -186,14 +190,16 @@ def save_iriditrak(message):
 
     device, created = Device.objects.get_or_create(deviceid=data["device_id"])
     seen = data["timestamp"]
+    point = f"POINT({data['longitude']} {data['latitude']})"
+
     if not device.seen or device.seen < seen:
         device.seen = seen
+        device.point = point
         device.heading = data["heading"]
         device.velocity = data["velocity"]
         device.altitude = data["altitude"]
         device.save()
 
-    point = f"POINT({data['longitude']} {data['latitude']})"
     loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
     if created:
         loggedpoint.source_device_type = "iriditrak"
@@ -226,14 +232,16 @@ def save_dplus(message):
 
     device, created = Device.objects.get_or_create(deviceid=data["device_id"])
     seen = data["timestamp"]
+    point = f"POINT({data['longitude']} {data['latitude']})"
+
     if not device.seen or device.seen < seen:
         device.seen = seen
+        device.point = point
         device.heading = data["heading"]
         device.velocity = data["velocity"]
         device.altitude = data["altitude"]
         device.save()
 
-    point = f"POINT({data['longitude']} {data['latitude']})"
     loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
     if created:
         loggedpoint.source_device_type = "dplus"
@@ -333,15 +341,16 @@ def save_dfes_feed():
             device.save()
 
         seen = data["timestamp"]
+        point = f"POINT({data['longitude']} {data['latitude']})"
+
         if not device.seen or device.seen < seen:
             device.seen = seen
+            device.point = point
             device.heading = data["heading"]
             device.velocity = data["velocity"]
             device.altitude = data["altitude"]
             device.save()
             updated_device += 1
-
-        point = f"POINT({data['longitude']} {data['latitude']})"
 
         loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
         if created:
@@ -402,15 +411,17 @@ def save_tracplus_feed():
             device.save()
 
         seen = data["timestamp"]
+        point = f"POINT({data['longitude']} {data['latitude']})"
+
         if not device.seen or device.seen < seen:
             device.seen = seen
+            device.point = point
             device.heading = data["heading"]
             device.velocity = data["velocity"]
             device.altitude = data["altitude"]
             updated_device += 1
             device.save()
 
-        point = f"POINT({data['longitude']} {data['latitude']})"
         loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
         if created:
             loggedpoint.source_device_type = "tracplus"
