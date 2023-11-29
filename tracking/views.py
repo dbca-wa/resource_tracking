@@ -129,6 +129,11 @@ class DeviceHistoryView(SpatialDataView):
             return HttpResponseBadRequest("Missing device_id")
         return super().dispatch(*args, **kwargs)
 
+    def get_filename_prefix(self):
+        device_id = self.kwargs["device_id"]
+        device = Device.objects.get(pk=device_id)
+        return f"{device.deviceid}_loggedpoint"
+
     def get_queryset(self):
         qs = super().get_queryset()
 
