@@ -4,12 +4,15 @@ import os
 from datetime import timedelta
 from pathlib import Path
 import sys
+import tomli
 
 # Project paths
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = str(Path(__file__).resolve().parents[1])
 
 # Application definition
+project = tomli.load(open(os.path.join(BASE_DIR, "pyproject.toml"), "rb"))
+APPLICATION_VERSION_NO = project["tool"]["poetry"]["version"]
 DEBUG = env('DEBUG', False)
 SECRET_KEY = env('SECRET_KEY', 'PlaceholderSecretKey')
 CSRF_COOKIE_SECURE = env('CSRF_COOKIE_SECURE', False)
