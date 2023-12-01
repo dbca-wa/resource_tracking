@@ -108,7 +108,7 @@ class DevicesView(SpatialDataView):
         qs = super().get_queryset()
 
         if "days" in self.request.GET and self.request.GET["days"]:
-            days = self.request.GET["days"]
+            days = int(self.request.GET["days"])
         else:
             days = 14
         qs = qs.filter(seen__gte=timezone.now() - timedelta(days=days))
