@@ -11,7 +11,7 @@ from tastypie.resources import ModelResource, ALL_WITH_RELATIONS
 from tastypie.serializers import Serializer
 import unicodecsv as csv
 
-from tracking.models import Device, LoggedPoint
+from tracking.models import Device
 
 
 class CSVSerializer(Serializer):
@@ -136,10 +136,3 @@ class DeviceResource(APIResource):
     age_colour = fields.CharField(attribute='age_colour', readonly=True, null=True)
     age_text = fields.CharField(attribute='age_text', readonly=True, null=True)
     icon = fields.CharField(attribute='icon', readonly=True)
-
-
-class LoggedPointResource(APIResource):
-    device = fields.IntegerField(attribute='device_id', readonly=True)
-    Meta = generate_meta(LoggedPoint, {
-        'cache': HttpCache(settings.HISTORY_HTTP_CACHE_TIMEOUT)
-    })
