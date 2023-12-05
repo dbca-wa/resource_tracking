@@ -3,11 +3,9 @@ from django.contrib.gis.geos import LineString
 from django.core.serializers import serialize
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.utils import timezone
-from django.utils.decorators import method_decorator
 from django.views.generic import View
 
 from tracking.api import CSVSerializer
-from tracking.basic_auth import logged_in_or_basicauth
 from tracking.models import Device, LoggedPoint
 
 
@@ -21,10 +19,6 @@ class SpatialDataView(View):
     geometry_field = None
     properties = ()
     filename_prefix = None
-
-    @method_decorator(logged_in_or_basicauth(realm="Resource Tracking"))
-    def dispatch(self, *args, **kwargs):
-        return super(SpatialDataView, self).dispatch(*args, **kwargs)
 
     def get_filename_prefix(self):
         if not self.filename_prefix:
