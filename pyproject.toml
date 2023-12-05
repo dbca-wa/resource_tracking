@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "resource_tracking"
-version = "1.4.2"
+version = "1.4.3"
 description = "DBCA internal corporate application to download and serve data from remote tracking devices."
 authors = ["DBCA OIM <asi@dbca.wa.gov.au>"]
 license = "Apache-2.0"
@@ -8,10 +8,10 @@ license = "Apache-2.0"
 [tool.poetry.dependencies]
 python = "^3.10"
 django = "3.2.23"
-psycopg2 = "2.9.6"
+psycopg2 = "2.9.9"
 dbca-utils = "1.1.6"
 python-dotenv = "1.0.0"
-dj-database-url = "1.0.0"
+dj-database-url = "2.1.0"
 gunicorn = "21.2.0"
 django-extensions = "3.2.3"
 django-tastypie = "0.14.5"
