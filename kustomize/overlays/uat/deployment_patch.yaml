@@ -67,3 +67,15 @@ spec:
             secretKeyRef:
               name: resourcetracking-env-uat
               key: TRACPLUS_URL
+        - name: SENTRY_DSN
+          valueFrom:
+            secretKeyRef:
+              name: resourcetracking-env-uat
+              key: SENTRY_DSN
+        - name: SENTRY_TRANSACTION_SAMPLE_RATE
+          valueFrom:
+            secretKeyRef:
+              name: resourcetracking-env-uat
+              key: SENTRY_TRANSACTION_SAMPLE_RATE
+        - name: SENTRY_ENVIRONMENT
+          value: "uat"

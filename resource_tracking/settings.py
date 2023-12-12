@@ -4,12 +4,15 @@ import os
 from datetime import timedelta
 from pathlib import Path
 import sys
+import tomli
 
 # Project paths
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = str(Path(__file__).resolve().parents[1])
 
 # Application definition
+project = tomli.load(open(os.path.join(BASE_DIR, "pyproject.toml"), "rb"))
+APPLICATION_VERSION_NO = project["tool"]["poetry"]["version"]
 DEBUG = env('DEBUG', False)
 SECRET_KEY = env('SECRET_KEY', 'PlaceholderSecretKey')
 CSRF_COOKIE_SECURE = env('CSRF_COOKIE_SECURE', False)
@@ -149,16 +152,16 @@ TASTYPIE_DEFAULT_FORMATS = ['json']
 
 # Sentry settings
 SENTRY_DSN = env('SENTRY_DSN', None)
-SENTRY_SAMPLE_RATE = env('SENTRY_SAMPLE_RATE', 0.0)  # 0.0 - 1.0
+SENTRY_SAMPLE_RATE = env('SENTRY_SAMPLE_RATE', 1.0)  # Error sampling rate
+SENTRY_TRANSACTION_SAMPLE_RATE = env('SENTRY_TRANSACTION_SAMPLE_RATE', 0.0)  # Transaction sampling
 SENTRY_ENVIRONMENT = env('SENTRY_ENVIRONMENT', None)
 if SENTRY_DSN and SENTRY_ENVIRONMENT:
     import sentry_sdk
-    import tomli
-    project = tomli.load(open(os.path.join(BASE_DIR, "pyproject.toml"), "rb"))
 
     sentry_sdk.init(
         dsn=SENTRY_DSN,
-        traces_sample_rate=SENTRY_SAMPLE_RATE,
+        sample_rate=SENTRY_SAMPLE_RATE,
+        traces_sample_rate=SENTRY_TRANSACTION_SAMPLE_RATE,
         environment=SENTRY_ENVIRONMENT,
-        release=project["tool"]["poetry"]["version"],
+        release=APPLICATION_VERSION_NO,
     )

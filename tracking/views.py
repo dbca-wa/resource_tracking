@@ -3,11 +3,9 @@ from django.contrib.gis.geos import LineString
 from django.core.serializers import serialize
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.utils import timezone
-from django.utils.decorators import method_decorator
 from django.views.generic import View
 
 from tracking.api import CSVSerializer
-from tracking.basic_auth import logged_in_or_basicauth
 from tracking.models import Device, LoggedPoint
 
 
@@ -21,10 +19,6 @@ class SpatialDataView(View):
     geometry_field = None
     properties = ()
     filename_prefix = None
-
-    @method_decorator(logged_in_or_basicauth(realm="Resource Tracking"))
-    def dispatch(self, *args, **kwargs):
-        return super(SpatialDataView, self).dispatch(*args, **kwargs)
 
     def get_filename_prefix(self):
         if not self.filename_prefix:
@@ -108,7 +102,7 @@ class DevicesView(SpatialDataView):
         qs = super().get_queryset()
 
         if "days" in self.request.GET and self.request.GET["days"]:
-            days = self.request.GET["days"]
+            days = int(self.request.GET["days"])
         else:
             days = 14
         qs = qs.filter(seen__gte=timezone.now() - timedelta(days=days))
@@ -128,6 +122,11 @@ class DeviceHistoryView(SpatialDataView):
         if "device_id" not in self.kwargs:
             return HttpResponseBadRequest("Missing device_id")
         return super().dispatch(*args, **kwargs)
+
+    def get_filename_prefix(self):
+        device_id = self.kwargs["device_id"]
+        device = Device.objects.get(pk=device_id)
+        return f"{device.deviceid}_loggedpoint"
 
     def get_queryset(self):
         qs = super().get_queryset()
