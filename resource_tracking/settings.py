@@ -149,6 +149,7 @@ LOGGING = {
 
 # Tastypie settings
 TASTYPIE_DEFAULT_FORMATS = ['json']
+TASTYPIE_DATETIME_FORMATTING = "iso-8601-strict"
 
 # Sentry settings
 SENTRY_DSN = env('SENTRY_DSN', None)
