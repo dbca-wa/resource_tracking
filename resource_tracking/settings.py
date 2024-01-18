@@ -25,7 +25,6 @@ INTERNAL_IPS = ['127.0.0.1', '::1']
 ROOT_URLCONF = 'resource_tracking.urls'
 WSGI_APPLICATION = 'resource_tracking.wsgi.application'
 TRACPLUS_URL = env('TRACPLUS_URL', '')
-KMI_VEHICLE_BASE_URL = env('KMI_VEHICLE_BASE_URL', '')
 DFES_URL = env('DFES_URL', '')
 DFES_USER = env('DFES_USER', '')
 DFES_PASS = env('DFES_PASS', '')
