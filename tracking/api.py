@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from django.conf import settings
 from django.core.exceptions import FieldError
 from django.urls import path
@@ -9,6 +9,7 @@ from tastypie.cache import NoCache
 from tastypie.http import HttpBadRequest
 from tastypie.resources import ModelResource, ALL_WITH_RELATIONS
 from tastypie.serializers import Serializer
+from tastypie.utils import format_datetime
 import unicodecsv as csv
 
 from tracking.models import Device
@@ -20,6 +21,17 @@ class CSVSerializer(Serializer):
     content_types = dict(
         Serializer.content_types.items() |
         [('csv', 'text/csv')])
+
+    def format_datetime(self, data):
+        # Override the default `format_datetime` method of the class
+        # to return datetime as timezone-aware.
+        if self.datetime_formatting == 'rfc-2822':
+            return format_datetime(data)
+        if self.datetime_formatting == 'iso-8601-strict':
+            # Remove microseconds to strictly adhere to iso-8601
+            data = data - timedelta(microseconds=data.microsecond)
+
+        return data.isoformat()
 
     def to_csv(self, data, options=None):
         options = options or {}

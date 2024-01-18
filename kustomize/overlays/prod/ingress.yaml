@@ -15,3 +15,10 @@ spec:
             name: resourcetracking-clusterip-prod
             port:
               number: 8080
+      - path: /geoserver
+        pathType: Prefix
+        backend:
+          service:
+            name: resourcetracking-geoserver-clusterip-prod
+            port:
+              number: 8080
