@@ -23,10 +23,20 @@ spec:
         resources:
           requests:
             memory: "128Mi"
-            cpu: "25m"
+            cpu: "10m"
           limits:
             memory: "4096Mi"
             cpu: "1000m"
+        startupProbe:
+          httpGet:
+            path: /liveness
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 3
+          periodSeconds: 3
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
         livenessProbe:
           httpGet:
             path: /liveness
