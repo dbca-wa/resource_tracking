@@ -3,15 +3,15 @@ kind: Deployment
 metadata:
   name: resourcetracking-geoserver
   labels:
-    app: resourcetracking-geoserver-prod
+    app: resourcetracking-geoserver
 spec:
   selector:
     matchLabels:
-      app: resourcetracking-geoserver-prod
+      app: resourcetracking-geoserver
   template:
     metadata:
       labels:
-        app: resourcetracking-geoserver-prod
+        app: resourcetracking-geoserver
     spec:
       initContainers:
       - name: chown-pvc

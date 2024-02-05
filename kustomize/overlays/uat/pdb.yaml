@@ -6,7 +6,7 @@ spec:
   minAvailable: 1
   selector:
     matchLabels:
-      app: resourcetracking-uat
+      app: resourcetracking-deployment
       variant: uat
 ---
 apiVersion: policy/v1
@@ -17,5 +17,5 @@ spec:
   minAvailable: 0
   selector:
     matchLabels:
-      app: resourcetracking-geoserver-uat
+      app: resourcetracking-geoserver
       variant: uat

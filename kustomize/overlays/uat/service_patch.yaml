@@ -5,5 +5,5 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    app: resourcetracking-uat
+    app: resourcetracking-deployment
     variant: uat
