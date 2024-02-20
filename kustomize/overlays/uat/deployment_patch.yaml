@@ -3,15 +3,15 @@ kind: Deployment
 metadata:
   name: resourcetracking-deployment
   labels:
-    app: resourcetracking-uat
+    app: resourcetracking-deployment
 spec:
   selector:
     matchLabels:
-      app: resourcetracking-uat
+      app: resourcetracking-deployment
   template:
     metadata:
       labels:
-        app: resourcetracking-uat
+        app: resourcetracking-deployment
     spec:
       containers:
       - name: resourcetracking
@@ -57,11 +57,6 @@ spec:
             secretKeyRef:
               name: resourcetracking-env-uat
               key: DFES_PASS
-        - name: KMI_VEHICLE_BASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-uat
-              key: KMI_VEHICLE_BASE_URL
         - name: TRACPLUS_URL
           valueFrom:
             secretKeyRef:

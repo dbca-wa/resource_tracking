@@ -4,5 +4,5 @@ metadata:
   name: resourcetracking-geoserver-clusterip
 spec:
   selector:
-    app: resourcetracking-geoserver-prod
+    app: resourcetracking-geoserver
     variant: prod
