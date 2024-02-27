@@ -4,14 +4,15 @@ import os
 from datetime import timedelta
 from pathlib import Path
 import sys
-import tomli
+import tomllib
+from zoneinfo import ZoneInfo
 
 # Project paths
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = str(Path(__file__).resolve().parents[1])
 
 # Application definition
-project = tomli.load(open(os.path.join(BASE_DIR, "pyproject.toml"), "rb"))
+project = tomllib.load(open(os.path.join(BASE_DIR, "pyproject.toml"), "rb"))
 APPLICATION_VERSION_NO = project["tool"]["poetry"]["version"]
 DEBUG = env("DEBUG", False)
 SECRET_KEY = env("SECRET_KEY", "PlaceholderSecretKey")
@@ -108,6 +109,7 @@ AUTHENTICATION_BACKENDS = (
 # Internationalization
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Australia/Perth"
+TZ = ZoneInfo(TIME_ZONE)
 USE_I18N = True
 USE_L10N = True
 USE_TZ = True

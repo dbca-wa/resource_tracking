@@ -1,4 +1,5 @@
 import csv
+from datetime import datetime, timezone
 import json
 from django.test import TestCase
 
@@ -14,6 +15,7 @@ from tracking.utils import (
 
 # MP70 payload with valid data.
 MP70_PAYLOAD_VALID = "\r\nN694470090021038,13.74,-031.99252,+115.88450,0,0,10/18/2023 03:12:45\r\n"
+MP70_TIMESTAMP = datetime(2023, 10, 18, 3, 12, 45, tzinfo=timezone.utc)
 # MP70 payload with bad data (unable to parse).
 MP70_PAYLOAD_BAD = "\r\nN690540113021035,12.96,foo,bar,-53,0,10/18/2023 03:12:49\r\n"
 # MP70 payload with invalid data (fails validation).
@@ -23,6 +25,7 @@ IRIDITRAK_PAYLOAD_VALID = b"\x01\xfd3\x12tqa\x901 \x11\xd60e\x00\x00\xbc\x00\x00
 # TracPlus feed valid payload
 TRAKPLUS_FEED_VALID = """Report ID,Asset Type,Asset Regn,Asset Name,Asset Make,Asset Model,Device ID,Device Serial,Device IMEI,Device Make,Device Model,Transmitted,Received,Latitude,Longitude,Speed,Track,Altitude,Events,GPS Count,DOP,Type of Fix,Message Text,Package,Gateway\r\n1,Aircraft,N293EA Erickson Aero Tanker,,McDonnell Douglas,DC-87,1,L0001,L1001,Flightcell,DZMx,2023-10-30 01:50:44,2023-10-30 01:50:49,44.66921790,-121.149994450,0,0,750,EVT_SCHEDULED,0,1,3D,,,IRIDIUM.SBD.SQS
 """
+TRAKPLUS_TIMESTAMP = datetime(2023, 10, 30, 1, 50, 44, tzinfo=timezone.utc)
 DFES_FEED_FEATURE_VALID = """{
     "type": "Feature",
     "id": "VehPos.3",
@@ -55,6 +58,7 @@ DFES_FEED_FEATURE_VALID = """{
         "RolloverAlarm": false
     }
 }"""
+DFES_TIMESTAMP = datetime(2023, 10, 5, 1, 40, 7, tzinfo=timezone.utc)
 
 
 class HarvestTestCase(TestCase):
@@ -77,7 +81,9 @@ class HarvestTestCase(TestCase):
     def test_parse_mp70_payload(self):
         """Test the parse_mp70_payload function
         """
-        self.assertTrue(parse_mp70_payload(MP70_PAYLOAD_VALID))
+        data = parse_mp70_payload(MP70_PAYLOAD_VALID)
+        self.assertTrue(data)
+        self.assertEqual(data["timestamp"], MP70_TIMESTAMP)
         # Invalid data will still parse.
         self.assertTrue(parse_mp70_payload(MP70_PAYLOAD_INVALID))
         self.assertFalse(parse_mp70_payload(MP70_PAYLOAD_BAD))
@@ -86,6 +92,7 @@ class HarvestTestCase(TestCase):
         """Test the parse_beam_payload function
         """
         self.assertTrue(parse_beam_payload(IRIDITRAK_PAYLOAD_VALID))
+        # Iriditrak timestamp is parsed from the sent email.
 
     def test_parse_spot_message(self):
         """TODO: test the parse_spot_message function
@@ -98,10 +105,14 @@ class HarvestTestCase(TestCase):
         self.assertFalse(Device.objects.filter(source_device_type="tracplus").exists())
         csv_data = csv.DictReader(TRAKPLUS_FEED_VALID.split("\r\n"))
         row = next(csv_data)
-        self.assertTrue(parse_tracplus_row(row))
+        data = parse_tracplus_row(row)
+        self.assertTrue(data)
+        self.assertEqual(data["timestamp"], TRAKPLUS_TIMESTAMP)
 
     def test_parse_dfes_feature(self):
         """Test the parse_dfes_feature function
         """
         feature = json.loads(DFES_FEED_FEATURE_VALID)
-        self.assertTrue(parse_dfes_feature(feature))
+        data = parse_dfes_feature(feature)
+        self.assertTrue(data)
+        self.assertEqual(data["timestamp"], DFES_TIMESTAMP)

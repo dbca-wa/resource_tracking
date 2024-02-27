@@ -2,7 +2,6 @@ import csv
 from django.conf import settings
 from django.utils import timezone
 import logging
-import pytz
 import requests
 
 from tracking import email_utils
@@ -17,9 +16,7 @@ from tracking.utils import (
     parse_dfes_feature,
 )
 
-LOGGER = logging.getLogger('tracking')
-UTC = pytz.timezone("UTC")
-AWST = pytz.timezone("Australia/Perth")
+LOGGER = logging.getLogger("tracking")
 
 
 def harvest_tracking_email(device_type, purge_email=False):
@@ -85,7 +82,7 @@ def harvest_tracking_email(device_type, purge_email=False):
     imap.logout()
 
     delta = timezone.now() - start
-    start = start.astimezone(AWST)
+    start = start.astimezone(settings.TZ)
     LOGGER.info(f"Tracking point email harvest run at {start} for {delta.seconds}s")
     return True
 

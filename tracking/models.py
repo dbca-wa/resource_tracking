@@ -1,7 +1,7 @@
+from django.conf import settings
 from django.contrib.auth.models import Group, User
 from django.contrib.gis.db import models
 from django.utils import timezone
-from django.utils.encoding import force_text
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.dispatch import receiver
 from django.db.models.signals import pre_save, post_save
@@ -154,6 +154,9 @@ class Device(models.Model):
     class Meta:
         ordering = ('-seen',)
 
+    def __str__(self):
+        return f"{self.registration} {self.deviceid}"
+
     @property
     def age_minutes(self):
         if not self.seen:
@@ -211,9 +214,6 @@ class Device(models.Model):
         if not self.rin_number and self.symbol in ("heavy duty", "gang truck", "dozer", "grader", "loader", "tender", "float"):
             raise ValidationError("Please enter a RIN number")
 
-    def __str__(self):
-        return f"{self.registration} {self.deviceid}"
-
 
 class LoggedPoint(models.Model):
     device = models.ForeignKey(Device, on_delete=models.PROTECT)
@@ -229,7 +229,7 @@ class LoggedPoint(models.Model):
     raw = models.TextField(editable=False, null=True, blank=True)
 
     def __str__(self):
-        return force_text(f"{self.device} {self.seen}")
+        return f"{self.device} {self.seen.astimezone(settings.TZ)}"
 
     class Meta:
         ordering = ("-seen",)
