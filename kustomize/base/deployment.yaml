@@ -12,8 +12,10 @@ spec:
       - name: resourcetracking
         image: ghcr.io/dbca-wa/resource_tracking
         env:
-        - name: ALLOWED_DOMAINS
+        - name: ALLOWED_HOSTS
           value: ".dbca.wa.gov.au"
+        - name: CSRF_TRUSTED_ORIGINS
+          value: "https://*.dbca.wa.gov.au"
         - name: CSRF_COOKIE_SECURE
           value: "True"
         - name: SESSION_COOKIE_SECURE

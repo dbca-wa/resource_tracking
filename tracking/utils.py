@@ -1,11 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from email.utils import parsedate
-import pytz
 import struct
 import time
-
-
-UTC = pytz.timezone("UTC")
 
 
 def validate_latitude_longitude(latitude, longitude):
@@ -36,20 +32,17 @@ def parse_mp70_payload(payload):
     try:
         data = {
             "device_id": payload[0],
-            # We don't care about the second element (battery voltage).
+            "battery_voltage": payload[1],
             "latitude": float(payload[2]),
             "longitude": float(payload[3]),
             "velocity": int(payload[4]),
             "heading": int(payload[5]),
             "altitude": 0,
-            "timestamp": time.mktime(datetime.strptime(payload[6], "%m/%d/%Y %H:%M:%S").timetuple()),
+            "timestamp": datetime.strptime(payload[6], "%m/%d/%Y %H:%M:%S").replace(tzinfo=timezone.utc),
             "type": "mp70",
         }
     except:
         return False
-
-    # Localise the timestamp as UTC.
-    data["timestamp"] = UTC.localize(datetime.fromtimestamp(float(data["timestamp"])))
 
     return data
 
@@ -65,14 +58,11 @@ def parse_spot_message(message):
             "velocity": 0,
             "heading": 0,
             "altitude": 0,
-            "timestamp": time.mktime(parsedate(message["DATE"])),
+            "timestamp": time.mktime(parsedate(message["DATE"])).replace(tzinfo=timezone.utc),
             "type": "spot",
         }
     except:
         return False
-
-    # Localise the timestamp as UTC.
-    data["timestamp"] = UTC.localize(datetime.fromtimestamp(float(data["timestamp"])))
 
     return data
 
@@ -148,7 +138,7 @@ def parse_iriditrak_message(message):
     try:
         data = {
             "device_id": message["SUBJECT"].replace("SBD Msg From Unit: ", ""),
-            "timestamp": time.mktime(parsedate(message["DATE"])),
+            "timestamp": time.mktime(parsedate(message["DATE"])).replace(tzinfo=timezone.utc),
             "type": "iriditrak",
         }
 
@@ -168,9 +158,6 @@ def parse_iriditrak_message(message):
 
         data = {**data, **beam}
 
-        # Localise the timestamp as UTC.
-        data["timestamp"] = UTC.localize(datetime.fromtimestamp(float(data["timestamp"])))
-
     except:
         return False
 
@@ -182,16 +169,13 @@ def parse_dplus_payload(payload):
 
     try:
         data["device_id"] = int(data["RAW"][0])
-        data["timestamp"] = time.mktime(datetime.strptime(data["RAW"][1], "%d-%m-%y %H:%M:%S").timetuple())
+        data["timestamp"] = datetime.strptime(data["RAW"][1], "%d-%m-%y %H:%M:%S").replace(tzinfo=timezone.utc),
         data["latitude"] = float(data["RAW"][4])
         data["longitude"] = float(data["RAW"][5])
         data["velocity"] = int(data["RAW"][6]) * 1000
         data["heading"] = int(data["RAW"][7])
         data["altitude"] = int(data["RAW"][9])
         data["type"] = "dplus"
-
-        # Localise the timestamp as UTC.
-        data["timestamp"] = UTC.localize(datetime.fromtimestamp(float(data["timestamp"])))
     except:
         return False
 
@@ -201,7 +185,7 @@ def parse_dplus_payload(payload):
 def parse_tracplus_row(row):
     data = {
         "device_id": row["Device IMEI"],
-        "timestamp": datetime.strptime(row["Transmitted"], "%Y-%m-%d %H:%M:%S"),
+        "timestamp": datetime.strptime(row["Transmitted"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc),
         "latitude": float(row["Latitude"]),
         "longitude": float(row["Longitude"]),
         "velocity": int(row["Speed"]) * 1000,  # Convert km/h to m/h.
@@ -209,8 +193,6 @@ def parse_tracplus_row(row):
         "altitude": int(row["Altitude"]),
         "type": "tracplus",
     }
-    # Localise the timestamp as UTC.
-    data["timestamp"] = UTC.localize(data["timestamp"])
 
     return data
 
@@ -222,7 +204,7 @@ def parse_dfes_feature(feature):
     try:
         data = {
             "device_id": str(properties["TrackerID"]).strip(),
-            "timestamp": datetime.strptime(properties["Time"], "%Y-%m-%dT%H:%M:%S.%fZ"),
+            "timestamp": datetime.strptime(properties["Time"], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc),
             "longitude": coordinates[0],
             "latitude": coordinates[1],
             "velocity": properties["Speed"] * 1000,  # Convert km/h to m/h
@@ -230,8 +212,6 @@ def parse_dfes_feature(feature):
             "altitude": 0,  # DFES feed does not report altiude.
             "type": "dfes",
         }
-        # Localise the timestamp as UTC.
-        data["timestamp"] = UTC.localize(data["timestamp"])
     except:
         return False
 

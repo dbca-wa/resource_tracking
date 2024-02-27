@@ -1,24 +1,25 @@
 from dbca_utils.utils import env
 import dj_database_url
 import os
-from datetime import timedelta
 from pathlib import Path
 import sys
-import tomli
+import tomllib
+from zoneinfo import ZoneInfo
 
 # Project paths
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = str(Path(__file__).resolve().parents[1])
 
 # Application definition
-project = tomli.load(open(os.path.join(BASE_DIR, "pyproject.toml"), "rb"))
+project = tomllib.load(open(os.path.join(BASE_DIR, "pyproject.toml"), "rb"))
 APPLICATION_VERSION_NO = project["tool"]["poetry"]["version"]
 DEBUG = env("DEBUG", False)
 SECRET_KEY = env("SECRET_KEY", "PlaceholderSecretKey")
 CSRF_COOKIE_SECURE = env("CSRF_COOKIE_SECURE", False)
+CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS", "http://127.0.0.1").split(",")
 SESSION_COOKIE_SECURE = env("SESSION_COOKIE_SECURE", False)
 if not DEBUG:
-    ALLOWED_HOSTS = env("ALLOWED_DOMAINS", "localhost").split(",")
+    ALLOWED_HOSTS = env("ALLOWED_HOSTS", "localhost").split(",")
 else:
     ALLOWED_HOSTS = ["*"]
 INTERNAL_IPS = ["127.0.0.1", "::1"]
@@ -28,12 +29,9 @@ TRACPLUS_URL = env("TRACPLUS_URL", "")
 DFES_URL = env("DFES_URL", "")
 DFES_USER = env("DFES_USER", "")
 DFES_PASS = env("DFES_PASS", "")
-DFES_OUT_OF_ORDER_BUFFER = int(env("DFES_OUT_OF_ORDER_BUFFER") or 300)
 # Add scary warning on device edit page for prod
 PROD_SCARY_WARNING = env("PROD_SCARY_WARNING", False)
 DEVICE_HTTP_CACHE_TIMEOUT = env("DEVICE_HTTP_CACHE_TIMEOUT", 60)
-HISTORY_HTTP_CACHE_TIMEOUT = env("HISTORY_HTTP_CACHE_TIMEOUT", 60)
-FUTURE_DATA_OFFSET = timedelta(seconds=int(env("FUTURE_DATA_OFFSET") or 900))
 INSTALLED_APPS = [
     "whitenoise.runserver_nostatic",
     "django.contrib.admin",
@@ -108,6 +106,7 @@ AUTHENTICATION_BACKENDS = (
 # Internationalization
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Australia/Perth"
+TZ = ZoneInfo(TIME_ZONE)
 USE_I18N = True
 USE_L10N = True
 USE_TZ = True
@@ -154,6 +153,7 @@ TASTYPIE_DATETIME_FORMATTING = "iso-8601-strict"
 SENTRY_DSN = env("SENTRY_DSN", None)
 SENTRY_SAMPLE_RATE = env("SENTRY_SAMPLE_RATE", 1.0)  # Error sampling rate
 SENTRY_TRANSACTION_SAMPLE_RATE = env("SENTRY_TRANSACTION_SAMPLE_RATE", 0.0)  # Transaction sampling
+SENTRY_PROFILES_SAMPLE_RATE = env("SENTRY_PROFILES_SAMPLE_RATE", 0.0)  # Proportion of sampled transactions to profile.
 SENTRY_ENVIRONMENT = env("SENTRY_ENVIRONMENT", None)
 if SENTRY_DSN and SENTRY_ENVIRONMENT:
     import sentry_sdk
@@ -163,5 +163,6 @@ if SENTRY_DSN and SENTRY_ENVIRONMENT:
         sample_rate=SENTRY_SAMPLE_RATE,
         traces_sample_rate=SENTRY_TRANSACTION_SAMPLE_RATE,
         environment=SENTRY_ENVIRONMENT,
+        profiles_sample_rate=SENTRY_PROFILES_SAMPLE_RATE,
         release=APPLICATION_VERSION_NO,
     )
