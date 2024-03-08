@@ -289,7 +289,7 @@ DFES_SYMBOL_MAP = {
 
 
 def save_dfes_feed():
-    """Download and process the DFES API endpoint (returns GeoJSON).
+    """Download and process the DFES API endpoint (returns GeoJSON), create new devices, update existing.
     """
     LOGGER.info("Querying DFES API")
     resp = requests.get(url=settings.DFES_URL, auth=(settings.DFES_USER, settings.DFES_PASS))
@@ -317,24 +317,20 @@ def save_dfes_feed():
             continue
 
         device, created = Device.objects.get_or_create(deviceid=data["device_id"])
+        properties = feature["properties"]
+
         if created:
             created_device += 1
             device.source_device_type = "dfes"
-            # Set some additional values on the Device from the feature data.
-            properties = feature["properties"]
-            device.callsign = properties["VehicleName"]
-            device.callsign_display = properties["VehicleName"]
-            if properties["Registration"]:
-                rego = properties["Registration"][:32].strip()
-                device.registration = f"DFES - {rego}"
-            else:
-                device.registration = "DFES - No Rego"
-            vehicle_type = properties["VehicleType"].strip()
-            if vehicle_type in DFES_SYMBOL_MAP:
-                device.symbol = DFES_SYMBOL_MAP[vehicle_type]
-            else:
-                device.symbol = "unknown"
-            device.save()
+        else:
+            updated_device += 1
+
+        device.callsign = properties["VehicleName"]
+        device.callsign_display = properties["VehicleName"]
+        if properties["Registration"]:
+            device.registration = properties["Registration"][:32].strip()
+        if properties["VehicleType"].strip() in DFES_SYMBOL_MAP:
+            device.symbol = DFES_SYMBOL_MAP[properties["VehicleType"].strip()]
 
         seen = data["timestamp"]
         point = f"POINT({data['longitude']} {data['latitude']})"
@@ -345,8 +341,8 @@ def save_dfes_feed():
             device.heading = data["heading"]
             device.velocity = data["velocity"]
             device.altitude = data["altitude"]
-            device.save()
-            updated_device += 1
+
+        device.save()
 
         loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
         if created:
@@ -356,14 +352,12 @@ def save_dfes_feed():
             loggedpoint.altitude = data["altitude"]
             loggedpoint.save()
             logged_points += 1
-        else:
-            skipped_device += 1
 
     LOGGER.info(f"Created {created_device}, updated {updated_device}, skipped {skipped_device}, {logged_points} new logged points")
 
 
 def save_tracplus_feed():
-    """Query the TracPlus API, create logged points per device.
+    """Query the TracPlus API, create logged points per device, update existing devices.
     """
     LOGGER.info("Harvesting TracPlus feed")
     content = requests.get(settings.TRACPLUS_URL).content.decode("utf-8")
@@ -394,19 +388,18 @@ def save_tracplus_feed():
             continue
 
         device, created = Device.objects.get_or_create(deviceid=data["device_id"])
+        rego = row["Asset Regn"][:32].strip()
+        symbol = row["Asset Type"] if row["Asset Type"] in tracplus_symbol_map else None
+
         if created:
             created_device += 1
             device.source_device_type = "tracplus"
-            # Set some additional values on the Device from the CSV row data.
-            device.registration = row["Asset Regn"][:32]
-            if row["Asset Type"] in tracplus_symbol_map:
-                device.symbol = tracplus_symbol_map[row["Asset Type"]]
-            device.save()
         else:
-            if device.registration != row["Asset Regn"][:32]:
-                device.registration = row["Asset Regn"][:32]
-            if row["Asset Type"] in tracplus_symbol_map and device.symbol != tracplus_symbol_map[row["Asset Type"]]:
-                device.symbol = tracplus_symbol_map[row["Asset Type"]]
+            updated_device += 1
+
+        device.registration = rego
+        if symbol:
+            device.symbol = symbol
 
         seen = data["timestamp"]
         point = f"POINT({data['longitude']} {data['latitude']})"
@@ -417,8 +410,8 @@ def save_tracplus_feed():
             device.heading = data["heading"]
             device.velocity = data["velocity"]
             device.altitude = data["altitude"]
-            updated_device += 1
-            device.save()
+
+        device.save()
 
         loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
         if created:
