@@ -389,7 +389,7 @@ def save_tracplus_feed():
 
         device, created = Device.objects.get_or_create(deviceid=data["device_id"])
         rego = row["Asset Regn"][:32].strip()
-        symbol = row["Asset Type"] if row["Asset Type"] in tracplus_symbol_map else None
+        symbol = tracplus_symbol_map[row["Asset Type"]] if row["Asset Type"] in tracplus_symbol_map else None
 
         if created:
             created_device += 1
