@@ -53,7 +53,8 @@ class DeviceAdmin(ModelAdmin):
         return False
 
     def has_change_permission(self, request, obj=None):
-        if obj is not None and obj.source_device_type == 'tracplus':
+        # TracPlus and DFES vehicles have an external source of truth regarding metadata.
+        if obj is not None and obj.source_device_type in ["tracplus", "dfes"]:
             return False
         else:
             return super(DeviceAdmin, self).has_change_permission(request, obj=obj)
@@ -62,13 +63,13 @@ class DeviceAdmin(ModelAdmin):
 class DeviceSSSAdmin(DeviceAdmin):
 
     def add_view(self, request, obj=None):
-        return HttpResponseRedirect(reverse('sss_admin:tracking_device_changelist'))
+        return HttpResponseRedirect(reverse("sss_admin:tracking_device_changelist"))
 
 
 class TrackingAdminSite(AdminSite):
-    site_header = 'SSS administration'
+    site_header = "SSS administration"
     site_url = None
 
 
-tracking_admin_site = TrackingAdminSite(name='sss_admin')
+tracking_admin_site = TrackingAdminSite(name="sss_admin")
 tracking_admin_site.register(Device, DeviceSSSAdmin)
