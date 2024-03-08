@@ -324,7 +324,6 @@ def save_dfes_feed():
             properties = feature["properties"]
             device.callsign = properties["VehicleName"]
             device.callsign_display = properties["VehicleName"]
-            device.model = properties["Model"]
             if properties["Registration"]:
                 rego = properties["Registration"][:32].strip()
                 device.registration = f"DFES - {rego}"
@@ -399,13 +398,15 @@ def save_tracplus_feed():
             created_device += 1
             device.source_device_type = "tracplus"
             # Set some additional values on the Device from the CSV row data.
-            device.callsign = row["Asset Name"]
-            device.callsign_display = row["Asset Name"]
-            device.model = row["Asset Model"]
             device.registration = row["Asset Regn"][:32]
             if row["Asset Type"] in tracplus_symbol_map:
                 device.symbol = tracplus_symbol_map[row["Asset Type"]]
             device.save()
+        else:
+            if device.registration != row["Asset Regn"][:32]:
+                device.registration = row["Asset Regn"][:32]
+            if row["Asset Type"] in tracplus_symbol_map and device.symbol != tracplus_symbol_map[row["Asset Type"]]:
+                device.symbol = tracplus_symbol_map[row["Asset Type"]]
 
         seen = data["timestamp"]
         point = f"POINT({data['longitude']} {data['latitude']})"
