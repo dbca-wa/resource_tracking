@@ -51,6 +51,11 @@ def parse_spot_message(message):
     """Parses the passed-in Spot email message. Returns a dict or False.
     """
     try:
+        # Ref: https://docs.python.org/3.11/library/email.utils.html#email.utils.parsedate
+        timetuple = parsedate(message["DATE"])
+        timestamp = time.mktime(timetuple)  # Timestamp integer.
+        # Assume timestamp is UTC, cast timestamp as a datetime object.
+        timestamp = datetime.fromtimestamp(timestamp).replace(tzinfo=timezone.utc)
         data = {
             "device_id": message["X-SPOT-Messenger"],
             "latitude": float(message["X-SPOT-Latitude"]),
@@ -58,7 +63,7 @@ def parse_spot_message(message):
             "velocity": 0,
             "heading": 0,
             "altitude": 0,
-            "timestamp": time.mktime(parsedate(message["DATE"])).replace(tzinfo=timezone.utc),
+            "timestamp": timestamp,
             "type": "spot",
         }
     except:
@@ -136,9 +141,15 @@ def parse_iriditrak_message(message):
     """Parses a passed-in Iriditrak email message. Returns a dict or False.
     """
     try:
+        # Ref: https://docs.python.org/3.11/library/email.utils.html#email.utils.parsedate
+        timetuple = parsedate(message["DATE"])
+        timestamp = time.mktime(timetuple)  # Timestamp integer.
+        # Assume timestamp is UTC, cast timestamp as a datetime object.
+        timestamp = datetime.fromtimestamp(timestamp).replace(tzinfo=timezone.utc)
+
         data = {
             "device_id": message["SUBJECT"].replace("SBD Msg From Unit: ", ""),
-            "timestamp": time.mktime(parsedate(message["DATE"])).replace(tzinfo=timezone.utc),
+            "timestamp": timestamp,
             "type": "iriditrak",
         }
 
