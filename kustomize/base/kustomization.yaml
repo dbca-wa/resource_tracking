@@ -3,5 +3,6 @@ kind: Kustomization
 resources:
   - deployment.yaml
   - service.yaml
-  - geoserver.yaml
+  - geoserver_statefulset.yaml
+  - geoserver_headless.yaml
   - geoserver_service.yaml

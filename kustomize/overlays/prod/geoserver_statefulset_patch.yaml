@@ -1,17 +1,10 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: resourcetracking-geoserver
-  labels:
-    app: resourcetracking-geoserver
 spec:
-  selector:
-    matchLabels:
-      app: resourcetracking-geoserver
+  serviceName: resourcetracking-geoserver-prod
   template:
-    metadata:
-      labels:
-        app: resourcetracking-geoserver
     spec:
       initContainers:
       - name: chown-pvc
@@ -32,4 +25,4 @@ spec:
       volumes:
         - name: resourcetracking-geoserver-data
           persistentVolumeClaim:
-            claimName: resourcetracking-geoserver-data-uat
+            claimName: resourcetracking-geoserver-data-prod
