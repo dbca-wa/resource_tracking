@@ -1,11 +1,13 @@
+from django.db import connections
 from django.http import HttpResponse, HttpResponseServerError
 import logging
 
 
-LOGGER = logging.getLogger("healthcheck")
+LOGGER = logging.getLogger("django")
 
 
 class HealthCheckMiddleware(object):
+
     def __init__(self, get_response):
         self.get_response = get_response
 
@@ -28,14 +30,13 @@ class HealthCheckMiddleware(object):
         being present.
         """
         try:
-            from django.db import connections
             cursor = connections["default"].cursor()
             cursor.execute("SELECT 1;")
             row = cursor.fetchone()
             if row is None:
-                return HttpResponseServerError("db: invalid response")
+                return HttpResponseServerError("Database: invalid response")
         except Exception as e:
             LOGGER.exception(e)
-            return HttpResponseServerError("db: cannot connect to database.")
+            return HttpResponseServerError("Database: unable to connect")
 
         return HttpResponse("OK")
