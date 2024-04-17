@@ -3,7 +3,6 @@ kind: Deployment
 metadata:
   name: resourcetracking-deployment
 spec:
-  replicas: 2
   strategy:
     type: RollingUpdate
   template:
