@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib.auth.models import Group, User
+from django.db import NotSupportedError
 from django.contrib.gis.db import models
 from django.utils import timezone
 from django.contrib.humanize.templatetags.humanize import naturaltime
@@ -123,6 +124,9 @@ SOURCE_DEVICE_TYPE_CHOICES = (
 
 
 class Device(models.Model):
+    """A location-tracking device installed in a vehicle for the purposes of monitoring its location
+    and heading over time, plus metadata about the vehicle itself.
+    """
     deviceid = models.CharField(max_length=32, unique=True)
     registration = models.CharField(max_length=32, default="No Rego", help_text="e.g. 1QBB157")
     rin_number = models.PositiveIntegerField(validators=[MaxValueValidator(999)], verbose_name="Resource Identification Number (RIN)", null=True, blank=True, help_text="Heavy Duty, Gang Truck or Plant only (HD/GT/P automatically prefixed).")
@@ -167,21 +171,19 @@ class Device(models.Model):
 
     @property
     def age_colour(self):
-        # returns age in colour
+        if not self.seen:
+            return 'red'
         minutes = self.age_minutes
-        if minutes is None:
-            colour = 'red'
-        elif minutes < 60:
-            colour = 'green'
+        if minutes < 60:
+            return 'green'
         elif minutes < 180:
-            colour = 'orange'
+            return 'orange'
         else:
-            colour = 'red'
-        return colour
+            return 'red'
 
     @property
     def age_text(self):
-        # returns age in humanized form
+        # Returns age in humanized form
         return naturaltime(self.seen).replace(u'\xa0', u' ')
 
     @property
@@ -216,6 +218,9 @@ class Device(models.Model):
 
 
 class LoggedPoint(models.Model):
+    """An instance of the location of a tracking device at a point in time, plus additional metadata
+    where available.
+    """
     device = models.ForeignKey(Device, on_delete=models.PROTECT)
     seen = models.DateTimeField(editable=False, db_index=True)
     point = models.PointField(editable=False)
@@ -248,3 +253,51 @@ def user_post_save(sender, instance, **kwargs):
     # NOTE: does not work when saving user in Django Admin
     g, created = Group.objects.get_or_create(name='Edit Resource Tracking Device')
     instance.groups.add(g)
+
+
+class ResourceView(models.Model):
+    """An unmanaged Django model to allow ORM usage of the `tracking_resource_tracking_view`
+    database view.
+    """
+    id = models.IntegerField(primary_key=True)
+    point = models.PointField(srid=4326)
+    heading = models.IntegerField()
+    velocity = models.IntegerField()
+    altitude = models.IntegerField()
+    seen = models.DateTimeField()
+    deviceid = models.CharField(max_length=32)
+    registration = models.CharField(max_length=32)
+    rin_display = models.CharField(max_length=5)
+    current_driver = models.CharField(max_length=50)
+    callsign = models.CharField(max_length=50)
+    callsign_display = models.CharField(max_length=50)
+    usual_driver = models.CharField(max_length=50)
+    usual_location = models.CharField(max_length=50)
+    contractor_details = models.CharField(max_length=50)
+    symbol = models.CharField(max_length=32, choices=SYMBOL_CHOICES)
+    age = models.FloatField()
+    symbolid = models.TextField()
+    district = models.CharField(max_length=32, choices=DISTRICT_CHOICES)
+    district_display = models.CharField(max_length=100)
+    source_device_type = models.CharField(max_length=32, choices=SOURCE_DEVICE_TYPE_CHOICES)
+
+    class Meta:
+        managed = False
+        db_table = "tracking_resource_tracking_view"
+        verbose_name = "resource"
+        ordering = ("-seen",)
+
+    def __str__(self):
+        seen = self.seen.astimezone(settings.TZ).strftime("%d/%b/%Y %H:%M")
+        if self.callsign:
+            return f"{self.callsign} ({self.get_symbol_display()}) seen {seen} AWST"
+        else:
+            return f"{self.registration} ({self.get_symbol_display()}) seen {seen} AWST"
+
+    def save(self, *args, **kwargs):
+        # Disallow all save operations.
+        raise NotSupportedError("View-only database model")
+
+    def delete(self, *args, **kwargs):
+        # Disallow all delete operations.
+        raise NotSupportedError("View-only database model")
