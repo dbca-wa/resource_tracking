@@ -14,7 +14,7 @@ python-dotenv = "1.0.1"
 dj-database-url = "2.1.0"
 gunicorn = "22.0.0"
 django-extensions = "3.2.3"
-django-tastypie = "0.14.6"
+django-tastypie = "0.14.7"
 django-geojson = "4.0.0"
 unicodecsv = "0.14.1"
 whitenoise = {version = "6.6.0", extras = ["brotli"]}
