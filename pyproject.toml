@@ -15,7 +15,7 @@ dj-database-url = "2.1.0"
 gunicorn = "22.0.0"
 django-extensions = "3.2.3"
 django-tastypie = "0.14.6"
-django-geojson = "4.0.0"
+django-geojson = "4.1.0"
 unicodecsv = "0.14.1"
 whitenoise = {version = "6.6.0", extras = ["brotli"]}
 azure-storage-blob = "12.19.1"
