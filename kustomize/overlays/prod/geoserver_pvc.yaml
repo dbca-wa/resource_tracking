@@ -3,7 +3,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: resourcetracking-geoserver-data
 spec:
-  storageClassName: managed-csi-retain
+  storageClassName: managed-csi-retain-zrs
   volumeMode: Filesystem
   accessModes:
     - ReadWriteOnce
