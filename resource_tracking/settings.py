@@ -1,4 +1,5 @@
 from dbca_utils.utils import env
+from django.db.utils import OperationalError
 import dj_database_url
 import os
 from pathlib import Path
@@ -149,6 +150,18 @@ LOGGING = {
 TASTYPIE_DEFAULT_FORMATS = ["json"]
 TASTYPIE_DATETIME_FORMATTING = "iso-8601-strict"
 
+
+def sentry_excluded_exceptions(event, hint):
+    """Exclude defined class(es) of Exception from being reported to Sentry.
+    https://docs.sentry.io/platforms/python/configuration/filtering/#filtering-error-events
+    """
+    # Exclude database-related errors (connection error, timeout, DNS failure, etc.)
+    if hint['exc_info'][0] is OperationalError:
+        return None
+
+    return event
+
+
 # Sentry settings
 SENTRY_DSN = env("SENTRY_DSN", None)
 SENTRY_SAMPLE_RATE = env("SENTRY_SAMPLE_RATE", 1.0)  # Error sampling rate
@@ -165,4 +178,5 @@ if SENTRY_DSN and SENTRY_ENVIRONMENT:
         environment=SENTRY_ENVIRONMENT,
         profiles_sample_rate=SENTRY_PROFILES_SAMPLE_RATE,
         release=APPLICATION_VERSION_NO,
+        before_send=sentry_excluded_exceptions,
     )
