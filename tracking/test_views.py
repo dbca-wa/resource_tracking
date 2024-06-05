@@ -33,34 +33,34 @@ class ViewTestCase(TestCase):
     def test_device_csv_download(self):
         """Test the devices.csv download view
         """
-        url = reverse("track_device_csv")
+        url = reverse("device_csv")
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
     def test_device_geojson_download(self):
         """Test the devices.geojson download view
         """
-        url = reverse("track_device_geojson")
+        url = reverse("device_geojson")
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
     def test_device_history_geojson_view(self):
         """Test the device history GeoJSON view
         """
-        url = reverse("device_history_view_geojson", kwargs={"device_id": self.device.pk})
+        url = reverse("device_history_geojson", kwargs={"device_id": self.device.pk})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
     def test_device_history_csv_view(self):
         """Test the device history CSV view
         """
-        url = reverse("device_history_view_csv", kwargs={"device_id": self.device.pk})
+        url = reverse("device_history_csv", kwargs={"device_id": self.device.pk})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
     def test_device_route_geojson_view(self):
         """Test the device route GeoJSON view
         """
-        url = reverse("device_route_view_geojson", kwargs={"device_id": self.device.pk})
+        url = reverse("device_route_geojson", kwargs={"device_id": self.device.pk})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)

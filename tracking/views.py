@@ -3,7 +3,7 @@ from django.contrib.gis.geos import LineString
 from django.core.serializers import serialize
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.utils import timezone
-from django.views.generic import View
+from django.views.generic import View, TemplateView
 
 from tracking.api import CSVSerializer
 from tracking.models import Device, LoggedPoint
@@ -206,3 +206,18 @@ class DeviceRouteView(DeviceHistoryView):
         )
 
         return response
+
+
+class ResourceMap(TemplateView):
+    """A map view displaying all resource locations.
+    """
+    template_name = "tracking/resource_map.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["site_title"] = "Resource Tracking System"
+        context["site_acronym"] = "RTS"
+        context["page_title"] = "DBCA Resource Tracking System"
+        # FIXME: factor out to env var.
+        context["mapproxy_url"] = "https://mapproxy.dbca.wa.gov.au/service"
+        return context
