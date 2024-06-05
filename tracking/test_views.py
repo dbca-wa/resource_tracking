@@ -64,3 +64,10 @@ class ViewTestCase(TestCase):
         url = reverse("device_route_geojson", kwargs={"device_id": self.device.pk})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+
+    def test_resource_map_view(self):
+        """Test the resource map view
+        """
+        url = reverse("resource_map")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
