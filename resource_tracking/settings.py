@@ -33,6 +33,7 @@ DFES_PASS = env("DFES_PASS", "")
 # Add scary warning on device edit page for prod
 PROD_SCARY_WARNING = env("PROD_SCARY_WARNING", False)
 DEVICE_HTTP_CACHE_TIMEOUT = env("DEVICE_HTTP_CACHE_TIMEOUT", 60)
+MAPPROXY_URL = env('MAPPROXY_URL', '')
 INSTALLED_APPS = [
     "whitenoise.runserver_nostatic",
     "django.contrib.admin",
