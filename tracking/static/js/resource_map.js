@@ -1,4 +1,5 @@
 "use strict";
+
 // Base layers
 const mapboxStreets = L.tileLayer.wms(mapproxy_url, {
   layers: 'mapbox-streets',
@@ -12,7 +13,23 @@ const landgateOrthomosaic = L.tileLayer.wms(mapproxy_url, {
   zoomOffset: -2,
 });
 
-// Define overlay tile layers.
+// Overlay layers
+const dbcaBushfires = L.tileLayer.wms(mapproxy_url, {
+  layers: 'dbca-going-bushfires',
+  format: 'image/png',
+  transparent: true,
+  opacity: 0.75,
+  tileSize: 1024,
+  zoomOffset: -2,
+});
+const dfesBushfires = L.tileLayer.wms(mapproxy_url, {
+  layers: 'dfes-going-bushfires',
+  format: 'image/png',
+  transparent: true,
+  opacity: 0.75,
+  tileSize: 1024,
+  zoomOffset: -2,
+});
 const dbcaRegions = L.tileLayer.wms(mapproxy_url, {
   layers: 'dbca-regions',
   format: 'image/png',
@@ -107,10 +124,11 @@ function setDeviceStyle(feature, layer) {
   }
   layer.bindTooltip(
     `
-    Callsign: ${callsign}<br>
     ID: ${feature.properties.id}<br>
-    Age: ${feature.properties.age_text}<br>
-    Type: ${feature.properties.symbol}
+    Registration: ${feature.properties.registration}<br>
+    Callsign: ${callsign}<br>
+    Type: ${feature.properties.symbol}<br>
+    Seen: ${feature.properties.age_text}
     `
   );
   // Set the feature icon.
@@ -147,33 +165,35 @@ function setDeviceStyle(feature, layer) {
 
 // Add the (initially) empty devices layer to the map.
 const trackedDevices = L.geoJSON(null, {
-    onEachFeature: setDeviceStyle
+  onEachFeature: setDeviceStyle
 });
 // Query the API endpoint for device data.
-    $.getJSON(device_geojson_url, function(data) {
-    trackedDevices.addData(data);
+  $.getJSON(device_geojson_url, function(data) {
+  trackedDevices.addData(data);
 });
 
 // Define map.
 var map = L.map('map', {
-    crs: L.CRS.EPSG4326,
-    center: [-31.96, 115.87],
-    zoom: 12,
-    minZoom: 4,
-    maxZoom: 18,
-    layers: [mapboxStreets, trackedDevices, dbcaRegions],  // Sets default selections.
-    attributionControl: false,
+  crs: L.CRS.EPSG4326,
+  center: [-31.96, 115.87],
+  zoom: 12,
+  minZoom: 4,
+  maxZoom: 18,
+  layers: [mapboxStreets, trackedDevices],  // Sets default selections.
+  attributionControl: false,
 });
 
 // Define layer groups.
 var baseMaps = {
-    "Mapbox streets": mapboxStreets,
-    "Landgate orthomosaic": landgateOrthomosaic,
+  'Mapbox streets': mapboxStreets,
+  'Landgate orthomosaic': landgateOrthomosaic,
 };
 var overlayMaps = {
-    "Tracked devices": trackedDevices,
-    "DBCA regions": dbcaRegions,
-    "LGA boundaries": lgaBoundaries,
+  'Tracked devices': trackedDevices,
+  'DBCA Going Bushfires': dbcaBushfires,
+  'DFES Going Bushfires': dfesBushfires,
+  'DBCA regions': dbcaRegions,
+  'LGA boundaries': lgaBoundaries,
 };
 
 // Define layer control.
@@ -182,6 +202,15 @@ L.control.layers(baseMaps, overlayMaps).addTo(map);
 // Define scale bar
 L.control.scale({maxWidth: 500, imperial: false}).addTo(map);
 
-// Log zoom level to console.
-map.on('zoomend', function (e) {console.log(e.target._zoom)});
-
+// Device registration search
+const searchControl = new L.Control.Search({
+  layer: trackedDevices,
+  propertyName: 'registration',
+  textPlaceholder: 'Search registration',
+  delayType: 1000,
+  textErr: 'Registration not found',
+  zoom: 16,
+  circleLocation: true,
+  autoCollapse: true
+});
+map.addControl(searchControl);

@@ -12,37 +12,28 @@
         <!-- CSS styling blocks -->
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" integrity="sha512-b2QcS5SsA8tZodcDtGRELiGv5SaKSk1vDHDaQRda0htPYWZ6046lr3kJ5bAAQdpV2mmA/4v0wQF9MyU6/pDIAg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-search/4.0.0/leaflet-search.min.css" integrity="sha512-+o26nsM883F01UlBWY09KgjDn7o1rgGFi1a+lX1zI7m0I2iIh4rckpQSKVnukvn8DKsb0A9hZHoUY7lBkvLdfA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
         <style>
             #map {
                 position: absolute;
-                top: 76px;
+                top: 0;
                 bottom: 0;
                 width: 100%;
+            }
+            .leaflet-control-search .search-cancel {
+                background: url("{% static 'img/search-icon.png' %}") no-repeat 0 -46px !important;
+            }
+            .leaflet-control-search .search-button {
+                background: url("{% static 'img/search-icon.png' %}") no-repeat 4px 4px #fff !important;
+            }
+            .leaflet-control-search .search-button:hover {
+                background: url("{% static 'img/search-icon.png' %}") no-repeat 4px -20px #fafafa !important;
             }
         </style>
         <link rel="shortcut icon" href="{% static 'favicon.ico' %}">
     </head>
+
     <body>
-        <nav class="navbar fixed-top navbar-expand-md navbar-dark bg-dark">
-          <div class="container-fluid">
-
-            <a class="navbar-brand d-block d-sm-none" href="/">
-                <img class="d-inline-block" src="{% static 'img/dbca_logo_sml.png' %}" height="50">
-                {{ site_acronym }}
-            </a>
-            <a class="navbar-brand d-none d-sm-block" href="/">
-                <img class="d-inline-block" src="{% static 'img/dbca_logo_sml.png' %}" height="50">
-                {{ site_title }}
-            </a>
-            {% comment %}
-            <form class="ms-auto" role="search">
-              <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
-            </form>
-            {% endcomment %}
-
-          </div><!-- /.container-fluid -->
-        </nav>
-
         <div class="container-fluid p-0">
             <div class="row m-0 p-0">
                 <div class="col m-0 p-0">
@@ -54,6 +45,7 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js" integrity="sha512-X/YkDZyjTf4wyc2Vy16YGCPHwAY8rZJY+POgokZjQB2mhIRFJCckEGc6YyX9eNsPfn0PzThEuNs+uaomE5CO6A==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-search/4.0.0/leaflet-search.min.js" integrity="sha512-nvy2tht2GE/ReEeu0Zu7/Y1IgKTTrX1r1MaROtD1HDol5WUvw7Ih29qA6JCNCgYURzPcBqaSv12ZnNS68Eaq6Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
         <script>
             // Constants injected during template rendering.
             const mapproxy_url = "{{ mapproxy_url }}";

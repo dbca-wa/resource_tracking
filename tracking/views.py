@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from django.conf import settings
 from django.contrib.gis.geos import LineString
 from django.core.serializers import serialize
 from django.db.models import Q
@@ -88,6 +89,7 @@ class DeviceView(SpatialDataView):
         "heading",
         "icon",
         "id",
+        "registration",
         "seen",
         "symbol",
         "velocity",
@@ -103,12 +105,13 @@ class DeviceView(SpatialDataView):
             days = 14
         qs = qs.filter(seen__gte=timezone.now() - timedelta(days=days))
 
-        # Querying on device callsign and/or device ID.
+        # Querying on device callsign, registration and/or device ID.
         if "q" in self.request.GET and self.request.GET["q"]:
             query_str = self.request.GET["q"]
             qs = qs.filter()
             qs = qs.filter(
                 Q(callsign__icontains=query_str) |
+                Q(registration__icontains=query_str) |
                 Q(deviceid__icontains=query_str)
             )
 
@@ -220,9 +223,6 @@ class ResourceMap(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["site_title"] = "Resource Tracking System"
-        context["site_acronym"] = "RTS"
         context["page_title"] = "DBCA Resource Tracking System"
-        # FIXME: factor out to env var.
-        context["mapproxy_url"] = "https://mapproxy.dbca.wa.gov.au/service"
+        context["mapproxy_url"] = settings.MAPPROXY_URL
         return context
