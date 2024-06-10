@@ -1,9 +1,11 @@
 from datetime import datetime, timedelta
+from django.conf import settings
 from django.contrib.gis.geos import LineString
 from django.core.serializers import serialize
+from django.db.models import Q
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.utils import timezone
-from django.views.generic import View
+from django.views.generic import View, TemplateView
 
 from tracking.api import CSVSerializer
 from tracking.models import Device, LoggedPoint
@@ -71,30 +73,26 @@ class SpatialDataView(View):
         return response
 
 
-class DevicesView(SpatialDataView):
+class DeviceView(SpatialDataView):
     """Return structured data about tracking devices seen in the previous n days
     (14 by default).
     """
     model = Device
     geometry_field = "point"
     properties = (
-        "id",
-        "deviceid",
-        "name",
-        "callsign",
-        "symbol",
-        "rego",
-        "make",
-        "model",
-        "category",
-        "heading",
-        "velocity",
-        "altitude",
-        "seen",
-        "age_minutes",
         "age_colour",
+        "age_minutes",
         "age_text",
+        "altitude",
+        "callsign",
+        "deviceid",
+        "heading",
         "icon",
+        "id",
+        "registration",
+        "seen",
+        "symbol",
+        "velocity",
     )
     filename_prefix = "tracking_devices"
 
@@ -106,6 +104,16 @@ class DevicesView(SpatialDataView):
         else:
             days = 14
         qs = qs.filter(seen__gte=timezone.now() - timedelta(days=days))
+
+        # Querying on device callsign, registration and/or device ID.
+        if "q" in self.request.GET and self.request.GET["q"]:
+            query_str = self.request.GET["q"]
+            qs = qs.filter()
+            qs = qs.filter(
+                Q(callsign__icontains=query_str) |
+                Q(registration__icontains=query_str) |
+                Q(deviceid__icontains=query_str)
+            )
 
         return qs
 
@@ -206,3 +214,15 @@ class DeviceRouteView(DeviceHistoryView):
         )
 
         return response
+
+
+class ResourceMap(TemplateView):
+    """A map view displaying all resource locations.
+    """
+    template_name = "tracking/resource_map.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["page_title"] = "DBCA Resource Tracking System"
+        context["mapproxy_url"] = settings.MAPPROXY_URL
+        return context

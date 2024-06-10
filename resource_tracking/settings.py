@@ -1,4 +1,6 @@
 from dbca_utils.utils import env
+from django.core.exceptions import DisallowedHost
+from django.db.utils import OperationalError
 import dj_database_url
 import os
 from pathlib import Path
@@ -32,6 +34,7 @@ DFES_PASS = env("DFES_PASS", "")
 # Add scary warning on device edit page for prod
 PROD_SCARY_WARNING = env("PROD_SCARY_WARNING", False)
 DEVICE_HTTP_CACHE_TIMEOUT = env("DEVICE_HTTP_CACHE_TIMEOUT", 60)
+MAPPROXY_URL = env('MAPPROXY_URL', '')
 INSTALLED_APPS = [
     "whitenoise.runserver_nostatic",
     "django.contrib.admin",
@@ -149,6 +152,23 @@ LOGGING = {
 TASTYPIE_DEFAULT_FORMATS = ["json"]
 TASTYPIE_DATETIME_FORMATTING = "iso-8601-strict"
 
+
+def sentry_excluded_exceptions(event, hint):
+    """Exclude defined class(es) of Exception from being reported to Sentry.
+    These exception classes are generally related to operational or configuration issues,
+    and they are not errors that we want to capture.
+    https://docs.sentry.io/platforms/python/configuration/filtering/#filtering-error-events
+    """
+    # Exclude database-related errors (connection error, timeout, DNS failure, etc.)
+    if hint['exc_info'][0] is OperationalError:
+        return None
+    # Exclude exceptions related to host requests not in ALLOWED_HOSTS.
+    elif hint['exc_info'][0] is DisallowedHost:
+        return None
+
+    return event
+
+
 # Sentry settings
 SENTRY_DSN = env("SENTRY_DSN", None)
 SENTRY_SAMPLE_RATE = env("SENTRY_SAMPLE_RATE", 1.0)  # Error sampling rate
@@ -165,4 +185,5 @@ if SENTRY_DSN and SENTRY_ENVIRONMENT:
         environment=SENTRY_ENVIRONMENT,
         profiles_sample_rate=SENTRY_PROFILES_SAMPLE_RATE,
         release=APPLICATION_VERSION_NO,
+        before_send=sentry_excluded_exceptions,
     )

@@ -75,4 +75,5 @@ jobs:
       - name: Run tests
         run: |
           source .venv/bin/activate
-          python manage.py test
+          python manage.py collectstatic
+          python manage.py test --noinput --failfast --verbosity 0
