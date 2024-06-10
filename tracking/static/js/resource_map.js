@@ -167,10 +167,31 @@ function setDeviceStyle(feature, layer) {
 const trackedDevices = L.geoJSON(null, {
   onEachFeature: setDeviceStyle
 });
-// Query the API endpoint for device data.
-  $.getJSON(device_geojson_url, function(data) {
-  trackedDevices.addData(data);
-});
+
+function refreshTrackedDevicesLayer(trackedDevicesLayer) {
+  // Remove any existing data from the GeoJSON layer.
+  trackedDevicesLayer.clearLayers();
+  // Initial notification.
+  Toastify({
+    text: "Refreshing tracked device data",
+    duration: 1500
+  }).showToast();
+  // Query the API endpoint for device data.
+  $.getJSON(
+    device_geojson_url,
+    function(data) {
+      // Add the device data to the GeoJSON layer.
+      trackedDevicesLayer.addData(data);
+      // Success notification.
+      Toastify({
+        text: "Tracked device data refreshed",
+        duration: 1500
+      }).showToast();
+    },
+  );
+};
+// Immediately run the function, once.
+refreshTrackedDevicesLayer(trackedDevices);
 
 // Define map.
 var map = L.map('map', {
@@ -214,3 +235,10 @@ const searchControl = new L.Control.Search({
   autoCollapse: true
 });
 map.addControl(searchControl);
+
+const refreshButton = L.easyButton(
+  `<img src="${refresh_icon_url}">`,
+  function(btn, map){
+    refreshTrackedDevicesLayer(trackedDevices);
+  }
+).addTo(map);
