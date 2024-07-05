@@ -4,4 +4,16 @@ resources:
   - ../../../../template
 nameSuffix: -harvest-tracplus
 patches:
-  - path: patch.yaml
+  - target:
+      kind: CronJob
+      name: resourcetracking-cronjob
+    path: patch.yaml
+  - target:
+      kind: CronJob
+      name: resourcetracking-cronjob
+    options:
+      allowNameChange: true
+    patch: |-
+      - op: replace
+        path: /spec/jobTemplate/spec/template/spec/containers/0/name
+        value: resourcetracking-cronjob-harvest-tracplus
