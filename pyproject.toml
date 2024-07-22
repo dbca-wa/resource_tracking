@@ -19,7 +19,7 @@ django-tastypie = "0.14.7"
 django-geojson = "4.1.0"
 unicodecsv = "0.14.1"
 whitenoise = {version = "6.7.0", extras = ["brotli"]}
-azure-storage-blob = "12.20.0"
+azure-storage-blob = "12.21.0"
 sentry-sdk = {version = "2.7.1", extras = ["django"]}
 
 [tool.poetry.group.dev.dependencies]
