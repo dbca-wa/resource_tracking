@@ -13,7 +13,7 @@ psycopg = {version = "3.2.1", extras = ["binary", "pool"]}
 dbca-utils = "2.0.2"
 python-dotenv = "1.0.1"
 dj-database-url = "2.2.0"
-gunicorn = "22.0.0"
+gunicorn = "23.0.0"
 django-extensions = "3.2.3"
 django-tastypie = "0.14.7"
 django-geojson = "4.1.0"
