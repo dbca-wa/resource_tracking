@@ -34,7 +34,7 @@ DFES_PASS = env("DFES_PASS", "")
 # Add scary warning on device edit page for prod
 PROD_SCARY_WARNING = env("PROD_SCARY_WARNING", False)
 DEVICE_HTTP_CACHE_TIMEOUT = env("DEVICE_HTTP_CACHE_TIMEOUT", 60)
-MAPPROXY_URL = env('MAPPROXY_URL', '')
+GEOSERVER_URL = env("GEOSERVER_URL", "")
 INSTALLED_APPS = [
     "whitenoise.runserver_nostatic",
     "django.contrib.admin",
@@ -98,13 +98,10 @@ SERIALIZATION_MODULES = {
 DATABASES = {
     # Defined in the DATABASE_URL env variable.
     "default": dj_database_url.config(),
-    "fleetcare": dj_database_url.parse(env("FLEETCARE_DATABASE_URL", "sqlite:////tmp/db"))
 }
 
 # Project authentication settings
-AUTHENTICATION_BACKENDS = (
-    "django.contrib.auth.backends.ModelBackend",
-)
+AUTHENTICATION_BACKENDS = ("django.contrib.auth.backends.ModelBackend",)
 
 # Internationalization
 LANGUAGE_CODE = "en-us"
@@ -145,7 +142,7 @@ LOGGING = {
             "handlers": ["console"],
             "level": "INFO",
         },
-    }
+    },
 }
 
 # Tastypie settings
@@ -173,8 +170,12 @@ def sentry_excluded_exceptions(event, hint):
 # Sentry settings
 SENTRY_DSN = env("SENTRY_DSN", None)
 SENTRY_SAMPLE_RATE = env("SENTRY_SAMPLE_RATE", 1.0)  # Error sampling rate
-SENTRY_TRANSACTION_SAMPLE_RATE = env("SENTRY_TRANSACTION_SAMPLE_RATE", 0.0)  # Transaction sampling
-SENTRY_PROFILES_SAMPLE_RATE = env("SENTRY_PROFILES_SAMPLE_RATE", 0.0)  # Proportion of sampled transactions to profile.
+SENTRY_TRANSACTION_SAMPLE_RATE = env(
+    "SENTRY_TRANSACTION_SAMPLE_RATE", 0.0
+)  # Transaction sampling
+SENTRY_PROFILES_SAMPLE_RATE = env(
+    "SENTRY_PROFILES_SAMPLE_RATE", 0.0
+)  # Proportion of sampled transactions to profile.
 SENTRY_ENVIRONMENT = env("SENTRY_ENVIRONMENT", None)
 if SENTRY_DSN and SENTRY_ENVIRONMENT:
     import sentry_sdk

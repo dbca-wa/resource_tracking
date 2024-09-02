@@ -12,8 +12,8 @@ from tracking.models import Device, LoggedPoint
 
 
 class SpatialDataView(View):
-    """Base view to return a queryset of spatial data as GeoJSON or CSV.
-    """
+    """Base view to return a queryset of spatial data as GeoJSON or CSV."""
+
     model = None
     http_method_names = ["get"]
     srid = 4326
@@ -77,6 +77,7 @@ class DeviceView(SpatialDataView):
     """Return structured data about tracking devices seen in the previous n days
     (14 by default).
     """
+
     model = Device
     geometry_field = "point"
     properties = (
@@ -110,9 +111,9 @@ class DeviceView(SpatialDataView):
             query_str = self.request.GET["q"]
             qs = qs.filter()
             qs = qs.filter(
-                Q(callsign__icontains=query_str) |
-                Q(registration__icontains=query_str) |
-                Q(deviceid__icontains=query_str)
+                Q(callsign__icontains=query_str)
+                | Q(registration__icontains=query_str)
+                | Q(deviceid__icontains=query_str)
             )
 
         return qs
@@ -122,6 +123,7 @@ class DeviceHistoryView(SpatialDataView):
     """Return structured data of the tracking points for a single device over the previous n days
     (14 by default).
     """
+
     model = LoggedPoint
     geometry_field = "point"
     properties = ("id", "heading", "velocity", "altitude", "seen", "raw", "device_id")
@@ -171,9 +173,9 @@ class DeviceRouteView(DeviceHistoryView):
     """Extend the DeviceHistoryView to return a device's route history as a LineString geometry.
     This view only returns GeoJSON, not CSV.
     """
+
     def get(self, request, *args, **kwargs):
-        """Override this method to return a linestring dataset instead of points.
-        """
+        """Override this method to return a linestring dataset instead of points."""
         qs = self.get_queryset()
         device_id = self.kwargs["device_id"]
         device = Device.objects.get(pk=device_id)
@@ -187,14 +189,18 @@ class DeviceRouteView(DeviceHistoryView):
         # Also add a `label` attribute that captures the timestamps of each.
         for loggedpoint in qs:
             if start_point is not None:
-                setattr(start_point, "route", LineString(start_point.point, loggedpoint.point))
+                setattr(
+                    start_point,
+                    "route",
+                    LineString(start_point.point, loggedpoint.point),
+                )
                 start_label = start_point.seen.strftime("%H:%M:%S")
                 end_label = loggedpoint.seen.strftime("%H:%M:%S")
                 setattr(start_point, "label", f"{start_label} to {end_label}")
             start_point = loggedpoint
 
         # Exclude the last loggedpoint in the queryset because it won't have the `route` attribute.
-        qs = qs[:len(qs) - 1]
+        qs = qs[: len(qs) - 1]
 
         geojson = serialize(
             "geojson",
@@ -202,7 +208,14 @@ class DeviceRouteView(DeviceHistoryView):
             geometry_field="route",
             srid=self.srid,
             properties=(
-                "id", "heading", "velocity", "altitude", "seen", "raw", "device_id", "label",
+                "id",
+                "heading",
+                "velocity",
+                "altitude",
+                "seen",
+                "raw",
+                "device_id",
+                "label",
             ),
         )
         timestamp = datetime.strftime(datetime.today(), "%Y-%m-%d_%H%M")
@@ -217,12 +230,12 @@ class DeviceRouteView(DeviceHistoryView):
 
 
 class ResourceMap(TemplateView):
-    """A map view displaying all resource locations.
-    """
+    """A map view displaying all resource locations."""
+
     template_name = "tracking/resource_map.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["page_title"] = "DBCA Resource Tracking System"
-        context["mapproxy_url"] = settings.MAPPROXY_URL
+        context["geoserver_url"] = settings.GEOSERVER_URL
         return context
