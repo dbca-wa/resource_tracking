@@ -10,37 +10,37 @@ from django.core.validators import MaxValueValidator
 from django.forms import ValidationError
 import logging
 
-LOGGER = logging.getLogger('tracking')
+LOGGER = logging.getLogger("tracking")
 
 
-DISTRICT_PERTH_HILLS = 'PHD'
-DISTRICT_SWAN_COASTAL = 'SCD'
-DISTRICT_SWAN_REGION = 'SWAN'
-DISTRICT_BLACKWOOD = 'BWD'
-DISTRICT_WELLINGTON = 'WTN'
-DISTRICT_SOUTH_WEST_REGION = 'SWR'
-DISTRICT_DONNELLY = 'DON'
-DISTRICT_FRANKLAND = 'FRK'
-DISTRICT_WARREN_REGION = 'WR'
-DISTRICT_ALBANY = 'ALB'
-DISTRICT_ESPERANCE = 'ESP'
-DISTRICT_SOUTH_COAST_REGION = 'SCR'
-DISTRICT_EAST_KIMBERLEY = 'EKD'
-DISTRICT_WEST_KIMBERLEY = 'WKD'
-DISTRICT_KIMBERLEY_REGION = 'KIMB'
-DISTRICT_PILBARA_REGION = 'PIL'
-DISTRICT_EXMOUTH = 'EXM'
-DISTRICT_GOLDFIELDS_REGION = 'GLD'
-DISTRICT_GERALDTON = 'GER'
-DISTRICT_KALBARRI = 'KLB'
-DISTRICT_MOORA = 'MOR'
-DISTRICT_SHARK_BAY = 'SHB'
-DISTRICT_MIDWEST_REGION = 'MWR'
-DISTRICT_CENTRAL_WHEATBELT = 'CWB'
-DISTRICT_SOUTHERN_WHEATBELT = 'SWB'
-DISTRICT_WHEATBELT_REGION = 'WBR'
-DISTRICT_AVIATION = 'AV'
-DISTRICT_OTHER = 'OTH'
+DISTRICT_PERTH_HILLS = "PHD"
+DISTRICT_SWAN_COASTAL = "SCD"
+DISTRICT_SWAN_REGION = "SWAN"
+DISTRICT_BLACKWOOD = "BWD"
+DISTRICT_WELLINGTON = "WTN"
+DISTRICT_SOUTH_WEST_REGION = "SWR"
+DISTRICT_DONNELLY = "DON"
+DISTRICT_FRANKLAND = "FRK"
+DISTRICT_WARREN_REGION = "WR"
+DISTRICT_ALBANY = "ALB"
+DISTRICT_ESPERANCE = "ESP"
+DISTRICT_SOUTH_COAST_REGION = "SCR"
+DISTRICT_EAST_KIMBERLEY = "EKD"
+DISTRICT_WEST_KIMBERLEY = "WKD"
+DISTRICT_KIMBERLEY_REGION = "KIMB"
+DISTRICT_PILBARA_REGION = "PIL"
+DISTRICT_EXMOUTH = "EXM"
+DISTRICT_GOLDFIELDS_REGION = "GLD"
+DISTRICT_GERALDTON = "GER"
+DISTRICT_KALBARRI = "KLB"
+DISTRICT_MOORA = "MOR"
+DISTRICT_SHARK_BAY = "SHB"
+DISTRICT_MIDWEST_REGION = "MWR"
+DISTRICT_CENTRAL_WHEATBELT = "CWB"
+DISTRICT_SOUTHERN_WHEATBELT = "SWB"
+DISTRICT_WHEATBELT_REGION = "WBR"
+DISTRICT_AVIATION = "AV"
+DISTRICT_OTHER = "OTH"
 
 DISTRICT_CHOICES = (
     (DISTRICT_SWAN_REGION, "Swan Region"),
@@ -70,7 +70,7 @@ DISTRICT_CHOICES = (
     (DISTRICT_CENTRAL_WHEATBELT, "Central Wheatbelt"),
     (DISTRICT_SOUTHERN_WHEATBELT, "Southern Wheatbelt"),
     (DISTRICT_AVIATION, "Aviation"),
-    (DISTRICT_OTHER, "Other")
+    (DISTRICT_OTHER, "Other"),
 )
 
 SYMBOL_CHOICES = (
@@ -97,7 +97,7 @@ SYMBOL_CHOICES = (
     ("boat", "Boat"),
     ("person", "Person"),
     ("other", "Other"),
-    ("unknown", "Unknown")
+    ("unknown", "Unknown"),
 )
 
 RAW_EQ_CHOICES = (
@@ -108,7 +108,7 @@ RAW_EQ_CHOICES = (
     (18, "Emergency Message"),
     (19, "Remote Command Acknowledge for Emergency Turn Off"),
     (25, "Start Moving"),
-    (26, "Stop Moving")
+    (26, "Stop Moving"),
 )
 
 SOURCE_DEVICE_TYPE_CHOICES = (
@@ -127,36 +127,83 @@ class Device(models.Model):
     """A location-tracking device installed in a vehicle for the purposes of monitoring its location
     and heading over time, plus metadata about the vehicle itself.
     """
+
     deviceid = models.CharField(max_length=32, unique=True)
-    registration = models.CharField(max_length=32, default="No Rego", help_text="e.g. 1QBB157")
-    rin_number = models.PositiveIntegerField(validators=[MaxValueValidator(999)], verbose_name="Resource Identification Number (RIN)", null=True, blank=True, help_text="Heavy Duty, Gang Truck or Plant only (HD/GT/P automatically prefixed).")
-    rin_display = models.CharField(max_length=5, null=True, blank=True, verbose_name="RIN")
+    registration = models.CharField(
+        max_length=32, default="No Rego", help_text="e.g. 1QBB157"
+    )
+    rin_number = models.PositiveIntegerField(
+        validators=[MaxValueValidator(999)],
+        verbose_name="Resource Identification Number (RIN)",
+        null=True,
+        blank=True,
+        help_text="Heavy Duty, Gang Truck or Plant only (HD/GT/P automatically prefixed).",
+    )
+    rin_display = models.CharField(
+        max_length=5, null=True, blank=True, verbose_name="RIN"
+    )
     symbol = models.CharField(max_length=32, choices=SYMBOL_CHOICES, default="other")
-    district = models.CharField(max_length=32, choices=DISTRICT_CHOICES, default=DISTRICT_OTHER, verbose_name="Region/District")
-    district_display = models.CharField(max_length=100, default='Other', verbose_name="District")
-    usual_driver = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. John Jones")
-    usual_location = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. Karijini National Park")
-    current_driver = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. Jodie Jones")
+    district = models.CharField(
+        max_length=32,
+        choices=DISTRICT_CHOICES,
+        default=DISTRICT_OTHER,
+        verbose_name="Region/District",
+    )
+    district_display = models.CharField(
+        max_length=100, default="Other", verbose_name="District"
+    )
+    usual_driver = models.CharField(
+        max_length=50, null=True, blank=True, help_text="e.g. John Jones"
+    )
+    usual_location = models.CharField(
+        max_length=50, null=True, blank=True, help_text="e.g. Karijini National Park"
+    )
+    current_driver = models.CharField(
+        max_length=50, null=True, blank=True, help_text="e.g. Jodie Jones"
+    )
     callsign = models.CharField(max_length=50, null=True, blank=True, help_text="")
-    callsign_display = models.CharField(max_length=50, null=True, blank=True, verbose_name="Callsign")
-    contractor_details = models.CharField(max_length=50, null=True, blank=True, help_text="Person engaging contractor is responsible for maintaining contractor resource details")
+    callsign_display = models.CharField(
+        max_length=50, null=True, blank=True, verbose_name="Callsign"
+    )
+    contractor_details = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        help_text="Person engaging contractor is responsible for maintaining contractor resource details",
+    )
     other_details = models.TextField(null=True, blank=True)
-    internal_only = models.BooleanField(default=False, help_text="Device will only be shown on internal DBCA resource tracking live view (not to DFES, etc.)")
-    hidden = models.BooleanField(default=False, help_text="Device hidden from DBCA resource tracking live view")
+    internal_only = models.BooleanField(
+        default=False,
+        help_text="Device will only be shown on internal DBCA resource tracking live view (not to DFES, etc.)",
+    )
+    hidden = models.BooleanField(
+        default=False, help_text="Device hidden from DBCA resource tracking live view"
+    )
     deleted = models.BooleanField(default=False, verbose_name="Deleted?")
     fire_use = models.BooleanField(default=None, null=True, verbose_name="Fire use")
 
     seen = models.DateTimeField(null=True, editable=False)
     point = models.PointField(null=True, editable=False)
 
-    heading = models.PositiveIntegerField(default=0, help_text="Heading in degrees", editable=False)
-    velocity = models.PositiveIntegerField(default=0, help_text="Speed in metres/hr", editable=False)
-    altitude = models.IntegerField(default=0, help_text="Altitude above sea level in metres", editable=False)
+    heading = models.PositiveIntegerField(
+        default=0, help_text="Heading in degrees", editable=False
+    )
+    velocity = models.PositiveIntegerField(
+        default=0, help_text="Speed in metres/hr", editable=False
+    )
+    altitude = models.IntegerField(
+        default=0, help_text="Altitude above sea level in metres", editable=False
+    )
     message = models.PositiveIntegerField(default=3, choices=RAW_EQ_CHOICES)
-    source_device_type = models.CharField(max_length=32, choices=SOURCE_DEVICE_TYPE_CHOICES, default="other", db_index=True)
+    source_device_type = models.CharField(
+        max_length=32,
+        choices=SOURCE_DEVICE_TYPE_CHOICES,
+        default="other",
+        db_index=True,
+    )
 
     class Meta:
-        ordering = ('-seen',)
+        ordering = ("-seen",)
 
     def __str__(self):
         return f"{self.registration} {self.deviceid}"
@@ -172,19 +219,19 @@ class Device(models.Model):
     @property
     def age_colour(self):
         if not self.seen:
-            return 'red'
+            return "red"
         minutes = self.age_minutes
         if minutes < 60:
-            return 'green'
+            return "green"
         elif minutes < 180:
-            return 'orange'
+            return "orange"
         else:
-            return 'red'
+            return "red"
 
     @property
     def age_text(self):
         # Returns age in humanized form
-        return naturaltime(self.seen).replace(u'\xa0', u' ')
+        return naturaltime(self.seen).replace("\xa0", " ")
 
     @property
     def icon(self):
@@ -211,9 +258,27 @@ class Device(models.Model):
 
     def clean(self):
         # Clean rin_number
-        if self.rin_number and self.symbol not in ("heavy duty", "gang truck", "dozer", "grader", "loader", "tender", "float"):
-            raise ValidationError("Please remove the RIN number or select a symbol from Heavy Duty, Gang Truck, Dozer, Grader, Loader, Tender or Float")
-        if not self.rin_number and self.symbol in ("heavy duty", "gang truck", "dozer", "grader", "loader", "tender", "float"):
+        if self.rin_number and self.symbol not in (
+            "heavy duty",
+            "gang truck",
+            "dozer",
+            "grader",
+            "loader",
+            "tender",
+            "float",
+        ):
+            raise ValidationError(
+                "Please remove the RIN number or select a symbol from Heavy Duty, Gang Truck, Dozer, Grader, Loader, Tender or Float"
+            )
+        if not self.rin_number and self.symbol in (
+            "heavy duty",
+            "gang truck",
+            "dozer",
+            "grader",
+            "loader",
+            "tender",
+            "float",
+        ):
             raise ValidationError("Please enter a RIN number")
 
 
@@ -221,15 +286,27 @@ class LoggedPoint(models.Model):
     """An instance of the location of a tracking device at a point in time, plus additional metadata
     where available.
     """
+
     device = models.ForeignKey(Device, on_delete=models.PROTECT)
     seen = models.DateTimeField(editable=False, db_index=True)
     point = models.PointField(editable=False)
 
-    heading = models.PositiveIntegerField(default=0, help_text="Heading in degrees", editable=False)
-    velocity = models.PositiveIntegerField(default=0, help_text="Speed in metres/hr", editable=False)
-    altitude = models.IntegerField(default=0, help_text="Altitude above sea level in metres", editable=False)
+    heading = models.PositiveIntegerField(
+        default=0, help_text="Heading in degrees", editable=False
+    )
+    velocity = models.PositiveIntegerField(
+        default=0, help_text="Speed in metres/hr", editable=False
+    )
+    altitude = models.IntegerField(
+        default=0, help_text="Altitude above sea level in metres", editable=False
+    )
     message = models.PositiveIntegerField(default=3, choices=RAW_EQ_CHOICES)
-    source_device_type = models.CharField(max_length=32, choices=SOURCE_DEVICE_TYPE_CHOICES, default="other", db_index=True)
+    source_device_type = models.CharField(
+        max_length=32,
+        choices=SOURCE_DEVICE_TYPE_CHOICES,
+        default="other",
+        db_index=True,
+    )
 
     raw = models.TextField(editable=False, null=True, blank=True)
 
@@ -251,53 +328,5 @@ def user_pre_save(sender, instance, **kwargs):
 def user_post_save(sender, instance, **kwargs):
     # Add users to the 'Edit Resource Tracking Device' group so users can edit Device details
     # NOTE: does not work when saving user in Django Admin
-    g, created = Group.objects.get_or_create(name='Edit Resource Tracking Device')
+    g, created = Group.objects.get_or_create(name="Edit Resource Tracking Device")
     instance.groups.add(g)
-
-
-class ResourceView(models.Model):
-    """An unmanaged Django model to allow ORM usage of the `tracking_resource_tracking_view`
-    database view.
-    """
-    id = models.IntegerField(primary_key=True)
-    point = models.PointField(srid=4326)
-    heading = models.IntegerField()
-    velocity = models.IntegerField()
-    altitude = models.IntegerField()
-    seen = models.DateTimeField()
-    deviceid = models.CharField(max_length=32)
-    registration = models.CharField(max_length=32)
-    rin_display = models.CharField(max_length=5)
-    current_driver = models.CharField(max_length=50)
-    callsign = models.CharField(max_length=50)
-    callsign_display = models.CharField(max_length=50)
-    usual_driver = models.CharField(max_length=50)
-    usual_location = models.CharField(max_length=50)
-    contractor_details = models.CharField(max_length=50)
-    symbol = models.CharField(max_length=32, choices=SYMBOL_CHOICES)
-    age = models.FloatField()
-    symbolid = models.TextField()
-    district = models.CharField(max_length=32, choices=DISTRICT_CHOICES)
-    district_display = models.CharField(max_length=100)
-    source_device_type = models.CharField(max_length=32, choices=SOURCE_DEVICE_TYPE_CHOICES)
-
-    class Meta:
-        managed = False
-        db_table = "tracking_resource_tracking_view"
-        verbose_name = "resource"
-        ordering = ("-seen",)
-
-    def __str__(self):
-        seen = self.seen.astimezone(settings.TZ).strftime("%d/%b/%Y %H:%M")
-        if self.callsign:
-            return f"{self.callsign} ({self.get_symbol_display()}) seen {seen} AWST"
-        else:
-            return f"{self.registration} ({self.get_symbol_display()}) seen {seen} AWST"
-
-    def save(self, *args, **kwargs):
-        # Disallow all save operations.
-        raise NotSupportedError("View-only database model")
-
-    def delete(self, *args, **kwargs):
-        # Disallow all delete operations.
-        raise NotSupportedError("View-only database model")
