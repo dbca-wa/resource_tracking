@@ -1,51 +1,35 @@
 "use strict";
+const geoserver_wmts_url = geoserver_url + "/gwc/service/wmts?service=WMTS&request=GetTile&version=1.0.0&tilematrixset=mercator&tilematrix=mercator:{z}&tilecol={x}&tilerow={y}&format=image/png"
 
 // Base layers
-const mapboxStreets = L.tileLayer.wms(mapproxy_url, {
-  layers: 'mapbox-streets',
-  format: 'image/png',
-  tileSize: 1024,
-  zoomOffset: -2,
-});
-const landgateOrthomosaic = L.tileLayer.wms(mapproxy_url, {
-  layers: 'virtual-mosaic',
-  tileSize: 1024,
-  zoomOffset: -2,
-});
+const mapboxStreets = L.tileLayer(
+  geoserver_wmts_url + "&layer=dbca:mapbox-streets",
+);
+const landgateOrthomosaic = L.tileLayer(
+  geoserver_wmts_url + "&layer=landgate:virtual_mosaic",
+);
 
 // Overlay layers
-const dbcaBushfires = L.tileLayer.wms(mapproxy_url, {
-  layers: 'dbca-going-bushfires',
-  format: 'image/png',
-  transparent: true,
-  opacity: 0.75,
-  tileSize: 1024,
-  zoomOffset: -2,
-});
-const dfesBushfires = L.tileLayer.wms(mapproxy_url, {
-  layers: 'dfes-going-bushfires',
-  format: 'image/png',
-  transparent: true,
-  opacity: 0.75,
-  tileSize: 1024,
-  zoomOffset: -2,
-});
-const dbcaRegions = L.tileLayer.wms(mapproxy_url, {
-  layers: 'dbca-regions',
-  format: 'image/png',
-  transparent: true,
-  opacity: 0.75,
-  tileSize: 1024,
-  zoomOffset: -2,
-});
-const lgaBoundaries = L.tileLayer.wms(mapproxy_url, {
-  layers: 'lga-boundaries',
-  format: 'image/png',
-  transparent: true,
-  opacity: 0.75,
-  tileSize: 1024,
-  zoomOffset: -2,
-});
+const dbcaBushfires = L.tileLayer(
+  geoserver_wmts_url + "&layer=landgate:dbca_going_bushfires_dbca-001",
+  {
+    transparent: true,
+    opacity: 0.75,
+  }
+);
+const dfesBushfires = L.tileLayer(
+  geoserver_wmts_url + "&layer=landgate:authorised_fireshape_dfes-032",
+  {
+    transparent: true,
+    opacity: 0.75,
+  }
+);
+const dbcaRegions = L.tileLayer(
+  geoserver_wmts_url + "&layer=cddp:dbca_regions",
+);
+const lgaBoundaries = L.tileLayer(
+  geoserver_wmts_url + "&layer=cddp:local_gov_authority",
+);
 
 // Icon classes (note that URLs are injected into the base template.)
 const iconCar = L.icon({
@@ -179,7 +163,7 @@ function refreshTrackedDevicesLayer(trackedDevicesLayer) {
   // Query the API endpoint for device data.
   $.getJSON(
     device_geojson_url,
-    function(data) {
+    function (data) {
       // Add the device data to the GeoJSON layer.
       trackedDevicesLayer.addData(data);
       // Success notification.
@@ -195,7 +179,7 @@ refreshTrackedDevicesLayer(trackedDevices);
 
 // Define map.
 var map = L.map('map', {
-  crs: L.CRS.EPSG4326,
+  crs: L.CRS.EPSG3857,
   center: [-31.96, 115.87],
   zoom: 12,
   minZoom: 4,
@@ -221,7 +205,7 @@ var overlayMaps = {
 L.control.layers(baseMaps, overlayMaps).addTo(map);
 
 // Define scale bar
-L.control.scale({maxWidth: 500, imperial: false}).addTo(map);
+L.control.scale({ maxWidth: 500, imperial: false }).addTo(map);
 
 // Device registration search
 const searchControl = new L.Control.Search({
@@ -238,7 +222,7 @@ map.addControl(searchControl);
 
 const refreshButton = L.easyButton(
   `<img src="${refresh_icon_url}">`,
-  function(btn, map){
+  function (btn, map) {
     refreshTrackedDevicesLayer(trackedDevices);
   }
 ).addTo(map);
