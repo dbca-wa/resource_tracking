@@ -23,3 +23,10 @@ spec:
                 secretKeyRef:
                   name: resourcetracking-env-prod
                   key: TRACPLUS_URL
+            - name: SENTRY_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: SENTRY_DSN
+            - name: SENTRY_ENVIRONMENT
+              value: "prod"
