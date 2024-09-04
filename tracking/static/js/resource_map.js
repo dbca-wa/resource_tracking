@@ -1,5 +1,5 @@
 "use strict";
-const geoserver_wmts_url = kmi_geoserver_url + "/gwc/service/wmts?service=WMTS&request=GetTile&version=1.0.0&tilematrixset=gda94&tilematrix=gda94:{z}&tilecol={x}&tilerow={y}";
+const geoserver_wmts_url = geoserver_url + "/gwc/service/wmts?service=WMTS&request=GetTile&version=1.0.0&tilematrixset=gda94&tilematrix=gda94:{z}&tilecol={x}&tilerow={y}";
 const geoserver_wmts_url_base = geoserver_wmts_url + "&format=image/jpeg";
 const geoserver_wmts_url_overlay = geoserver_wmts_url + "&format=image/png";
 
@@ -236,6 +236,10 @@ L.control.layers(baseMaps, overlayMaps).addTo(map);
 
 // Define scale bar
 L.control.scale({ maxWidth: 500, imperial: false }).addTo(map);
+
+// Add a fullscreen control to the map.
+const fullScreen = new L.control.fullscreen();
+map.addControl(fullScreen);
 
 // Device registration search
 const searchControl = new L.Control.Search({
