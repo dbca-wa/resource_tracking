@@ -15,10 +15,3 @@ spec:
             name: resourcetracking-clusterip-uat
             port:
               number: 8080
-      - path: /geoserver
-        pathType: Prefix
-        backend:
-          service:
-            name: resourcetracking-geoserver-clusterip-uat
-            port:
-              number: 8080

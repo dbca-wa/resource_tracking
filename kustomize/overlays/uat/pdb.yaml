@@ -8,14 +8,3 @@ spec:
     matchLabels:
       app: resourcetracking-deployment
       variant: uat
----
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: resourcetracking-geoserver-pdb
-spec:
-  minAvailable: 0
-  selector:
-    matchLabels:
-      app: resourcetracking-geoserver
-      variant: uat
