@@ -1,23 +1,25 @@
 "use strict";
-const geoserver_wmts_url = geoserver_url + "/gwc/service/wmts?service=WMTS&request=GetTile&version=1.0.0&tilematrixset=gda94&tilematrix=gda94:{z}&tilecol={x}&tilerow={y}&format=image/jpeg"
+const geoserver_wmts_url = kmi_geoserver_url + "/gwc/service/wmts?service=WMTS&request=GetTile&version=1.0.0&tilematrixset=gda94&tilematrix=gda94:{z}&tilecol={x}&tilerow={y}";
+const geoserver_wmts_url_base = geoserver_wmts_url + "&format=image/jpeg";
+const geoserver_wmts_url_overlay = geoserver_wmts_url + "&format=image/png";
 
 // Base layers
 const mapboxStreets = L.tileLayer(
-  geoserver_wmts_url + "&layer=dbca:mapbox-streets",
+  geoserver_wmts_url_base + "&layer=dbca:mapbox-streets",
   {
     tileSize: 1024,
     zoomOffset: -2,
   },
 );
 const landgateOrthomosaic = L.tileLayer(
-  geoserver_wmts_url + "&layer=landgate:virtual_mosaic",
+  geoserver_wmts_url_base + "&layer=landgate:virtual_mosaic",
   {
     tileSize: 1024,
     zoomOffset: -2,
   },
 );
 const stateMapBase = L.tileLayer(
-  geoserver_wmts_url + "&layer=cddp:state_map_base",
+  geoserver_wmts_url_base + "&layer=cddp:state_map_base",
   {
     tileSize: 1024,
     zoomOffset: -2,
@@ -26,7 +28,7 @@ const stateMapBase = L.tileLayer(
 
 // Overlay layers
 const dbcaBushfires = L.tileLayer(
-  geoserver_wmts_url + "&layer=landgate:dbca_going_bushfires_dbca-001",
+  geoserver_wmts_url_overlay + "&layer=landgate:dbca_going_bushfires_dbca-001",
   {
     tileSize: 1024,
     zoomOffset: -2,
@@ -35,7 +37,7 @@ const dbcaBushfires = L.tileLayer(
   }
 );
 const dfesBushfires = L.tileLayer(
-  geoserver_wmts_url + "&layer=landgate:authorised_fireshape_dfes-032",
+  geoserver_wmts_url_overlay + "&layer=landgate:authorised_fireshape_dfes-032",
   {
     tileSize: 1024,
     zoomOffset: -2,
@@ -44,14 +46,14 @@ const dfesBushfires = L.tileLayer(
   }
 );
 const dbcaRegions = L.tileLayer(
-  geoserver_wmts_url + "&layer=cddp:dbca_regions",
+  geoserver_wmts_url_overlay + "&layer=cddp:dbca_regions",
   {
     tileSize: 1024,
     zoomOffset: -2,
   },
 );
 const lgaBoundaries = L.tileLayer(
-  geoserver_wmts_url + "&layer=cddp:local_gov_authority",
+  geoserver_wmts_url_overlay + "&layer=cddp:local_gov_authority",
   {
     tileSize: 1024,
     zoomOffset: -2,
