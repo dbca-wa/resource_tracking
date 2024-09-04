@@ -1,5 +1,5 @@
 "use strict";
-const geoserver_wmts_url = geoserver_url + "/gwc/service/wmts?service=WMTS&request=GetTile&version=1.0.0&tilematrixset=mercator&tilematrix=mercator:{z}&tilecol={x}&tilerow={y}&format=image/png"
+const geoserver_wmts_url = geoserver_url + "/gwc/service/wmts?service=WMTS&request=GetTile&version=1.0.0&tilematrixset=gda94&tilematrix=gda94:{z}&tilecol={x}&tilerow={y}&format=image/png"
 
 // Base layers
 const mapboxStreets = L.tileLayer(
@@ -179,7 +179,7 @@ refreshTrackedDevicesLayer(trackedDevices);
 
 // Define map.
 var map = L.map('map', {
-  crs: L.CRS.EPSG3857,
+  crs: L.CRS.EPSG4326,  // WGS 84
   center: [-31.96, 115.87],
   zoom: 12,
   minZoom: 4,
