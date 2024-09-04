@@ -1,5 +1,5 @@
 "use strict";
-const geoserver_wmts_url = geoserver_url + "/gwc/service/wmts?service=WMTS&request=GetTile&version=1.0.0&tilematrixset=gda94&tilematrix=gda94:{z}&tilecol={x}&tilerow={y}&format=image/png"
+const geoserver_wmts_url = geoserver_url + "/gwc/service/wmts?service=WMTS&request=GetTile&version=1.0.0&tilematrixset=gda94&tilematrix=gda94:{z}&tilecol={x}&tilerow={y}&format=image/jpeg"
 
 // Base layers
 const mapboxStreets = L.tileLayer(
@@ -11,6 +11,13 @@ const mapboxStreets = L.tileLayer(
 );
 const landgateOrthomosaic = L.tileLayer(
   geoserver_wmts_url + "&layer=landgate:virtual_mosaic",
+  {
+    tileSize: 1024,
+    zoomOffset: -2,
+  },
+);
+const stateMapBase = L.tileLayer(
+  geoserver_wmts_url + "&layer=cddp:state_map_base",
   {
     tileSize: 1024,
     zoomOffset: -2,
@@ -212,6 +219,7 @@ var map = L.map('map', {
 var baseMaps = {
   'Mapbox streets': mapboxStreets,
   'Landgate orthomosaic': landgateOrthomosaic,
+  'State map base 250K': stateMapBase,
 };
 var overlayMaps = {
   'Tracked devices': trackedDevices,
