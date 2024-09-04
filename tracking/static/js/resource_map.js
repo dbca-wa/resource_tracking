@@ -4,15 +4,25 @@ const geoserver_wmts_url = geoserver_url + "/gwc/service/wmts?service=WMTS&reque
 // Base layers
 const mapboxStreets = L.tileLayer(
   geoserver_wmts_url + "&layer=dbca:mapbox-streets",
+  {
+    tileSize: 1024,
+    zoomOffset: -2,
+  },
 );
 const landgateOrthomosaic = L.tileLayer(
   geoserver_wmts_url + "&layer=landgate:virtual_mosaic",
+  {
+    tileSize: 1024,
+    zoomOffset: -2,
+  },
 );
 
 // Overlay layers
 const dbcaBushfires = L.tileLayer(
   geoserver_wmts_url + "&layer=landgate:dbca_going_bushfires_dbca-001",
   {
+    tileSize: 1024,
+    zoomOffset: -2,
     transparent: true,
     opacity: 0.75,
   }
@@ -20,15 +30,25 @@ const dbcaBushfires = L.tileLayer(
 const dfesBushfires = L.tileLayer(
   geoserver_wmts_url + "&layer=landgate:authorised_fireshape_dfes-032",
   {
+    tileSize: 1024,
+    zoomOffset: -2,
     transparent: true,
     opacity: 0.75,
   }
 );
 const dbcaRegions = L.tileLayer(
   geoserver_wmts_url + "&layer=cddp:dbca_regions",
+  {
+    tileSize: 1024,
+    zoomOffset: -2,
+  },
 );
 const lgaBoundaries = L.tileLayer(
   geoserver_wmts_url + "&layer=cddp:local_gov_authority",
+  {
+    tileSize: 1024,
+    zoomOffset: -2,
+  },
 );
 
 // Icon classes (note that URLs are injected into the base template.)
@@ -180,7 +200,6 @@ refreshTrackedDevicesLayer(trackedDevices);
 // Define map.
 var map = L.map('map', {
   crs: L.CRS.EPSG4326,  // WGS 84
-  tileSize: 1024,
   center: [-31.96, 115.87],
   zoom: 12,
   minZoom: 4,
