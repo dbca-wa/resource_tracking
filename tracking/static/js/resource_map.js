@@ -180,6 +180,7 @@ refreshTrackedDevicesLayer(trackedDevices);
 // Define map.
 var map = L.map('map', {
   crs: L.CRS.EPSG4326,  // WGS 84
+  tileSize: 1024,
   center: [-31.96, 115.87],
   zoom: 12,
   minZoom: 4,
