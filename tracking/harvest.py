@@ -104,7 +104,7 @@ def save_mp70(message):
 
     # Validate lat/lon values.
     if not validate_latitude_longitude(data["latitude"], data["longitude"]):
-        LOGGER.info(
+        LOGGER.warning(
             f"Bad geometry while parsing MP70 message from device {data['device_id']}: {data['latitude']}, {data['longitude']}"
         )
         return False
@@ -114,6 +114,7 @@ def save_mp70(message):
     except:
         LOGGER.error("Exception during creation/query of MP70 device")
         LOGGER.error(data)
+        return False
 
     seen = data["timestamp"]
     point = f"POINT({data['longitude']} {data['latitude']})"
@@ -153,7 +154,7 @@ def save_spot(message):
 
     # Validate lat/lon values.
     if not validate_latitude_longitude(data["latitude"], data["longitude"]):
-        LOGGER.info(
+        LOGGER.warning(
             f"Bad geometry while parsing Spot message from device {data['device_id']}: {data['latitude']}, {data['longitude']}"
         )
         return False
@@ -163,6 +164,7 @@ def save_spot(message):
     except:
         LOGGER.error("Exception during creation/query of Spot device")
         LOGGER.error(data)
+        return False
 
     seen = data["timestamp"]
     point = f"POINT({data['longitude']} {data['latitude']})"
@@ -202,7 +204,7 @@ def save_iriditrak(message):
 
     # Validate lat/lon values.
     if not validate_latitude_longitude(data["latitude"], data["longitude"]):
-        LOGGER.info(
+        LOGGER.warning(
             f"Bad geometry while parsing Iriditrak message from device {data['device_id']}: {data['latitude']}, {data['longitude']}"
         )
         return False
@@ -212,6 +214,7 @@ def save_iriditrak(message):
     except:
         LOGGER.error("Exception during creation/query of Iriditrak device")
         LOGGER.error(data)
+        return False
 
     seen = data["timestamp"]
     point = f"POINT({data['longitude']} {data['latitude']})"
@@ -253,7 +256,7 @@ def save_dplus(message):
 
     # Validate lat/lon values.
     if not validate_latitude_longitude(data["latitude"], data["longitude"]):
-        LOGGER.info(
+        LOGGER.warning(
             f"Bad geometry while parsing DPlus message from device {data['device_id']}: {data['latitude']}, {data['longitude']}"
         )
         return False
@@ -263,6 +266,7 @@ def save_dplus(message):
     except:
         LOGGER.error("Exception during creation/query of DPlus device")
         LOGGER.error(data)
+        return False
 
     seen = data["timestamp"]
     point = f"POINT({data['longitude']} {data['latitude']})"
@@ -351,7 +355,7 @@ def save_dfes_feed():
 
         # Validate lat/lon values.
         if not validate_latitude_longitude(data["latitude"], data["longitude"]):
-            LOGGER.info(
+            LOGGER.warning(
                 f"Bad geometry while parsing data for DFES device {data['device_id']}: {data['latitude']}, {data['longitude']}"
             )
             skipped_device += 1
@@ -362,6 +366,7 @@ def save_dfes_feed():
         except:
             LOGGER.error("Exception during creation/query of DFES device")
             LOGGER.error(data)
+            continue
 
         properties = feature["properties"]
 
@@ -439,7 +444,7 @@ def save_tracplus_feed():
 
         # Validate lat/lon values.
         if not validate_latitude_longitude(data["latitude"], data["longitude"]):
-            LOGGER.info(
+            LOGGER.warning(
                 f"Bad geometry while parsing TracPlus data from device {data['device_id']}: {data['latitude']}, {data['longitude']}"
             )
             skipped_device += 1
@@ -451,6 +456,7 @@ def save_tracplus_feed():
             LOGGER.error("Exception during creation/query of TracPlus device")
             LOGGER.error(row)
             skipped_device += 1
+            continue
 
         rego = row["Asset Regn"][:32].strip()
         symbol = (

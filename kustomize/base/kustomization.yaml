@@ -4,6 +4,3 @@ resources:
   - deployment.yaml
   - deployment_hpa.yaml
   - service.yaml
-  - geoserver_statefulset.yaml
-  - geoserver_headless.yaml
-  - geoserver_service.yaml

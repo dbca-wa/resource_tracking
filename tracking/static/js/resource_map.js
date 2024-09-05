@@ -1,34 +1,63 @@
 "use strict";
-const geoserver_wmts_url = geoserver_url + "/gwc/service/wmts?service=WMTS&request=GetTile&version=1.0.0&tilematrixset=mercator&tilematrix=mercator:{z}&tilecol={x}&tilerow={y}&format=image/png"
+const geoserver_wmts_url = geoserver_url + "/gwc/service/wmts?service=WMTS&request=GetTile&version=1.0.0&tilematrixset=gda94&tilematrix=gda94:{z}&tilecol={x}&tilerow={y}";
+const geoserver_wmts_url_base = geoserver_wmts_url + "&format=image/jpeg";
+const geoserver_wmts_url_overlay = geoserver_wmts_url + "&format=image/png";
 
 // Base layers
 const mapboxStreets = L.tileLayer(
-  geoserver_wmts_url + "&layer=dbca:mapbox-streets",
+  geoserver_wmts_url_base + "&layer=dbca:mapbox-streets",
+  {
+    tileSize: 1024,
+    zoomOffset: -2,
+  },
 );
 const landgateOrthomosaic = L.tileLayer(
-  geoserver_wmts_url + "&layer=landgate:virtual_mosaic",
+  geoserver_wmts_url_base + "&layer=landgate:virtual_mosaic",
+  {
+    tileSize: 1024,
+    zoomOffset: -2,
+  },
+);
+const stateMapBase = L.tileLayer(
+  geoserver_wmts_url_base + "&layer=cddp:state_map_base",
+  {
+    tileSize: 1024,
+    zoomOffset: -2,
+  },
 );
 
 // Overlay layers
 const dbcaBushfires = L.tileLayer(
-  geoserver_wmts_url + "&layer=landgate:dbca_going_bushfires_dbca-001",
+  geoserver_wmts_url_overlay + "&layer=landgate:dbca_going_bushfires_dbca-001",
   {
+    tileSize: 1024,
+    zoomOffset: -2,
     transparent: true,
     opacity: 0.75,
   }
 );
 const dfesBushfires = L.tileLayer(
-  geoserver_wmts_url + "&layer=landgate:authorised_fireshape_dfes-032",
+  geoserver_wmts_url_overlay + "&layer=landgate:authorised_fireshape_dfes-032",
   {
+    tileSize: 1024,
+    zoomOffset: -2,
     transparent: true,
     opacity: 0.75,
   }
 );
 const dbcaRegions = L.tileLayer(
-  geoserver_wmts_url + "&layer=cddp:dbca_regions",
+  geoserver_wmts_url_overlay + "&layer=cddp:dbca_regions",
+  {
+    tileSize: 1024,
+    zoomOffset: -2,
+  },
 );
 const lgaBoundaries = L.tileLayer(
-  geoserver_wmts_url + "&layer=cddp:local_gov_authority",
+  geoserver_wmts_url_overlay + "&layer=cddp:local_gov_authority",
+  {
+    tileSize: 1024,
+    zoomOffset: -2,
+  },
 );
 
 // Icon classes (note that URLs are injected into the base template.)
@@ -179,7 +208,7 @@ refreshTrackedDevicesLayer(trackedDevices);
 
 // Define map.
 var map = L.map('map', {
-  crs: L.CRS.EPSG3857,
+  crs: L.CRS.EPSG4326,  // WGS 84
   center: [-31.96, 115.87],
   zoom: 12,
   minZoom: 4,
@@ -192,6 +221,7 @@ var map = L.map('map', {
 var baseMaps = {
   'Mapbox streets': mapboxStreets,
   'Landgate orthomosaic': landgateOrthomosaic,
+  'State map base 250K': stateMapBase,
 };
 var overlayMaps = {
   'Tracked devices': trackedDevices,
@@ -206,6 +236,10 @@ L.control.layers(baseMaps, overlayMaps).addTo(map);
 
 // Define scale bar
 L.control.scale({ maxWidth: 500, imperial: false }).addTo(map);
+
+// Add a fullscreen control to the map.
+const fullScreen = new L.control.fullscreen();
+map.addControl(fullScreen);
 
 // Device registration search
 const searchControl = new L.Control.Search({

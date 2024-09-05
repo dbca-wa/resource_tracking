@@ -33,3 +33,10 @@ spec:
                 secretKeyRef:
                   name: resourcetracking-env-prod
                   key: DFES_PASS
+            - name: SENTRY_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: SENTRY_DSN
+            - name: SENTRY_ENVIRONMENT
+              value: "prod"

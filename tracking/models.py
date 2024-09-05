@@ -128,7 +128,12 @@ class Device(models.Model):
     and heading over time, plus metadata about the vehicle itself.
     """
 
-    deviceid = models.CharField(max_length=32, unique=True)
+    deviceid = models.CharField(
+        max_length=128,
+        unique=True,
+        verbose_name="Device ID",
+        help_text="Device unique identifier",
+    )
     registration = models.CharField(
         max_length=32, default="No Rego", help_text="e.g. 1QBB157"
     )
@@ -290,7 +295,6 @@ class LoggedPoint(models.Model):
     device = models.ForeignKey(Device, on_delete=models.PROTECT)
     seen = models.DateTimeField(editable=False, db_index=True)
     point = models.PointField(editable=False)
-
     heading = models.PositiveIntegerField(
         default=0, help_text="Heading in degrees", editable=False
     )
