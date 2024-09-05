@@ -114,6 +114,7 @@ def save_mp70(message):
     except:
         LOGGER.error("Exception during creation/query of MP70 device")
         LOGGER.error(data)
+        return False
 
     seen = data["timestamp"]
     point = f"POINT({data['longitude']} {data['latitude']})"
@@ -163,6 +164,7 @@ def save_spot(message):
     except:
         LOGGER.error("Exception during creation/query of Spot device")
         LOGGER.error(data)
+        return False
 
     seen = data["timestamp"]
     point = f"POINT({data['longitude']} {data['latitude']})"
@@ -212,6 +214,7 @@ def save_iriditrak(message):
     except:
         LOGGER.error("Exception during creation/query of Iriditrak device")
         LOGGER.error(data)
+        return False
 
     seen = data["timestamp"]
     point = f"POINT({data['longitude']} {data['latitude']})"
@@ -263,6 +266,7 @@ def save_dplus(message):
     except:
         LOGGER.error("Exception during creation/query of DPlus device")
         LOGGER.error(data)
+        return False
 
     seen = data["timestamp"]
     point = f"POINT({data['longitude']} {data['latitude']})"
@@ -362,6 +366,7 @@ def save_dfes_feed():
         except:
             LOGGER.error("Exception during creation/query of DFES device")
             LOGGER.error(data)
+            continue
 
         properties = feature["properties"]
 
@@ -451,6 +456,7 @@ def save_tracplus_feed():
             LOGGER.error("Exception during creation/query of TracPlus device")
             LOGGER.error(row)
             skipped_device += 1
+            continue
 
         rego = row["Asset Regn"][:32].strip()
         symbol = (
