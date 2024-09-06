@@ -46,7 +46,7 @@ const dfesBushfires = L.tileLayer(
   }
 );
 const dbcaRegions = L.tileLayer(
-  geoserver_wmts_url_overlay + "&layer=cddp:dbca_regions",
+  geoserver_wmts_url_overlay + "&layer=cddp:kaartdijin-boodja-public_CPT_DBCA_REGIONS",
   {
     tileSize: 1024,
     zoomOffset: -2,
