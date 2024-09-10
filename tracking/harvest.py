@@ -1,6 +1,7 @@
 import csv
 from django.conf import settings
 from django.utils import timezone
+from imaplib import IMAP4
 import logging
 import requests
 
@@ -24,6 +25,10 @@ def harvest_tracking_email(device_type, purge_email=False):
     `device_type` should be one of: iriditrak, dplus, spot, mp70
     """
     imap = email_utils.get_imap()
+    if not imap:
+        LOGGER.warning("Mailbox not available")
+        return
+
     start = timezone.now()
     created = 0
     flagged = 0
@@ -80,8 +85,13 @@ def harvest_tracking_email(device_type, purge_email=False):
                 status, response = email_utils.email_delete(imap, uid)
 
     LOGGER.info(f"Created {created} tracking points, flagged {flagged} emails")
-    imap.close()
-    imap.logout()
+
+    try:
+        imap.close()
+        imap.logout()
+    except IMAP4.abort:
+        LOGGER.warning("IMAP abort")
+        pass
 
     delta = timezone.now() - start
     start = start.astimezone(settings.TZ)

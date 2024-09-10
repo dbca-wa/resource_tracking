@@ -1,14 +1,21 @@
 from django.conf import settings
 import email
-from imaplib import IMAP4_SSL
+from imaplib import IMAP4, IMAP4_SSL
+import logging
+
+LOGGER = logging.getLogger("tracking")
 
 
 def get_imap(mailbox="INBOX"):
     """Instantiate a new IMAP object, login, and connect to a mailbox."""
     imap = IMAP4_SSL(settings.EMAIL_HOST)
-    imap.login(settings.EMAIL_USER, settings.EMAIL_PASSWORD)
-    imap.select(mailbox)
-    return imap
+    try:
+        imap.login(settings.EMAIL_USER, settings.EMAIL_PASSWORD)
+        imap.select(mailbox)
+        return imap
+    except IMAP4.error:
+        LOGGER.error("Unable to log into mailbox")
+        return None
 
 
 def email_get_unread(imap, from_email_address):
