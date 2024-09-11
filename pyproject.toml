@@ -28,6 +28,16 @@ ipdb = "^0.13.13"
 pre-commit = "^3.8.0"
 mixer = "^7.2.2"
 
+[tool.ruff]
+line-length = 120
+indent-width = 4
+
+[tool.ruff.lint]
+ignore = ["E265", "E501", "E722"]
+
+[tool.djlint]
+profile = "django"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.masonry.api"

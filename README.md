@@ -1,11 +1,9 @@
 # Resource Tracking application
 
-Django and Leaflet application that collects tracking information using IMAP
-from a mailbox and displays it on a collection of layers provided by
-Geoserver. The application also downloads observation data from
-automatic weather stations.
+Django and Leaflet application that collects tracking device information from a
+variety of sources and aggregates it into a single database.
 
-# Installation
+## Installation
 
 The recommended way to set up this project for development is using
 [Poetry](https://python-poetry.org/docs/) to install and manage a virtual Python
@@ -21,7 +19,7 @@ Manage new or updating project dependencies with Poetry also, like so:
 
     poetry add newpackage==1.0
 
-# Environment variables
+## Environment variables
 
 This project uses confy to set environment variables (in a `.env` file).
 The following variables are required for the project to run:
@@ -32,7 +30,7 @@ The following variables are required for the project to run:
 Other environment variables will be required to run the project in production
 (these are context-dependent).
 
-# Running
+## Running
 
 Use `runserver` to run a local copy of the application:
 
@@ -42,27 +40,27 @@ Run console commands manually:
 
     poetry run python manage.py shell_plus
 
-# Unit tests
+## Unit tests
 
 Run unit tests like so:
 
     poetry run python manage.py test --keepdb -v2
 
-# Docker image
+## Docker image
 
 To build a new Docker image from the `Dockerfile`:
 
     docker image build -t ghcr.io/dbca-wa/resource_tracking .
 
-# Pre-commit hooks
+## Pre-commit hooks
 
 This project includes the following pre-commit hooks:
 
-- TruffleHog: https://docs.trufflesecurity.com/docs/scanning-git/precommit-hooks/
+- TruffleHog: <https://docs.trufflesecurity.com/docs/scanning-git/precommit-hooks/>
 
 Pre-commit hooks may have additional system dependencies to run. Optionally
 install pre-commit hooks locally like so:
 
     poetry run pre-commit install
 
-Reference: https://pre-commit.com/
+Reference: <https://pre-commit.com/>

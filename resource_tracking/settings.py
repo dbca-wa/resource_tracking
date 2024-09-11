@@ -1,12 +1,13 @@
+import os
+import sys
+import tomllib
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
+import dj_database_url
 from dbca_utils.utils import env
 from django.core.exceptions import DisallowedHost
 from django.db.utils import OperationalError
-import dj_database_url
-import os
-from pathlib import Path
-import sys
-import tomllib
-from zoneinfo import ZoneInfo
 
 # Project paths
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -170,12 +171,8 @@ def sentry_excluded_exceptions(event, hint):
 # Sentry settings
 SENTRY_DSN = env("SENTRY_DSN", None)
 SENTRY_SAMPLE_RATE = env("SENTRY_SAMPLE_RATE", 1.0)  # Error sampling rate
-SENTRY_TRANSACTION_SAMPLE_RATE = env(
-    "SENTRY_TRANSACTION_SAMPLE_RATE", 0.0
-)  # Transaction sampling
-SENTRY_PROFILES_SAMPLE_RATE = env(
-    "SENTRY_PROFILES_SAMPLE_RATE", 0.0
-)  # Proportion of sampled transactions to profile.
+SENTRY_TRANSACTION_SAMPLE_RATE = env("SENTRY_TRANSACTION_SAMPLE_RATE", 0.0)  # Transaction sampling
+SENTRY_PROFILES_SAMPLE_RATE = env("SENTRY_PROFILES_SAMPLE_RATE", 0.0)  # Proportion of sampled transactions to profile.
 SENTRY_ENVIRONMENT = env("SENTRY_ENVIRONMENT", None)
 if SENTRY_DSN and SENTRY_ENVIRONMENT:
     import sentry_sdk
