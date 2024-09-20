@@ -11,9 +11,13 @@ environment. With Poetry installed, change into the project directory and run:
 
     poetry install
 
-To run Python commands in the virtualenv, thereafter run them like so:
+Activate the virtualenv like so:
 
-    poetry run python manage.py
+    poetry shell
+
+To run Python commands in the activated virtualenv, thereafter run them as normal:
+
+    python manage.py
 
 Manage new or updating project dependencies with Poetry also, like so:
 
@@ -28,23 +32,34 @@ The following variables are required for the project to run:
     SECRET_KEY="ThisIsASecretKey"
 
 Other environment variables will be required to run the project in production
-(these are context-dependent).
+(these are context-dependent). These variables include:
+
+    ALLOWED_HOSTS
+    CSRF_TRUSTED_ORIGINS
+    EMAIL_HOST
+    EMAIL_USER
+    EMAIL_PASSWORD
+    TRACPLUS_URL
+    DFES_URL
+    DFES_USER
+    DFES_PASS
+    GEOSERVER_URL
 
 ## Running
 
 Use `runserver` to run a local copy of the application:
 
-    poetry run python manage.py runserver 0:8080
+    python manage.py runserver 0:8080
 
 Run console commands manually:
 
-    poetry run python manage.py shell_plus
+    python manage.py shell_plus
 
 ## Unit tests
 
 Run unit tests like so:
 
-    poetry run python manage.py test --keepdb -v2
+    python manage.py test --keepdb -v2
 
 ## Docker image
 
