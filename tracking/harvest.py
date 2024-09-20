@@ -59,9 +59,7 @@ def harvest_tracking_email(device_type, purge_email=False):
             # Fetch the email message.
             status, message = email_utils.email_fetch(imap, uid)
             if status != "OK":
-                LOGGER.error(
-                    f"Server response failure on fetching email UID {uid}: {status}"
-                )
+                LOGGER.error(f"Server response failure on fetching email UID {uid}: {status}")
                 continue
 
             # `result` will be a LoggedPoint, or None
@@ -137,9 +135,7 @@ def save_mp70(message):
         device.altitude = data["altitude"]
         device.save()
 
-    loggedpoint, created = LoggedPoint.objects.get_or_create(
-        device=device, seen=seen, point=point
-    )
+    loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
     if created:
         loggedpoint.source_device_type = "mp70"
         loggedpoint.heading = data["heading"]
@@ -187,9 +183,7 @@ def save_spot(message):
         device.altitude = data["altitude"]
         device.save()
 
-    loggedpoint, created = LoggedPoint.objects.get_or_create(
-        device=device, seen=seen, point=point
-    )
+    loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
     if created:
         loggedpoint.source_device_type = "spot"
         loggedpoint.heading = data["heading"]
@@ -237,9 +231,7 @@ def save_iriditrak(message):
         device.altitude = data["altitude"]
         device.save()
 
-    loggedpoint, created = LoggedPoint.objects.get_or_create(
-        device=device, seen=seen, point=point
-    )
+    loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
     if created:
         loggedpoint.source_device_type = "iriditrak"
         loggedpoint.heading = data["heading"]
@@ -289,9 +281,7 @@ def save_dplus(message):
         device.altitude = data["altitude"]
         device.save()
 
-    loggedpoint, created = LoggedPoint.objects.get_or_create(
-        device=device, seen=seen, point=point
-    )
+    loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
     if created:
         loggedpoint.source_device_type = "dplus"
         loggedpoint.heading = data["heading"]
@@ -343,9 +333,7 @@ DFES_SYMBOL_MAP = {
 def save_dfes_feed():
     """Download and process the DFES API endpoint (returns GeoJSON), create new devices, update existing."""
     LOGGER.info("Querying DFES API")
-    resp = requests.get(
-        url=settings.DFES_URL, auth=(settings.DFES_USER, settings.DFES_PASS)
-    )
+    resp = requests.get(url=settings.DFES_URL, auth=(settings.DFES_USER, settings.DFES_PASS))
     resp.raise_for_status()
     features = resp.json()["features"]
     LOGGER.info(f"DFES API returned {len(features)} features, processing")
@@ -405,9 +393,7 @@ def save_dfes_feed():
 
         device.save()
 
-        loggedpoint, created = LoggedPoint.objects.get_or_create(
-            device=device, seen=seen, point=point
-        )
+        loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
         if created:
             loggedpoint.source_device_type = "dfes"
             loggedpoint.heading = data["heading"]
@@ -442,6 +428,8 @@ def save_tracplus_feed():
     tracplus_symbol_map = {
         "Aircraft": "spotter aircraft",
         "Helicopter": "rotary aircraft",
+        "Person": "person",
+        "Car": "2 wheel drive",
     }
 
     for row in latest:
@@ -469,11 +457,7 @@ def save_tracplus_feed():
             continue
 
         rego = row["Asset Regn"][:32].strip()
-        symbol = (
-            tracplus_symbol_map[row["Asset Type"]]
-            if row["Asset Type"] in tracplus_symbol_map
-            else None
-        )
+        symbol = tracplus_symbol_map[row["Asset Type"]] if row["Asset Type"] in tracplus_symbol_map else None
 
         if created:
             created_device += 1
@@ -497,9 +481,7 @@ def save_tracplus_feed():
 
         device.save()
 
-        loggedpoint, created = LoggedPoint.objects.get_or_create(
-            device=device, seen=seen, point=point
-        )
+        loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
         if created:
             loggedpoint.source_device_type = "tracplus"
             loggedpoint.heading = data["heading"]

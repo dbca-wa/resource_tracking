@@ -1,7 +1,8 @@
-from django.conf import settings
 import email
-from imaplib import IMAP4, IMAP4_SSL
 import logging
+from imaplib import IMAP4, IMAP4_SSL
+
+from django.conf import settings
 
 LOGGER = logging.getLogger("tracking")
 
@@ -14,7 +15,7 @@ def get_imap(mailbox="INBOX"):
         imap.select(mailbox)
         return imap
     except IMAP4.error:
-        LOGGER.error("Unable to log into mailbox")
+        LOGGER.warning("Unable to log into mailbox")
         return None
 
 

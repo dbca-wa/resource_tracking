@@ -17,6 +17,8 @@ spec:
       - name: resourcetracking
         imagePullPolicy: IfNotPresent
         env:
+        - name: PROD_SCARY_WARNING
+          value: "True"
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
@@ -27,21 +29,6 @@ spec:
             secretKeyRef:
               name: resourcetracking-env-prod
               key: SECRET_KEY
-        - name: DFES_PASS
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-prod
-              key: DFES_PASS
-        - name: DFES_URL
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-prod
-              key: DFES_URL
-        - name: DFES_USER
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-prod
-              key: DFES_USER
         - name: EMAIL_HOST
           valueFrom:
             secretKeyRef:
@@ -57,16 +44,21 @@ spec:
             secretKeyRef:
               name: resourcetracking-env-prod
               key: EMAIL_USER
-        - name: FLEETCARE_CONNECTION_STRING
+        - name: DFES_PASS
           valueFrom:
             secretKeyRef:
               name: resourcetracking-env-prod
-              key: FLEETCARE_CONNECTION_STRING
-        - name: FLEETCARE_CONTAINER
+              key: DFES_PASS
+        - name: DFES_URL
           valueFrom:
             secretKeyRef:
               name: resourcetracking-env-prod
-              key: FLEETCARE_CONTAINER
+              key: DFES_URL
+        - name: DFES_USER
+          valueFrom:
+            secretKeyRef:
+              name: resourcetracking-env-prod
+              key: DFES_USER
         - name: TRACPLUS_URL
           valueFrom:
             secretKeyRef:

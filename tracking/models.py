@@ -1,14 +1,14 @@
+import logging
+
 from django.conf import settings
 from django.contrib.auth.models import Group, User
-from django.db import NotSupportedError
 from django.contrib.gis.db import models
-from django.utils import timezone
 from django.contrib.humanize.templatetags.humanize import naturaltime
-from django.dispatch import receiver
-from django.db.models.signals import pre_save, post_save
 from django.core.validators import MaxValueValidator
+from django.db.models.signals import post_save, pre_save
+from django.dispatch import receiver
 from django.forms import ValidationError
-import logging
+from django.utils import timezone
 
 LOGGER = logging.getLogger("tracking")
 
@@ -134,9 +134,7 @@ class Device(models.Model):
         verbose_name="Device ID",
         help_text="Device unique identifier",
     )
-    registration = models.CharField(
-        max_length=32, default="No Rego", help_text="e.g. 1QBB157"
-    )
+    registration = models.CharField(max_length=32, default="No Rego", help_text="e.g. 1QBB157")
     rin_number = models.PositiveIntegerField(
         validators=[MaxValueValidator(999)],
         verbose_name="Resource Identification Number (RIN)",
@@ -144,9 +142,7 @@ class Device(models.Model):
         blank=True,
         help_text="Heavy Duty, Gang Truck or Plant only (HD/GT/P automatically prefixed).",
     )
-    rin_display = models.CharField(
-        max_length=5, null=True, blank=True, verbose_name="RIN"
-    )
+    rin_display = models.CharField(max_length=5, null=True, blank=True, verbose_name="RIN")
     symbol = models.CharField(max_length=32, choices=SYMBOL_CHOICES, default="other")
     district = models.CharField(
         max_length=32,
@@ -154,22 +150,12 @@ class Device(models.Model):
         default=DISTRICT_OTHER,
         verbose_name="Region/District",
     )
-    district_display = models.CharField(
-        max_length=100, default="Other", verbose_name="District"
-    )
-    usual_driver = models.CharField(
-        max_length=50, null=True, blank=True, help_text="e.g. John Jones"
-    )
-    usual_location = models.CharField(
-        max_length=50, null=True, blank=True, help_text="e.g. Karijini National Park"
-    )
-    current_driver = models.CharField(
-        max_length=50, null=True, blank=True, help_text="e.g. Jodie Jones"
-    )
+    district_display = models.CharField(max_length=100, default="Other", verbose_name="District")
+    usual_driver = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. John Jones")
+    usual_location = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. Karijini National Park")
+    current_driver = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. Jodie Jones")
     callsign = models.CharField(max_length=50, null=True, blank=True, help_text="")
-    callsign_display = models.CharField(
-        max_length=50, null=True, blank=True, verbose_name="Callsign"
-    )
+    callsign_display = models.CharField(max_length=50, null=True, blank=True, verbose_name="Callsign")
     contractor_details = models.CharField(
         max_length=50,
         null=True,
@@ -181,24 +167,16 @@ class Device(models.Model):
         default=False,
         help_text="Device will only be shown on internal DBCA resource tracking live view (not to DFES, etc.)",
     )
-    hidden = models.BooleanField(
-        default=False, help_text="Device hidden from DBCA resource tracking live view"
-    )
+    hidden = models.BooleanField(default=False, help_text="Device hidden from DBCA resource tracking live view")
     deleted = models.BooleanField(default=False, verbose_name="Deleted?")
     fire_use = models.BooleanField(default=None, null=True, verbose_name="Fire use")
 
     seen = models.DateTimeField(null=True, editable=False)
     point = models.PointField(null=True, editable=False)
 
-    heading = models.PositiveIntegerField(
-        default=0, help_text="Heading in degrees", editable=False
-    )
-    velocity = models.PositiveIntegerField(
-        default=0, help_text="Speed in metres/hr", editable=False
-    )
-    altitude = models.IntegerField(
-        default=0, help_text="Altitude above sea level in metres", editable=False
-    )
+    heading = models.PositiveIntegerField(default=0, help_text="Heading in degrees", editable=False)
+    velocity = models.PositiveIntegerField(default=0, help_text="Speed in metres/hr", editable=False)
+    altitude = models.IntegerField(default=0, help_text="Altitude above sea level in metres", editable=False)
     message = models.PositiveIntegerField(default=3, choices=RAW_EQ_CHOICES)
     source_device_type = models.CharField(
         max_length=32,
@@ -295,15 +273,9 @@ class LoggedPoint(models.Model):
     device = models.ForeignKey(Device, on_delete=models.PROTECT)
     seen = models.DateTimeField(editable=False, db_index=True)
     point = models.PointField(editable=False)
-    heading = models.PositiveIntegerField(
-        default=0, help_text="Heading in degrees", editable=False
-    )
-    velocity = models.PositiveIntegerField(
-        default=0, help_text="Speed in metres/hr", editable=False
-    )
-    altitude = models.IntegerField(
-        default=0, help_text="Altitude above sea level in metres", editable=False
-    )
+    heading = models.PositiveIntegerField(default=0, help_text="Heading in degrees", editable=False)
+    velocity = models.PositiveIntegerField(default=0, help_text="Speed in metres/hr", editable=False)
+    altitude = models.IntegerField(default=0, help_text="Altitude above sea level in metres", editable=False)
     message = models.PositiveIntegerField(default=3, choices=RAW_EQ_CHOICES)
     source_device_type = models.CharField(
         max_length=32,
