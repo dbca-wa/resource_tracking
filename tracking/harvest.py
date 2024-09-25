@@ -335,8 +335,19 @@ def save_dfes_feed():
     """Download and process the DFES API endpoint (returns GeoJSON), create new devices, update existing."""
     LOGGER.info("Querying DFES API")
     resp = requests.get(url=settings.DFES_URL, auth=(settings.DFES_USER, settings.DFES_PASS))
-    resp.raise_for_status()
-    features = resp.json()["features"]
+
+    # Don't raise an exception on non-200 response.
+    if not resp.status_code == 200:
+        LOGGER.warning("DFES API response returned non-200 status")
+        return
+
+    # Parse the API response.
+    try:
+        features = resp.json()["features"]
+    except requests.models.JSONDecodeError:
+        LOGGER.warning("Error parsing DFES API response")
+        return
+
     LOGGER.info(f"DFES API returned {len(features)} features, processing")
 
     updated_device = 0
