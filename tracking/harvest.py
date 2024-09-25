@@ -1,20 +1,21 @@
 import csv
+import logging
+from imaplib import IMAP4
+
+import requests
 from django.conf import settings
 from django.utils import timezone
-from imaplib import IMAP4
-import logging
-import requests
 
 from tracking import email_utils
 from tracking.models import Device, LoggedPoint
 from tracking.utils import (
-    validate_latitude_longitude,
+    parse_dfes_feature,
+    parse_dplus_payload,
+    parse_iriditrak_message,
     parse_mp70_payload,
     parse_spot_message,
-    parse_iriditrak_message,
-    parse_dplus_payload,
     parse_tracplus_row,
-    parse_dfes_feature,
+    validate_latitude_longitude,
 )
 
 LOGGER = logging.getLogger("tracking")
@@ -334,8 +335,19 @@ def save_dfes_feed():
     """Download and process the DFES API endpoint (returns GeoJSON), create new devices, update existing."""
     LOGGER.info("Querying DFES API")
     resp = requests.get(url=settings.DFES_URL, auth=(settings.DFES_USER, settings.DFES_PASS))
-    resp.raise_for_status()
-    features = resp.json()["features"]
+
+    # Don't raise an exception on non-200 response.
+    if not resp.status_code == 200:
+        LOGGER.warning("DFES API response returned non-200 status")
+        return
+
+    # Parse the API response.
+    try:
+        features = resp.json()["features"]
+    except requests.models.JSONDecodeError:
+        LOGGER.warning("Error parsing DFES API response")
+        return
+
     LOGGER.info(f"DFES API returned {len(features)} features, processing")
 
     updated_device = 0
@@ -410,7 +422,11 @@ def save_dfes_feed():
 def save_tracplus_feed():
     """Query the TracPlus API, create logged points per device, update existing devices."""
     LOGGER.info("Harvesting TracPlus feed")
-    response = requests.get(settings.TRACPLUS_URL)
+    try:
+        response = requests.get(settings.TRACPLUS_URL)
+    except requests.ConnectTimeout:
+        LOGGER.warning("TracPlus API request timed out")
+        return
 
     # The TracPlus API frequently throttles requests.
     if response.status_code == 429:

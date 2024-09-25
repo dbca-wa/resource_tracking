@@ -14,15 +14,20 @@ def get_imap(mailbox="INBOX"):
         imap.login(settings.EMAIL_USER, settings.EMAIL_PASSWORD)
         imap.select(mailbox)
         return imap
-    except IMAP4.error:
-        LOGGER.warning("Unable to log into mailbox")
+    except IMAP4.error as err:
+        LOGGER.warning(f"Unable to log into mailbox: {err}")
         return None
 
 
 def email_get_unread(imap, from_email_address):
     """Returns (status, list of UIDs) of unread emails from a sending email address."""
     search = '(UNSEEN UNFLAGGED FROM "{}")'.format(from_email_address)
-    status, response = imap.search(None, search)
+    try:
+        status, response = imap.search(None, search)
+    except IMAP4.abort as err:
+        LOGGER.warning(f"Unable to search unread emails: {err}")
+        return None
+
     if status != "OK":
         return status, response
     # Return status and list of unread email UIDs.
@@ -34,7 +39,11 @@ def email_fetch(imap, uid):
     Email is returned as an email.Message class object.
     """
     message = None
-    status, response = imap.fetch(str(uid), "(BODY.PEEK[])")
+    try:
+        status, response = imap.fetch(str(uid), "(BODY.PEEK[])")
+    except IMAP4.abort as err:
+        LOGGER.warning(f"Unable to fetch email: {err}")
+        return None
 
     if status != "OK":
         return status, response
@@ -51,23 +60,39 @@ def email_fetch(imap, uid):
 
 def email_mark_read(imap, uid):
     """Flag an email as 'Seen' based on passed-in UID."""
-    status, response = imap.store(str(uid), "+FLAGS", r"\Seen")
-    return status, response
+    try:
+        status, response = imap.store(str(uid), "+FLAGS", r"\Seen")
+        return status, response
+    except IMAP4.error as err:
+        LOGGER.warning(f"Unable to mark email read: {err}")
+        return None
 
 
 def email_mark_unread(imap, uid):
     """Remove the 'Seen' flag from an email based on passed-in UID."""
-    status, response = imap.store(str(uid), "-FLAGS", r"\Seen")
-    return status, response
+    try:
+        status, response = imap.store(str(uid), "-FLAGS", r"\Seen")
+        return status, response
+    except IMAP4.error as err:
+        LOGGER.warning(f"Unable to mark email unread: {err}")
+        return None
 
 
 def email_delete(imap, uid):
     """Flag an email for deletion."""
-    status, response = imap.store(str(uid), "+FLAGS", r"\Deleted")
-    return status, response
+    try:
+        status, response = imap.store(str(uid), "+FLAGS", r"\Deleted")
+        return status, response
+    except IMAP4.error as err:
+        LOGGER.warning(f"Unable to delete email: {err}")
+        return None
 
 
 def email_flag(imap, uid):
     """Flag an email as unprocessable."""
-    status, response = imap.store(str(uid), "+FLAGS", r"\Flagged")
-    return status, response
+    try:
+        status, response = imap.store(str(uid), "+FLAGS", r"\Flagged")
+        return status, response
+    except IMAP4.error as err:
+        LOGGER.warning(f"Unable to flag email: {err}")
+        return None
