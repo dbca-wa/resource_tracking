@@ -1,20 +1,21 @@
 import csv
+import logging
+from imaplib import IMAP4
+
+import requests
 from django.conf import settings
 from django.utils import timezone
-from imaplib import IMAP4
-import logging
-import requests
 
 from tracking import email_utils
 from tracking.models import Device, LoggedPoint
 from tracking.utils import (
-    validate_latitude_longitude,
+    parse_dfes_feature,
+    parse_dplus_payload,
+    parse_iriditrak_message,
     parse_mp70_payload,
     parse_spot_message,
-    parse_iriditrak_message,
-    parse_dplus_payload,
     parse_tracplus_row,
-    parse_dfes_feature,
+    validate_latitude_longitude,
 )
 
 LOGGER = logging.getLogger("tracking")
@@ -410,7 +411,11 @@ def save_dfes_feed():
 def save_tracplus_feed():
     """Query the TracPlus API, create logged points per device, update existing devices."""
     LOGGER.info("Harvesting TracPlus feed")
-    response = requests.get(settings.TRACPLUS_URL)
+    try:
+        response = requests.get(settings.TRACPLUS_URL)
+    except requests.ConnectTimeout:
+        LOGGER.warning("TracPlus API request timed out")
+        return
 
     # The TracPlus API frequently throttles requests.
     if response.status_code == 429:
