@@ -48,7 +48,9 @@ def harvest_tracking_email(device_type, purge_email=False):
         status, uids = email_utils.email_get_unread(imap, settings.EMAIL_MP70)
 
     if status != "OK":
-        LOGGER.error(f"Server response failure: {status}")
+        LOGGER.warning(f"Mail server status failure: {status}")
+        return
+
     LOGGER.info(f"Server lists {len(uids)} unread emails")
 
     if uids:
@@ -60,7 +62,7 @@ def harvest_tracking_email(device_type, purge_email=False):
             # Fetch the email message.
             status, message = email_utils.email_fetch(imap, uid)
             if status != "OK":
-                LOGGER.error(f"Server response failure on fetching email UID {uid}: {status}")
+                LOGGER.warning(f"Mail server status failure on fetching email UID {uid}: {status}")
                 continue
 
             # `result` will be a LoggedPoint, or None
@@ -120,9 +122,9 @@ def save_mp70(message):
 
     try:
         device, created = Device.objects.get_or_create(deviceid=data["device_id"])
-    except:
-        LOGGER.error("Exception during creation/query of MP70 device")
-        LOGGER.error(data)
+    except Exception as e:
+        LOGGER.warning(f"Exception during creation/query of MP70 device: {data}")
+        LOGGER.error(e)
         return False
 
     seen = data["timestamp"]
@@ -168,9 +170,9 @@ def save_spot(message):
 
     try:
         device, created = Device.objects.get_or_create(deviceid=data["device_id"])
-    except:
-        LOGGER.error("Exception during creation/query of Spot device")
-        LOGGER.error(data)
+    except Exception as e:
+        LOGGER.warning(f"Exception during creation/query of Spot device: {data}")
+        LOGGER.error(e)
         return False
 
     seen = data["timestamp"]
@@ -216,9 +218,9 @@ def save_iriditrak(message):
 
     try:
         device, created = Device.objects.get_or_create(deviceid=data["device_id"])
-    except:
-        LOGGER.error("Exception during creation/query of Iriditrak device")
-        LOGGER.error(data)
+    except Exception as e:
+        LOGGER.warning(f"Exception during creation/query of Iriditrak device: {data}")
+        LOGGER.error(e)
         return False
 
     seen = data["timestamp"]
@@ -266,9 +268,9 @@ def save_dplus(message):
 
     try:
         device, created = Device.objects.get_or_create(deviceid=data["device_id"])
-    except:
-        LOGGER.error("Exception during creation/query of DPlus device")
-        LOGGER.error(data)
+    except Exception as e:
+        LOGGER.warning(f"Exception during creation/query of DPlus device: {data}")
+        LOGGER.error(e)
         return False
 
     seen = data["timestamp"]
@@ -373,9 +375,9 @@ def save_dfes_feed():
 
         try:
             device, created = Device.objects.get_or_create(deviceid=data["device_id"])
-        except:
-            LOGGER.error("Exception during creation/query of DFES device")
-            LOGGER.error(data)
+        except Exception as e:
+            LOGGER.warning(f"Exception during creation/query of DFES device: {data}")
+            LOGGER.error(e)
             continue
 
         properties = feature["properties"]
@@ -466,9 +468,9 @@ def save_tracplus_feed():
 
         try:
             device, created = Device.objects.get_or_create(deviceid=data["device_id"])
-        except:
-            LOGGER.error("Exception during creation/query of TracPlus device")
-            LOGGER.error(row)
+        except Exception as e:
+            LOGGER.warning(f"Exception during creation/query of TracPlus device: {row}")
+            LOGGER.error(e)
             skipped_device += 1
             continue
 
