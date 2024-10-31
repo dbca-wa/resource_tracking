@@ -20,7 +20,7 @@ def get_imap(mailbox="INBOX"):
 
 
 def email_get_unread(imap, from_email_address):
-    """Returns (status, list of UIDs) of unread emails from a sending email address."""
+    """Returns (status, [list of UIDs]) of unread emails from a sending email address."""
     search = '(UNSEEN UNFLAGGED FROM "{}")'.format(from_email_address)
     try:
         status, response = imap.search(None, search)

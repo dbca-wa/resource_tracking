@@ -33,20 +33,26 @@ def harvest_tracking_email(device_type, purge_email=False):
     start = timezone.now()
     created = 0
     flagged = 0
+    unread_emails = None
 
     if device_type == "iriditrak":
         LOGGER.info("Harvesting IridiTRAK emails")
-        status, uids = email_utils.email_get_unread(imap, settings.EMAIL_IRIDITRAK)
+        unread_emails = email_utils.email_get_unread(imap, settings.EMAIL_IRIDITRAK)
     elif device_type == "dplus":
         LOGGER.info("Harvesting DPlus emails")
-        status, uids = email_utils.email_get_unread(imap, settings.EMAIL_DPLUS)
+        unread_emails = email_utils.email_get_unread(imap, settings.EMAIL_DPLUS)
     elif device_type == "spot":
         LOGGER.info("Harvesting Spot emails")
-        status, uids = email_utils.email_get_unread(imap, settings.EMAIL_SPOT)
+        unread_emails = email_utils.email_get_unread(imap, settings.EMAIL_SPOT)
     elif device_type == "mp70":
         LOGGER.info("Harvesting MP70 emails")
-        status, uids = email_utils.email_get_unread(imap, settings.EMAIL_MP70)
+        unread_emails = email_utils.email_get_unread(imap, settings.EMAIL_MP70)
 
+    if not unread_emails:
+        LOGGER.warning("Mail server status failure")
+        return
+
+    status, uids = unread_emails
     if status != "OK":
         LOGGER.warning(f"Mail server status failure: {status}")
         return
@@ -60,7 +66,12 @@ def harvest_tracking_email(device_type, purge_email=False):
                 uid = uid.decode("utf-8")
 
             # Fetch the email message.
-            status, message = email_utils.email_fetch(imap, uid)
+            email_message = email_utils.email_fetch(imap, uid)
+            if not email_message:
+                LOGGER.warning(f"Mail server status failure on fetching email UID {uid}")
+                continue
+
+            status, message = email_message
             if status != "OK":
                 LOGGER.warning(f"Mail server status failure on fetching email UID {uid}: {status}")
                 continue
@@ -82,8 +93,8 @@ def harvest_tracking_email(device_type, purge_email=False):
 
             # Optionally mark email as read and flag it for deletion.
             if purge_email:
-                status, response = email_utils.email_mark_read(imap, uid)
-                status, response = email_utils.email_delete(imap, uid)
+                email_utils.email_mark_read(imap, uid)
+                email_utils.email_delete(imap, uid)
 
     LOGGER.info(f"Created {created} tracking points, flagged {flagged} emails")
 
