@@ -7,6 +7,7 @@ resources:
   - cronjobs/harvest-email-dplus
   - cronjobs/harvest-email-iriditrak
   - cronjobs/harvest-email-mp70
+  # - cronjobs/harvest-email-spot
   - cronjobs/harvest-tracplus
   - ingress.yaml
   - pdb.yaml
@@ -15,6 +16,8 @@ secretGenerator:
     type: Opaque
     envs:
       - .env
+generatorOptions:
+  disableNameSuffixHash: true
 labels:
   - includeSelectors: true
     pairs:

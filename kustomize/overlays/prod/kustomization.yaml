@@ -16,6 +16,8 @@ secretGenerator:
     type: Opaque
     envs:
       - .env
+generatorOptions:
+  disableNameSuffixHash: true
 labels:
   - includeSelectors: true
     pairs:
