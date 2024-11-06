@@ -12,13 +12,13 @@ django = "4.2.16"
 psycopg = { version = "3.2.3", extras = ["binary", "pool"] }
 dbca-utils = "2.0.2"
 python-dotenv = "1.0.1"
-dj-database-url = "2.2.0"
+dj-database-url = "2.3.0"
 gunicorn = "23.0.0"
 django-extensions = "3.2.3"
 django-tastypie = "0.14.7"
 django-geojson = "4.1.0"
 unicodecsv = "0.14.1"
-whitenoise = { version = "6.7.0", extras = ["brotli"] }
+whitenoise = {version = "6.8.2", extras = ["brotli"]}
 azure-storage-blob = "12.23.1"
 sentry-sdk = {version = "2.18.0", extras = ["django"]}
 
