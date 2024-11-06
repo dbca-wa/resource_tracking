@@ -134,7 +134,7 @@ class Device(models.Model):
         verbose_name="Device ID",
         help_text="Device unique identifier",
     )
-    registration = models.CharField(max_length=32, default="No Rego", help_text="e.g. 1QBB157")
+    registration = models.CharField(max_length=32, default="No Rego")
     rin_number = models.PositiveIntegerField(
         validators=[MaxValueValidator(999)],
         verbose_name="Resource Identification Number (RIN)",
