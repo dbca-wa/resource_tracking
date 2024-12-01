@@ -1,12 +1,11 @@
-from datetime import datetime, timezone
-from email.utils import parsedate
 import struct
 import time
+from datetime import datetime, timezone
+from email.utils import parsedate
 
 
 def validate_latitude_longitude(latitude, longitude):
-    """Validate passed-in latitude and longitude values.
-    """
+    """Validate passed-in latitude and longitude values."""
     # Both latitude and longitude equalling zero is considered invalid.
     if latitude == 0.0 and longitude == 0.0:
         return False
@@ -23,7 +22,7 @@ def parse_mp70_payload(payload):
     # First, remove newline characters and split on commas.
     # If we can't parse the raw payload, return False.
     try:
-        payload = payload.replace('=\r\n', '').strip().split(",")
+        payload = payload.replace("=\r\n", "").strip().split(",")
     except:
         return False
 
@@ -48,8 +47,7 @@ def parse_mp70_payload(payload):
 
 
 def parse_spot_message(message):
-    """Parses the passed-in Spot email message. Returns a dict or False.
-    """
+    """Parses the passed-in Spot email message. Returns a dict or False."""
     try:
         # Ref: https://docs.python.org/3.11/library/email.utils.html#email.utils.parsedate
         timetuple = parsedate(message["DATE"])
@@ -85,43 +83,23 @@ def parse_beam_payload(attachment):
     # BEAM 10 byte and 20 byte binary messages
     if eq in [1, 2, 3, 4, 18, 19, 25, 26]:
         latitude = int(bin(raw[1])[2:][-3]) * "-"
-        latitude_h = str(int("0" + bin(raw[2])[2:][-4:], 2)) + str(
-            int("0" + bin(raw[2])[2:][-8:-4], 2)
-        )
+        latitude_h = str(int("0" + bin(raw[2])[2:][-4:], 2)) + str(int("0" + bin(raw[2])[2:][-8:-4], 2))
         # Byte 3,4 (Latitude HHMM)
-        latitude_m = str(int("0" + bin(raw[3])[2:][-4:], 2)) + str(
-            int("0" + bin(raw[3])[2:][-8:-4], 2)
-        )
+        latitude_m = str(int("0" + bin(raw[3])[2:][-4:], 2)) + str(int("0" + bin(raw[3])[2:][-8:-4], 2))
         # Byte 5,6 (Latitude .MMMM)
-        latitude_m += (
-            "."
-            + str(int("0" + bin(raw[4])[2:][-4:], 2))
-            + str(int("0" + bin(raw[4])[2:][-8:-4], 2))
-        )
-        latitude_m += str(int("0" + bin(raw[5])[2:][-4:], 2)) + str(
-            int("0" + bin(raw[5])[2:][-8:-4], 2)
-        )
+        latitude_m += "." + str(int("0" + bin(raw[4])[2:][-4:], 2)) + str(int("0" + bin(raw[4])[2:][-8:-4], 2))
+        latitude_m += str(int("0" + bin(raw[5])[2:][-4:], 2)) + str(int("0" + bin(raw[5])[2:][-8:-4], 2))
 
         beam["latitude"] = float(latitude + str(int(latitude_h) + float(latitude_m) / 60))
 
         longitude = int(bin(raw[1])[2:][-2]) * "-"
         longitude_h = bin(raw[1])[2:][-1]
         # Byte 7,8 (Longitude HHMM)
-        longitude_h += str(int("0" + bin(raw[6])[2:][-4:], 2)) + str(
-            int("0" + bin(raw[6])[2:][-8:-4], 2)
-        )
-        longitude_m = str(int("0" + bin(raw[7])[2:][-4:], 2)) + str(
-            int("0" + bin(raw[7])[2:][-8:-4], 2)
-        )
+        longitude_h += str(int("0" + bin(raw[6])[2:][-4:], 2)) + str(int("0" + bin(raw[6])[2:][-8:-4], 2))
+        longitude_m = str(int("0" + bin(raw[7])[2:][-4:], 2)) + str(int("0" + bin(raw[7])[2:][-8:-4], 2))
         # Byte 9,10 (Longitude .MMMM)
-        longitude_m += (
-            "."
-            + str(int("0" + bin(raw[8])[2:][-4:], 2))
-            + str(int("0" + bin(raw[8])[2:][-8:-4], 2))
-        )
-        longitude_m += str(int("0" + bin(raw[9])[2:][-4:], 2)) + str(
-            int("0" + bin(raw[9])[2:][-8:-4], 2)
-        )
+        longitude_m += "." + str(int("0" + bin(raw[8])[2:][-4:], 2)) + str(int("0" + bin(raw[8])[2:][-8:-4], 2))
+        longitude_m += str(int("0" + bin(raw[9])[2:][-4:], 2)) + str(int("0" + bin(raw[9])[2:][-8:-4], 2))
         beam["longitude"] = float(longitude + str(int(longitude_h) + float(longitude_m) / 60))
 
         if len(raw) == 14:
@@ -138,8 +116,7 @@ def parse_beam_payload(attachment):
 
 
 def parse_iriditrak_message(message):
-    """Parses a passed-in Iriditrak email message. Returns a dict or False.
-    """
+    """Parses a passed-in Iriditrak email message. Returns a dict or False."""
     try:
         # Ref: https://docs.python.org/3.11/library/email.utils.html#email.utils.parsedate
         timetuple = parsedate(message["DATE"])
@@ -180,7 +157,7 @@ def parse_dplus_payload(payload):
 
     try:
         data["device_id"] = int(data["RAW"][0])
-        data["timestamp"] = datetime.strptime(data["RAW"][1], "%d-%m-%y %H:%M:%S").replace(tzinfo=timezone.utc),
+        data["timestamp"] = (datetime.strptime(data["RAW"][1], "%d-%m-%y %H:%M:%S").replace(tzinfo=timezone.utc),)
         data["latitude"] = float(data["RAW"][4])
         data["longitude"] = float(data["RAW"][5])
         data["velocity"] = int(data["RAW"][6]) * 1000
@@ -209,6 +186,7 @@ def parse_tracplus_row(row):
 
 
 def parse_dfes_feature(feature):
+    """Features will be GeoJSON"""
     properties = feature["properties"]
     coordinates = feature["geometry"]["coordinates"]
 
@@ -222,6 +200,30 @@ def parse_dfes_feature(feature):
             "heading": properties["Direction"],
             "altitude": 0,  # DFES feed does not report altiude.
             "type": "dfes",
+        }
+    except:
+        return False
+
+    return data
+
+
+def parse_tracertrak_feature(feature):
+    """Features will be GeoJSON"""
+    properties = feature["properties"]
+    coordinates = feature["geometry"]["coordinates"]
+
+    try:
+        data = {
+            "device_id": properties["deviceID"],
+            "timestamp": datetime.strptime(properties["logTimestamp"], "%Y-%m-%dT%H:%M:%SZ").replace(
+                tzinfo=timezone.utc
+            ),
+            "longitude": coordinates[0],
+            "latitude": coordinates[1],
+            "velocity": 0,
+            "heading": int(properties["heading"]),
+            "altitude": 0,
+            "type": "spot",
         }
     except:
         return False
