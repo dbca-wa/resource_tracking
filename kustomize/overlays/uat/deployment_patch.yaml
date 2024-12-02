@@ -2,85 +2,87 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: resourcetracking-deployment
-  labels:
-    app: resourcetracking-deployment
 spec:
-  selector:
-    matchLabels:
-      app: resourcetracking-deployment
   template:
-    metadata:
-      labels:
-        app: resourcetracking-deployment
     spec:
       containers:
-      - name: resourcetracking
-        imagePullPolicy: Always
-        env:
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-uat
-              key: DATABASE_URL
-        - name: SECRET_KEY
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-uat
-              key: SECRET_KEY
-        - name: EMAIL_HOST
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-uat
-              key: EMAIL_HOST
-        - name: EMAIL_USER
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-uat
-              key: EMAIL_USER
-        - name: EMAIL_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-uat
-              key: EMAIL_PASSWORD
-        - name: DFES_URL
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-uat
-              key: DFES_URL
-        - name: DFES_USER
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-uat
-              key: DFES_USER
-        - name: DFES_PASS
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-uat
-              key: DFES_PASS
-        - name: TRACPLUS_URL
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-uat
-              key: TRACPLUS_URL
-        - name: GEOSERVER_URL
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-uat
-              key: GEOSERVER_URL
-        - name: SENTRY_DSN
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-uat
-              key: SENTRY_DSN
-        - name: SENTRY_TRANSACTION_SAMPLE_RATE
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-uat
-              key: SENTRY_TRANSACTION_SAMPLE_RATE
-        - name: SENTRY_PROFILES_SAMPLE_RATE
-          valueFrom:
-            secretKeyRef:
-              name: resourcetracking-env-uat
-              key: SENTRY_PROFILES_SAMPLE_RATE
-        - name: SENTRY_ENVIRONMENT
-          value: "uat"
+        - name: resourcetracking
+          imagePullPolicy: Always
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-uat
+                  key: DATABASE_URL
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-uat
+                  key: SECRET_KEY
+            - name: EMAIL_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-uat
+                  key: EMAIL_HOST
+            - name: EMAIL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-uat
+                  key: EMAIL_USER
+            - name: EMAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-uat
+                  key: EMAIL_PASSWORD
+            - name: DFES_URL
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-uat
+                  key: DFES_URL
+            - name: DFES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-uat
+                  key: DFES_USER
+            - name: DFES_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-uat
+                  key: DFES_PASS
+            - name: TRACPLUS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-uat
+                  key: TRACPLUS_URL
+            - name: TRACERTRAK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-uat
+                  key: TRACERTRAK_URL
+            - name: TRACERTRAK_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-uat
+                  key: TRACERTRAK_AUTH_TOKEN
+            - name: GEOSERVER_URL
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-uat
+                  key: GEOSERVER_URL
+            - name: SENTRY_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-uat
+                  key: SENTRY_DSN
+            - name: SENTRY_TRANSACTION_SAMPLE_RATE
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-uat
+                  key: SENTRY_TRANSACTION_SAMPLE_RATE
+            - name: SENTRY_PROFILES_SAMPLE_RATE
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-uat
+                  key: SENTRY_PROFILES_SAMPLE_RATE
+            - name: SENTRY_ENVIRONMENT
+              value: "uat"

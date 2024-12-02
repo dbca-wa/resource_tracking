@@ -5,13 +5,13 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: resourcetracking.dbca.wa.gov.au
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: resourcetracking-clusterip-prod
-            port:
-              number: 8080
+    - host: resourcetracking.dbca.wa.gov.au
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: resourcetracking-clusterip-prod
+                port:
+                  number: 8080
