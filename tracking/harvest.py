@@ -73,7 +73,7 @@ def harvest_tracking_email(device_type, purge_email=False):
                 continue
 
             status, message = email_message
-            if status != "OK":
+            if status != "OK" or not message:
                 LOGGER.warning(f"Mail server status failure on fetching email UID {uid}: {status}")
                 continue
 
@@ -86,6 +86,8 @@ def harvest_tracking_email(device_type, purge_email=False):
                 result = save_spot(message)
             elif device_type == "mp70":
                 result = save_mp70(message)
+            else:
+                result = None
 
             if not result:
                 flagged += 1
@@ -362,8 +364,8 @@ def save_dfes_feed():
     # Parse the API response.
     try:
         features = resp.json()["features"]
-    except requests.models.JSONDecodeError:
-        LOGGER.warning("Error parsing DFES API response")
+    except requests.models.JSONDecodeError as err:
+        LOGGER.warning(f"Error parsing DFES API response: {err.doc}")
         return
 
     LOGGER.info(f"DFES API returned {len(features)} features, processing")
@@ -546,8 +548,8 @@ def save_tracertrak_feed():
     # Parse the API response.
     try:
         features = resp.json()["features"]
-    except requests.models.JSONDecodeError:
-        LOGGER.warning("Error parsing TracerTrak API response")
+    except requests.models.JSONDecodeError as err:
+        LOGGER.warning(f"Error parsing TracerTrak API response: {err.doc}")
         return
 
     LOGGER.info(f"TracerTrak API returned {len(features)} features, processing")
