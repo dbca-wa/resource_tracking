@@ -73,7 +73,7 @@ def harvest_tracking_email(device_type, purge_email=False):
                 continue
 
             status, message = email_message
-            if status != "OK":
+            if status != "OK" or not message:
                 LOGGER.warning(f"Mail server status failure on fetching email UID {uid}: {status}")
                 continue
 
@@ -86,6 +86,8 @@ def harvest_tracking_email(device_type, purge_email=False):
                 result = save_spot(message)
             elif device_type == "mp70":
                 result = save_mp70(message)
+            else:
+                result = None
 
             if not result:
                 flagged += 1
@@ -348,7 +350,11 @@ DFES_SYMBOL_MAP = {
 def save_dfes_feed():
     """Download and process the DFES API endpoint (returns GeoJSON), create new devices, update existing."""
     LOGGER.info("Querying DFES API")
-    resp = requests.get(url=settings.DFES_URL, auth=(settings.DFES_USER, settings.DFES_PASS))
+    try:
+        resp = requests.get(url=settings.DFES_URL, auth=(settings.DFES_USER, settings.DFES_PASS))
+    except (requests.ConnectionError, requests.Timeout) as err:
+        LOGGER.warning(f"Connection error: {err}")
+        return
 
     # Don't raise an exception on non-200 response.
     if not resp.status_code == 200:
@@ -358,8 +364,8 @@ def save_dfes_feed():
     # Parse the API response.
     try:
         features = resp.json()["features"]
-    except requests.models.JSONDecodeError:
-        LOGGER.warning("Error parsing DFES API response")
+    except requests.models.JSONDecodeError as err:
+        LOGGER.warning(f"Error parsing DFES API response: {err.doc}")
         return
 
     LOGGER.info(f"DFES API returned {len(features)} features, processing")
@@ -437,17 +443,17 @@ def save_tracplus_feed():
     """Query the TracPlus API, create logged points per device, update existing devices."""
     LOGGER.info("Harvesting TracPlus feed")
     try:
-        response = requests.get(settings.TRACPLUS_URL)
-    except requests.ConnectTimeout:
-        LOGGER.warning("TracPlus API request timed out")
+        resp = requests.get(settings.TRACPLUS_URL)
+    except (requests.ConnectionError, requests.Timeout) as err:
+        LOGGER.warning(f"Connection error: {err}")
         return
 
     # The TracPlus API frequently throttles requests.
-    if response.status_code == 429:
+    if resp.status_code == 429:
         LOGGER.warning("TracPlus API returned HTTP 429 Too Many Requests")
         return
 
-    content = response.content.decode("utf-8")
+    content = resp.content.decode("utf-8")
     latest = list(csv.DictReader(content.split("\r\n")))
     LOGGER.info(f"{len(latest)} records downloaded, processing")
 
@@ -528,7 +534,11 @@ def save_tracplus_feed():
 def save_tracertrak_feed():
     """Download and process the TracerTrack API endpoint (returns GeoJSON), create new devices, update existing."""
     LOGGER.info("Querying TracerTrak API")
-    resp = requests.get(url=settings.TRACERTRAK_URL, params={"auth": settings.TRACERTRAK_AUTH_TOKEN})
+    try:
+        resp = requests.get(url=settings.TRACERTRAK_URL, params={"auth": settings.TRACERTRAK_AUTH_TOKEN})
+    except (requests.ConnectionError, requests.Timeout) as err:
+        LOGGER.warning(f"Connection error: {err}")
+        return
 
     # Don't raise an exception on non-200 response.
     if not resp.status_code == 200:
@@ -538,8 +548,8 @@ def save_tracertrak_feed():
     # Parse the API response.
     try:
         features = resp.json()["features"]
-    except requests.models.JSONDecodeError:
-        LOGGER.warning("Error parsing TracerTrak API response")
+    except requests.models.JSONDecodeError as err:
+        LOGGER.warning(f"Error parsing TracerTrak API response: {err.doc}")
         return
 
     LOGGER.info(f"TracerTrak API returned {len(features)} features, processing")
