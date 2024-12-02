@@ -1,6 +1,6 @@
 import email
 import logging
-from imaplib import IMAP4, IMAP4_SSL
+from imaplib import IMAP4_SSL
 
 from django.conf import settings
 
@@ -9,12 +9,12 @@ LOGGER = logging.getLogger("tracking")
 
 def get_imap(mailbox="INBOX"):
     """Instantiate a new IMAP object, login, and connect to a mailbox."""
-    imap = IMAP4_SSL(settings.EMAIL_HOST)
     try:
+        imap = IMAP4_SSL(settings.EMAIL_HOST)
         imap.login(settings.EMAIL_USER, settings.EMAIL_PASSWORD)
         imap.select(mailbox)
         return imap
-    except IMAP4.error as err:
+    except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to log into mailbox: {err}")
         return None
 
@@ -24,7 +24,7 @@ def email_get_unread(imap, from_email_address):
     search = '(UNSEEN UNFLAGGED FROM "{}")'.format(from_email_address)
     try:
         status, response = imap.search(None, search)
-    except IMAP4.abort as err:
+    except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to search unread emails: {err}")
         return None
 
@@ -41,7 +41,7 @@ def email_fetch(imap, uid):
     message = None
     try:
         status, response = imap.fetch(str(uid), "(BODY.PEEK[])")
-    except IMAP4.abort as err:
+    except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to fetch email: {err}")
         return None
 
@@ -63,7 +63,7 @@ def email_mark_read(imap, uid):
     try:
         status, response = imap.store(str(uid), "+FLAGS", r"\Seen")
         return status, response
-    except IMAP4.error as err:
+    except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to mark email read: {err}")
         return None
 
@@ -73,7 +73,7 @@ def email_mark_unread(imap, uid):
     try:
         status, response = imap.store(str(uid), "-FLAGS", r"\Seen")
         return status, response
-    except IMAP4.error as err:
+    except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to mark email unread: {err}")
         return None
 
@@ -83,7 +83,7 @@ def email_delete(imap, uid):
     try:
         status, response = imap.store(str(uid), "+FLAGS", r"\Deleted")
         return status, response
-    except IMAP4.error as err:
+    except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to delete email: {err}")
         return None
 
@@ -93,6 +93,6 @@ def email_flag(imap, uid):
     try:
         status, response = imap.store(str(uid), "+FLAGS", r"\Flagged")
         return status, response
-    except IMAP4.error as err:
+    except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to flag email: {err}")
         return None

@@ -14,6 +14,7 @@ from tracking.utils import (
     parse_iriditrak_message,
     parse_mp70_payload,
     parse_spot_message,
+    parse_tracertrak_feature,
     parse_tracplus_row,
     validate_latitude_longitude,
 )
@@ -521,4 +522,90 @@ def save_tracplus_feed():
 
     LOGGER.info(
         f"Updated {updated_device} devices, created {created_device} devices, skipped {skipped_device} devices, {logged_points} new logged points"
+    )
+
+
+def save_tracertrak_feed():
+    """Download and process the TracerTrack API endpoint (returns GeoJSON), create new devices, update existing."""
+    LOGGER.info("Querying TracerTrak API")
+    resp = requests.get(url=settings.TRACERTRAK_URL, params={"auth": settings.TRACERTRAK_AUTH_TOKEN})
+
+    # Don't raise an exception on non-200 response.
+    if not resp.status_code == 200:
+        LOGGER.warning("TracerTrak API response returned non-200 status")
+        return
+
+    # Parse the API response.
+    try:
+        features = resp.json()["features"]
+    except requests.models.JSONDecodeError:
+        LOGGER.warning("Error parsing TracerTrak API response")
+        return
+
+    LOGGER.info(f"TracerTrak API returned {len(features)} features, processing")
+
+    updated_device = 0
+    created_device = 0
+    skipped_device = 0
+    logged_points = 0
+
+    for feature in features:
+        data = parse_tracertrak_feature(feature)
+
+        if not data:
+            LOGGER.warning(f"Unable to parse TracerTrak feature: {feature['deviceID']}")
+            skipped_device += 1
+            continue
+
+        # Validate lat/lon values.
+        if not validate_latitude_longitude(data["latitude"], data["longitude"]):
+            LOGGER.warning(
+                f"Bad geometry while parsing data for TracerTrak device {data['device_id']}: {data['latitude']}, {data['longitude']}"
+            )
+            skipped_device += 1
+            continue
+
+        try:
+            device, created = Device.objects.get_or_create(deviceid=data["device_id"])
+        except Exception as e:
+            LOGGER.warning(f"Exception during creation/query of TracerTrak device: {data}")
+            LOGGER.error(e)
+            continue
+
+        properties = feature["properties"]
+
+        if created:
+            created_device += 1
+            device.symbol = "person"
+            device.source_device_type = "spot"
+        else:
+            updated_device += 1
+
+        if "name" in properties:
+            device.callsign = properties["name"]
+            device.callsign_display = properties["name"]
+
+        seen = data["timestamp"]
+        point = f"POINT({data['longitude']} {data['latitude']})"
+
+        if not device.seen or device.seen < seen:
+            device.seen = seen
+            device.point = point
+            device.heading = data["heading"]
+            device.velocity = data["velocity"]
+            device.altitude = data["altitude"]
+
+        device.save()
+
+        loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
+        if created:
+            loggedpoint.source_device_type = "spot"
+            loggedpoint.heading = data["heading"]
+            loggedpoint.velocity = data["velocity"]
+            loggedpoint.altitude = data["altitude"]
+            loggedpoint.save()
+            logged_points += 1
+
+    LOGGER.info(
+        f"Created {created_device}, updated {updated_device}, skipped {skipped_device}, {logged_points} new logged points"
     )
