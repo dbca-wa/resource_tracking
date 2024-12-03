@@ -10,7 +10,7 @@ LOGGER = logging.getLogger("tracking")
 def get_imap(mailbox="INBOX"):
     """Instantiate a new IMAP object, login, and connect to a mailbox."""
     try:
-        imap = IMAP4_SSL(settings.EMAIL_HOST, timeout=10)
+        imap = IMAP4_SSL(settings.EMAIL_HOST)
         imap.login(settings.EMAIL_USER, settings.EMAIL_PASSWORD)
         imap.select(mailbox)
         return imap
