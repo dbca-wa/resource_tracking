@@ -15,19 +15,19 @@ spec:
         spec:
           restartPolicy: Never
           containers:
-          - name: resourcetracking-cronjob
-            image: ghcr.io/dbca-wa/resource_tracking
-            imagePullPolicy: Always
-            command: ["python"]
-            args: ["--version"]
-            env:
-            - name: TZ
-              value: "Australia/Perth"
-            securityContext:
-              runAsNonRoot: true
-              privileged: false
-              allowPrivilegeEscalation: false
-              capabilities:
-                drop:
-                  - ALL
-              readOnlyRootFilesystem: false
+            - name: resourcetracking-cronjob
+              image: ghcr.io/dbca-wa/resource_tracking
+              imagePullPolicy: Always
+              command: ["python"]
+              args: ["--version"]
+              env:
+                - name: TZ
+                  value: "Australia/Perth"
+              securityContext:
+                runAsNonRoot: true
+                privileged: false
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: false

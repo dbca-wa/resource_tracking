@@ -10,33 +10,33 @@ spec:
       template:
         spec:
           containers:
-          - name: resourcetracking-cronjob
-            args: ["manage.py", "harvest_dfes_feed"]
-            env:
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: resourcetracking-env-uat
-                  key: DATABASE_URL
-            - name: DFES_URL
-              valueFrom:
-                secretKeyRef:
-                  name: resourcetracking-env-uat
-                  key: DFES_URL
-            - name: DFES_USER
-              valueFrom:
-                secretKeyRef:
-                  name: resourcetracking-env-uat
-                  key: DFES_USER
-            - name: DFES_PASS
-              valueFrom:
-                secretKeyRef:
-                  name: resourcetracking-env-uat
-                  key: DFES_PASS
-            - name: SENTRY_DSN
-              valueFrom:
-                secretKeyRef:
-                  name: resourcetracking-env-uat
-                  key: SENTRY_DSN
-            - name: SENTRY_ENVIRONMENT
-              value: "uat"
+            - name: resourcetracking-cronjob
+              args: ["manage.py", "harvest_dfes_feed"]
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: resourcetracking-env-uat
+                      key: DATABASE_URL
+                - name: DFES_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: resourcetracking-env-uat
+                      key: DFES_URL
+                - name: DFES_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: resourcetracking-env-uat
+                      key: DFES_USER
+                - name: DFES_PASS
+                  valueFrom:
+                    secretKeyRef:
+                      name: resourcetracking-env-uat
+                      key: DFES_PASS
+                - name: SENTRY_DSN
+                  valueFrom:
+                    secretKeyRef:
+                      name: resourcetracking-env-uat
+                      key: SENTRY_DSN
+                - name: SENTRY_ENVIRONMENT
+                  value: "uat"
