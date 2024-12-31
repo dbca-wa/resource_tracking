@@ -244,15 +244,15 @@ class ResourceMap(TemplateView):
         return context
 
 
-class DeviceDetailStream(View):
-    """An experimental view that returns Server-Sent Events (SSE) consisting of
-    a tracking device location, forever. This is a one-way communication channel,
+class DeviceStream(View):
+    """A view that returns Server-Sent Events (SSE) consisting of
+    a tracking device's location, forever. This is a one-way communication channel,
     where the client browser is responsible for maintaining the connection.
     """
 
     async def stream(self, *args, **kwargs):
         """Returns an iterator that queries and then yields tracking device data every n seconds."""
-        last_update = None
+        last_location = None
         device = None
 
         while True:
@@ -274,9 +274,9 @@ class DeviceDetailStream(View):
             except:
                 data = {}
 
-            # Only send a message event if the device has been updated.
-            if device and device.seen != last_update:
-                last_update = device.seen
+            # Only send a message event if the device location has changed.
+            if device and device.point.ewkt != last_location:
+                last_location = device.point.ewkt
                 yield f"data: {data}\n\n"
             else:
                 # Always send a ping to keep the connection open.
@@ -297,8 +297,8 @@ class DeviceDetailStream(View):
         )
 
 
-class DeviceDetail(TemplateView):
-    """Basic template view to test device streaming responses."""
+class DeviceMap(TemplateView):
+    """A map view to show single device's location."""
 
     template_name = "tracking/device_detail.html"
 
