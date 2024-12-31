@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "resource_tracking"
-version = "1.4.21"
+version = "1.4.22"
 description = "DBCA internal corporate application to download and serve data from remote tracking devices."
 authors = ["DBCA OIM <asi@dbca.wa.gov.au>"]
 license = "Apache-2.0"
@@ -20,8 +20,8 @@ django-geojson = "4.1.0"
 unicodecsv = "0.14.1"
 whitenoise = { version = "6.8.2", extras = ["brotli"] }
 azure-storage-blob = "12.23.1"
-sentry-sdk = { version = "2.19.0", extras = ["django"] }
-uvicorn = {extras = ["standard"], version = "^0.34.0"}
+sentry-sdk = {version = "2.19.2", extras = ["django"]}
+uvicorn = { extras = ["standard"], version = "^0.34.0" }
 uvicorn-worker = "^0.3.0"
 orjson = "3.10.13"
 
