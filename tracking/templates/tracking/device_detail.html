@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Tracking device location</title>
+  </head>
+  <body>
+    <h1>Device ID {{ pk }}</h1>
+    <div id="device-data-stream"></div>
+    <script>
+      const deviceDataEl = document.getElementById("device-data-stream");
+      const eventSource = new EventSource("{% url 'device_detail_stream' pk=pk %}");
+      let ping = 0;
+
+      // Ping event, to help maintain the connection.
+      eventSource.addEventListener("ping", function (event) {
+        ping++;
+        // console.log("ping");
+      });
+
+      // The standard "message" event indicates that the device has updated.
+      eventSource.onmessage = function (event) {
+        const device = JSON.parse(event.data);
+        device.seen = new Date(device.seen);
+        const now = new Date();
+        deviceDataEl.innerHTML = `<p>Server queried: ${now.toString()}</p>
+        <p>Last seen: ${device.seen.toString()}</p>
+        <p>Device ID: ${device.deviceid}</p>
+        <p>Type: ${device.type}</p>
+        <p>Point: ${device.point}</p>`;
+      };
+    </script>
+  </body>
+</html>

@@ -49,4 +49,4 @@ COPY tracking ./tracking
 RUN python manage.py collectstatic --noinput
 USER ${UID}
 EXPOSE 8080
-CMD ["gunicorn", "resource_tracking.wsgi", "--config", "gunicorn.py"]
+CMD ["gunicorn", "resource_tracking.asgi:application", "--config", "gunicorn.py"]

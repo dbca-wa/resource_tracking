@@ -21,9 +21,12 @@ unicodecsv = "0.14.1"
 whitenoise = { version = "6.8.2", extras = ["brotli"] }
 azure-storage-blob = "12.23.1"
 sentry-sdk = { version = "2.19.0", extras = ["django"] }
+uvicorn = {extras = ["standard"], version = "^0.34.0"}
+uvicorn-worker = "^0.3.0"
+orjson = "3.10.13"
 
 [tool.poetry.group.dev.dependencies]
-ipython = "^8.30.0"
+ipython = "^8.31.0"
 ipdb = "^0.13.13"
 pre-commit = "^4.0.1"
 mixer = "^7.2.2"
