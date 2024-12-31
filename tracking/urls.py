@@ -1,9 +1,11 @@
 from django.urls import path
-from tracking import views
 
+from tracking import views
 
 urlpatterns = [
     path("map/", views.ResourceMap.as_view(), name="resource_map"),
+    path("map/<int:pk>/", views.DeviceMap.as_view(), name="device_map"),
+    path("devices/<int:pk>/stream/", views.DeviceStream.as_view(), name="device_detail_stream"),
     path("devices.csv", views.DeviceView.as_view(format="csv"), name="device_csv"),
     path("devices.geojson", views.DeviceView.as_view(), name="device_geojson"),
     path("loggedpoint/<int:device_id>.csv", views.DeviceHistoryView.as_view(format="csv"), name="device_history_csv"),

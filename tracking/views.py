@@ -1,11 +1,14 @@
+import asyncio
 from datetime import datetime, timedelta
+
+import orjson as json
 from django.conf import settings
 from django.contrib.gis.geos import LineString
 from django.core.serializers import serialize
 from django.db.models import Q
-from django.http import HttpResponse, HttpResponseBadRequest
+from django.http import HttpResponse, HttpResponseBadRequest, StreamingHttpResponse
 from django.utils import timezone
-from django.views.generic import View, TemplateView
+from django.views.generic import TemplateView, View
 
 from tracking.api import CSVSerializer
 from tracking.models import Device, LoggedPoint
@@ -238,4 +241,68 @@ class ResourceMap(TemplateView):
         context = super().get_context_data(**kwargs)
         context["page_title"] = "DBCA Resource Tracking System"
         context["geoserver_url"] = settings.GEOSERVER_URL
+        return context
+
+
+class DeviceStream(View):
+    """A view that returns Server-Sent Events (SSE) consisting of
+    a tracking device's location, forever. This is a one-way communication channel,
+    where the client browser is responsible for maintaining the connection.
+    """
+
+    async def stream(self, *args, **kwargs):
+        """Returns an iterator that queries and then yields tracking device data every n seconds."""
+        last_location = None
+        device = None
+
+        while True:
+            # Run an asynchronous query for the specifed device.
+            try:
+                device = await Device.objects.aget(pk=kwargs["pk"])
+                data = json.dumps(
+                    {
+                        "id": device.pk,
+                        "deviceid": device.deviceid,
+                        "seen": device.seen.isoformat(),
+                        "point": device.point.ewkt,
+                        "icon": device.icon,
+                        "registration": device.registration,
+                        "type": device.symbol,
+                        "callsign": device.callsign,
+                    }
+                ).decode("utf-8")
+            except:
+                data = {}
+
+            # Only send a message event if the device location has changed.
+            if device and device.point.ewkt != last_location:
+                last_location = device.point.ewkt
+                yield f"data: {data}\n\n"
+            else:
+                # Always send a ping to keep the connection open.
+                yield "event: ping\ndata: {}\n\n"
+
+            # Sleep for a period before repeating.
+            await asyncio.sleep(30)
+
+    async def get(self, request, *args, **kwargs):
+        return StreamingHttpResponse(
+            self.stream(*args, **kwargs),
+            content_type="text/event-stream",
+            headers={
+                # The Cache-Control header need to be set thus to work behind Fastly caching.
+                "Cache-Control": "private, no-store",
+                "Connection": "keep-alive",
+            },
+        )
+
+
+class DeviceMap(TemplateView):
+    """A map view to show single device's location."""
+
+    template_name = "tracking/device_detail.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["pk"] = kwargs["pk"]
         return context

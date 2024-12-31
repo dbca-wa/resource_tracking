@@ -6,62 +6,40 @@ const geoserver_wmts_url_base = geoserver_wmts_url + "&format=image/jpeg";
 const geoserver_wmts_url_overlay = geoserver_wmts_url + "&format=image/png";
 
 // Base layers
-const mapboxStreets = L.tileLayer(
-  geoserver_wmts_url_base + "&layer=dbca:mapbox-streets",
-  {
-    tileSize: 1024,
-    zoomOffset: -2,
-  },
-);
-const landgateOrthomosaic = L.tileLayer(
-  geoserver_wmts_url_base + "&layer=landgate:virtual_mosaic",
-  {
-    tileSize: 1024,
-    zoomOffset: -2,
-  },
-);
-const stateMapBase = L.tileLayer(
-  geoserver_wmts_url_base + "&layer=cddp:state_map_base",
-  {
-    tileSize: 1024,
-    zoomOffset: -2,
-  },
-);
+const mapboxStreets = L.tileLayer(geoserver_wmts_url_base + "&layer=dbca:mapbox-streets", {
+  tileSize: 1024,
+  zoomOffset: -2,
+});
+const landgateOrthomosaic = L.tileLayer(geoserver_wmts_url_base + "&layer=landgate:virtual_mosaic", {
+  tileSize: 1024,
+  zoomOffset: -2,
+});
+const stateMapBase = L.tileLayer(geoserver_wmts_url_base + "&layer=cddp:state_map_base", {
+  tileSize: 1024,
+  zoomOffset: -2,
+});
 
 // Overlay layers
-const dbcaBushfires = L.tileLayer(
-  geoserver_wmts_url_overlay + "&layer=landgate:dbca_going_bushfires_dbca-001",
-  {
-    tileSize: 1024,
-    zoomOffset: -2,
-    transparent: true,
-    opacity: 0.75,
-  },
-);
-const dfesBushfires = L.tileLayer(
-  geoserver_wmts_url_overlay + "&layer=landgate:authorised_fireshape_dfes-032",
-  {
-    tileSize: 1024,
-    zoomOffset: -2,
-    transparent: true,
-    opacity: 0.75,
-  },
-);
-const dbcaRegions = L.tileLayer(
-  geoserver_wmts_url_overlay +
-    "&layer=cddp:kaartdijin-boodja-public_CPT_DBCA_REGIONS",
-  {
-    tileSize: 1024,
-    zoomOffset: -2,
-  },
-);
-const lgaBoundaries = L.tileLayer(
-  geoserver_wmts_url_overlay + "&layer=cddp:local_gov_authority",
-  {
-    tileSize: 1024,
-    zoomOffset: -2,
-  },
-);
+const dbcaBushfires = L.tileLayer(geoserver_wmts_url_overlay + "&layer=landgate:dbca_going_bushfires_dbca-001", {
+  tileSize: 1024,
+  zoomOffset: -2,
+  transparent: true,
+  opacity: 0.75,
+});
+const dfesBushfires = L.tileLayer(geoserver_wmts_url_overlay + "&layer=landgate:authorised_fireshape_dfes-032", {
+  tileSize: 1024,
+  zoomOffset: -2,
+  transparent: true,
+  opacity: 0.75,
+});
+const dbcaRegions = L.tileLayer(geoserver_wmts_url_overlay + "&layer=cddp:kaartdijin-boodja-public_CPT_DBCA_REGIONS", {
+  tileSize: 1024,
+  zoomOffset: -2,
+});
+const lgaBoundaries = L.tileLayer(geoserver_wmts_url_overlay + "&layer=cddp:local_gov_authority", {
+  tileSize: 1024,
+  zoomOffset: -2,
+});
 
 // Icon classes (note that URLs are injected into the base template.)
 const iconCar = L.icon({
@@ -131,20 +109,19 @@ const iconOther = L.icon({
 });
 
 function setDeviceStyle(feature, layer) {
-  var callsign;
+  let callsign;
   if (feature.properties.callsign) {
     callsign = feature.properties.callsign;
   } else {
     callsign = "";
   }
-  layer.bindTooltip(
-    `
-    ID: ${feature.properties.id}<br>
+  layer.bindPopup(
+    `ID: ${feature.properties.id}<br>
     Registration: ${feature.properties.registration}<br>
     Callsign: ${callsign}<br>
     Type: ${feature.properties.symbol}<br>
-    Seen: ${feature.properties.age_text}
-    `,
+    Seen: ${feature.properties.age_text}<br>
+    <a href="/map/${feature.properties.id}/">Follow</a>`
   );
   // Set the feature icon.
   if (feature.properties.icon == "sss-2_wheel_drive") {
@@ -206,7 +183,7 @@ function refreshTrackedDevicesLayer(trackedDevicesLayer) {
 refreshTrackedDevicesLayer(trackedDevices);
 
 // Define map.
-var map = L.map("map", {
+const map = L.map("map", {
   crs: L.CRS.EPSG4326, // WGS 84
   center: [-31.96, 115.87],
   zoom: 12,
@@ -217,12 +194,12 @@ var map = L.map("map", {
 });
 
 // Define layer groups.
-var baseMaps = {
+const baseMaps = {
   "Mapbox streets": mapboxStreets,
   "Landgate orthomosaic": landgateOrthomosaic,
   "State map base 250K": stateMapBase,
 };
-var overlayMaps = {
+const overlayMaps = {
   "Tracked devices": trackedDevices,
   "DBCA Going Bushfires": dbcaBushfires,
   "DFES Going Bushfires": dfesBushfires,
@@ -253,9 +230,6 @@ const searchControl = new L.Control.Search({
 });
 map.addControl(searchControl);
 
-const refreshButton = L.easyButton(
-  `<img src="${refresh_icon_url}">`,
-  function (btn, map) {
-    refreshTrackedDevicesLayer(trackedDevices);
-  },
-).addTo(map);
+const refreshButton = L.easyButton(`<img src="${refresh_icon_url}">`, function (btn, map) {
+  refreshTrackedDevicesLayer(trackedDevices);
+}).addTo(map);

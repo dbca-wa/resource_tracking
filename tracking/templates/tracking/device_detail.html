@@ -1,0 +1,98 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Device {{ pk }} location</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="description" content="DBCA Resource Tracking device map" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="author" content="Department of Biodiversity, Conservation and Attractions" />
+    <!-- CSS styling blocks -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css"
+      integrity="sha512-b2QcS5SsA8tZodcDtGRELiGv5SaKSk1vDHDaQRda0htPYWZ6046lr3kJ5bAAQdpV2mmA/4v0wQF9MyU6/pDIAg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
+      integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.fullscreen/3.0.2/Control.FullScreen.min.css"
+      integrity="sha512-icRYRbqvwyLFADCizHy+7d4vVNnzF92F0ADsgIlPU2eegXZJ9iHtF1BMi7xdgo1lSyd0nsyI5Lvxhhlxx7WxZg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css"
+      integrity="sha512-k+xZuzf4IaGQK9sSDjaNyrfwgxBfoF++7u6Q0ZVUs2rDczx9doNZkYXyyQbnJQcMR4o+IjvAcIj69hHxiOZEig=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link rel="shortcut icon" href="{% static 'favicon.ico' %}" />
+    <style>
+      #map {
+        height: 100%;
+        width: 100 vw;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container-fluid p-0">
+      <div class="row m-1 align-items-stretch" style="min-height: 104px">
+        <div class="col">
+          <div id="device-data-stream"></div>
+        </div>
+      </div>
+      <div class="row m-0 p-0 align-items-stretch" style="min-height: 80vh">
+        <div class="col m-0 p-0">
+          <div id="map"></div>
+        </div>
+      </div>
+    </div>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"
+      integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.fullscreen/3.0.2/Control.FullScreen.min.js"
+      integrity="sha512-G3uVfdWq1gdYQ0tfaN8APmD3UBQCv0Am3csZtRdaNbCBzNgh57yu7MhgrXozjeflGsRapDpBVdrKCQahT99p0Q=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.js"
+      integrity="sha512-0Yc4Jv5wX4+mjDuLxmHFGqgDtMFAEBLpPq/0nPVmAOwHPMkYXiS1YVYWTcrVQztftk/32089DDTyrCJO8hBCZw=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script>
+      // Constants injected during template rendering.
+      const eventSource = new EventSource("{% url 'device_detail_stream' pk=pk %}");
+      const car_icon_url = "{% static 'img/car.png' %}";
+      const ute_icon_url = "{% static 'img/4wd_ute.png' %}";
+      const light_unit_icon_url = "{% static 'img/light_unit.png' %}";
+      const gang_truck_icon_url = "{% static 'img/gang_truck.png' %}";
+      const comms_bus_icon_url = "{% static 'img/comms_bus.png' %}";
+      const rotary_aircraft_icon_url = "{% static 'img/rotary.png' %}";
+      const plane_icon_url = "{% static 'img/plane.png' %}";
+      const dozer_icon_url = "{% static 'img/dozer.png' %}";
+      const loader_icon_url = "{% static 'img/loader.png' %}";
+      const float_icon_url = "{% static 'img/float.png' %}";
+      const fuel_truck_icon_url = "{% static 'img/fuel_truck.png' %}";
+      const person_icon_url = "{% static 'img/person.png' %}";
+      const other_icon_url = "{% static 'img/other.png' %}";
+    </script>
+    <script src="{% static 'js/device_detail.js' %}"></script>
+  </body>
+</html>

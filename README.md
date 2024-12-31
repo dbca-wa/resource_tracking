@@ -47,9 +47,9 @@ Other environment variables will be required to run the project in production
 
 ## Running
 
-Use `runserver` to run a local copy of the application:
+Use `gunicorn` to run the local ASGI server (`runserver` doesn't support async responses yet):
 
-    python manage.py runserver 0:8080
+    gunicorn resource_tracking.asgi:application --config gunicorn.py --reload
 
 Run console commands manually:
 

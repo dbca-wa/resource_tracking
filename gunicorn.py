@@ -12,3 +12,5 @@ preload_app = True
 timeout = 180
 # Disable access logging.
 accesslog = None
+# Use UvicornWorker as the worker class.
+worker_class = "resource_tracking.workers.UvicornWorker"

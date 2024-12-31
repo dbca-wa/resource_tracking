@@ -1,33 +1,32 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
+from io import BytesIO
+
+import unicodecsv as csv
 from django.conf import settings
 from django.core.exceptions import FieldError
 from django.urls import path
 from django.utils import timezone
-from io import BytesIO
 from tastypie import fields
 from tastypie.cache import NoCache
 from tastypie.http import HttpBadRequest
-from tastypie.resources import ModelResource, ALL_WITH_RELATIONS
+from tastypie.resources import ALL_WITH_RELATIONS, ModelResource
 from tastypie.serializers import Serializer
 from tastypie.utils import format_datetime
-import unicodecsv as csv
 
 from tracking.models import Device
 
 
 class CSVSerializer(Serializer):
-    formats = settings.TASTYPIE_DEFAULT_FORMATS + ['csv']
+    formats = settings.TASTYPIE_DEFAULT_FORMATS + ["csv"]
 
-    content_types = dict(
-        Serializer.content_types.items() |
-        [('csv', 'text/csv')])
+    content_types = dict(Serializer.content_types.items() | [("csv", "text/csv")])
 
     def format_datetime(self, data):
         # Override the default `format_datetime` method of the class
         # to return datetime as timezone-aware.
-        if self.datetime_formatting == 'rfc-2822':
+        if self.datetime_formatting == "rfc-2822":
             return format_datetime(data)
-        if self.datetime_formatting == 'iso-8601-strict':
+        if self.datetime_formatting == "iso-8601-strict":
             # Remove microseconds to strictly adhere to iso-8601
             data = data - timedelta(microseconds=data.microsecond)
 
@@ -37,12 +36,12 @@ class CSVSerializer(Serializer):
         options = options or {}
         data = self.to_simple(data, options)
         raw_data = BytesIO()
-        if 'objects' in data and data['objects']:
-            fields = data['objects'][0].keys()
-            writer = csv.DictWriter(raw_data, fields, dialect='excel', extrasaction='ignore')
+        if "objects" in data and data["objects"]:
+            fields = data["objects"][0].keys()
+            writer = csv.DictWriter(raw_data, fields, dialect="excel", extrasaction="ignore")
             header = dict(zip(fields, fields))
             writer.writerow(header)
-            for item in data['objects']:
+            for item in data["objects"]:
                 writer.writerow(item)
 
         return raw_data.getvalue()
@@ -67,29 +66,28 @@ def generate_filtering(mdl):
 
 def generate_meta(klass, overrides={}):
     metaitems = {
-        'queryset': klass.objects.all(),
-        'resource_name': klass._meta.model_name,
-        'filtering': generate_filtering(klass),
+        "queryset": klass.objects.all(),
+        "resource_name": klass._meta.model_name,
+        "filtering": generate_filtering(klass),
     }
     metaitems.update(overrides)
-    return type('Meta', (object,), metaitems)
+    return type("Meta", (object,), metaitems)
 
 
 class APIResource(ModelResource):
-
     def prepend_urls(self):
         return [
             path(
-                "<resource_name>/fields/<field_name>/".format(self._meta.resource_name),
-                self.wrap_view('field_values'), name="api_field_values"),
+                "<resource_name>/fields/<field_name>/".format(), self.wrap_view("field_values"), name="api_field_values"
+            ),
         ]
 
     def field_values(self, request, **kwargs):
         # Get a list of unique values for the field passed in kwargs.
         try:
-            qs = self._meta.queryset.values_list(kwargs['field_name'], flat=True).distinct()
+            qs = self._meta.queryset.values_list(kwargs["field_name"], flat=True).distinct()
         except FieldError as e:
-            return self.create_response(request, data={'error': str(e)}, response_class=HttpBadRequest)
+            return self.create_response(request, data={"error": str(e)}, response_class=HttpBadRequest)
         # Prepare return the HttpResponse.
         return self.create_response(request, data=list(qs))
 
@@ -98,8 +96,8 @@ class HttpCache(NoCache):
     """
     Just set the cache control header to implement web cache
     """
-    def __init__(self, timeout=0, public=None,
-                 private=None, *args, **kwargs):
+
+    def __init__(self, timeout=0, public=None, private=None, *args, **kwargs):
         """
         Optionally accepts a ``timeout`` in seconds for the resource's cache.
         Defaults to ``0`` seconds.
@@ -111,8 +109,8 @@ class HttpCache(NoCache):
 
     def cache_control(self):
         control = {
-            'max_age': self.timeout,
-            's_maxage': self.timeout,
+            "max_age": self.timeout,
+            "s_maxage": self.timeout,
         }
 
         if self.public is not None:
@@ -125,26 +123,27 @@ class HttpCache(NoCache):
 
 
 class DeviceResource(APIResource):
-
-    def build_filters(self, filters=None):
-        """Override build_filters to allow filtering by seen_age__lte=<minutes>
-        """
+    def build_filters(self, filters=None, **kwargs):
+        """Override build_filters to allow filtering by seen_age__lte=<minutes>"""
         if filters is None:
             filters = {}
         orm_filters = super(DeviceResource, self).build_filters(filters)
 
-        if 'seen_age__lte' in filters:
+        if "seen_age__lte" in filters:
             # Convert seen_age__lte to a timedelta
-            td = timedelta(minutes=int(filters['seen_age__lte']))
-            orm_filters['seen__gte'] = timezone.now() - td
+            td = timedelta(minutes=int(filters["seen_age__lte"]))
+            orm_filters["seen__gte"] = timezone.now() - td
 
         return orm_filters
 
-    Meta = generate_meta(Device, {
-        'cache': HttpCache(settings.DEVICE_HTTP_CACHE_TIMEOUT),
-        'serializer': CSVSerializer(),
-    })
-    age_minutes = fields.IntegerField(attribute='age_minutes', readonly=True, null=True)
-    age_colour = fields.CharField(attribute='age_colour', readonly=True, null=True)
-    age_text = fields.CharField(attribute='age_text', readonly=True, null=True)
-    icon = fields.CharField(attribute='icon', readonly=True)
+    Meta = generate_meta(
+        Device,
+        {
+            "cache": HttpCache(settings.DEVICE_HTTP_CACHE_TIMEOUT),
+            "serializer": CSVSerializer(),
+        },
+    )
+    age_minutes = fields.IntegerField(attribute="age_minutes", readonly=True, null=True)
+    age_colour = fields.CharField(attribute="age_colour", readonly=True, null=True)
+    age_text = fields.CharField(attribute="age_text", readonly=True, null=True)
+    icon = fields.CharField(attribute="icon", readonly=True)

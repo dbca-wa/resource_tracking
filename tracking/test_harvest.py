@@ -1,21 +1,21 @@
 import csv
-from datetime import datetime, timezone
 import email
-import json
 import os
+from datetime import datetime, timezone
+
+import orjson as json
 from django.conf import settings
 from django.test import TestCase
 
 from tracking.models import Device
 from tracking.utils import (
-    validate_latitude_longitude,
-    parse_mp70_payload,
-    parse_iriditrak_message,
     parse_beam_payload,
-    parse_tracplus_row,
     parse_dfes_feature,
+    parse_iriditrak_message,
+    parse_mp70_payload,
+    parse_tracplus_row,
+    validate_latitude_longitude,
 )
-
 
 # MP70 payload with valid data.
 MP70_PAYLOAD_VALID = "\r\nN694470090021038,13.74,-031.99252,+115.88450,0,0,10/18/2023 03:12:45\r\n"
@@ -77,16 +77,14 @@ class HarvestTestCase(TestCase):
     """
 
     def test_validate_latitude_longitude(self):
-        """Test the validate_latitude_longitude function
-        """
+        """Test the validate_latitude_longitude function"""
         data = parse_mp70_payload(MP70_PAYLOAD_INVALID)
         self.assertFalse(validate_latitude_longitude(data["latitude"], data["longitude"]))
         data = parse_mp70_payload(MP70_PAYLOAD_VALID)
         self.assertTrue(validate_latitude_longitude(data["latitude"], data["longitude"]))
 
     def test_parse_mp70_payload(self):
-        """Test the parse_mp70_payload function
-        """
+        """Test the parse_mp70_payload function"""
         data = parse_mp70_payload(MP70_PAYLOAD_VALID)
         self.assertTrue(data)
         self.assertEqual(data["timestamp"], MP70_TIMESTAMP)
@@ -95,8 +93,7 @@ class HarvestTestCase(TestCase):
         self.assertFalse(parse_mp70_payload(MP70_PAYLOAD_BAD))
 
     def test_parse_beam_payload(self):
-        """Test the parse_beam_payload function
-        """
+        """Test the parse_beam_payload function"""
         self.assertTrue(parse_beam_payload(IRIDITRAK_PAYLOAD_VALID))
 
     def test_parse_iriditrak_message(self):
@@ -107,13 +104,11 @@ class HarvestTestCase(TestCase):
         self.assertEqual(IRIDTRAK_TIMESTAMP, data["timestamp"])
 
     def test_parse_spot_message(self):
-        """TODO: test the parse_spot_message function
-        """
+        """TODO: test the parse_spot_message function"""
         pass
 
     def test_parse_tracplus_row(self):
-        """Test the parse_tracplus_row function
-        """
+        """Test the parse_tracplus_row function"""
         self.assertFalse(Device.objects.filter(source_device_type="tracplus").exists())
         csv_data = csv.DictReader(TRAKPLUS_FEED_VALID.split("\r\n"))
         row = next(csv_data)
@@ -122,8 +117,7 @@ class HarvestTestCase(TestCase):
         self.assertEqual(data["timestamp"], TRAKPLUS_TIMESTAMP)
 
     def test_parse_dfes_feature(self):
-        """Test the parse_dfes_feature function
-        """
+        """Test the parse_dfes_feature function"""
         feature = json.loads(DFES_FEED_FEATURE_VALID)
         data = parse_dfes_feature(feature)
         self.assertTrue(data)
