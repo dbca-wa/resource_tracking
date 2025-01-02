@@ -1,0 +1,9 @@
+{% extends "admin/change_form.html" %}
+{% block object-tools-items %}
+    {% if not is_popup %}
+        <li>
+            <a href="{% url 'device_detail' pk=original.pk %}">Follow on map</a>
+        </li>
+    {% endif %}
+    {{ block.super }}
+{% endblock %}

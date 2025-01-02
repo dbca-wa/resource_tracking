@@ -132,8 +132,6 @@ function refreshTrackedDeviceLayer(trackedDeviceLayer, device) {
 }
 
 const deviceDataEl = document.getElementById("device-data-stream");
-// Defined in the base template.
-// const eventSource = new EventSource("{% url 'device_detail_stream' pk=pk %}");
 let ping = 0;
 
 // Ping event, to help maintain the connection.
@@ -146,7 +144,7 @@ eventSource.addEventListener("ping", function (event) {
 eventSource.onmessage = function (event) {
   const device = JSON.parse(event.data);
   device.seen = new Date(device.seen);
-  deviceDataEl.innerHTML = `Device ID: ${device.deviceid}<br>
+  deviceDataEl.innerHTML = `Identifier: ${device.deviceid}<br>
     Last seen: ${device.seen.toString()}<br>
     Registration: ${device.registration}<br>
     Type: ${device.type}`;
@@ -156,3 +154,7 @@ eventSource.onmessage = function (event) {
     duration: 1500,
   }).showToast();
 };
+
+const deviceListLink = L.easyButton("fa-solid fa-list", function () {
+  window.open(device_list_url, "_self");
+}).addTo(map);

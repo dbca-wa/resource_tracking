@@ -5,7 +5,7 @@
         <title>{{ page_title }}</title>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <meta name="description" content="DBCA Resource Tracking device map">
+        <meta name="description" content="{{ page_title }}" />
         <meta name="viewport"
               content="width=device-width, initial-scale=1, shrink-to-fit=no">
         <meta name="author"
@@ -47,12 +47,8 @@
               crossorigin="anonymous"
               referrerpolicy="no-referrer" />
         <style>
-            #map {
-                position: absolute;
-                top: 0;
-                bottom: 0;
-                width: 100%;
-            }
+            html,body {height: 100%;}
+            #map {height: 100%;}
             .leaflet-control-search .search-cancel {
                 background: url("{% static 'img/search-icon.png' %}") no-repeat 0 -46px !important;
             }
@@ -66,8 +62,8 @@
         <link rel="shortcut icon" href="{% static 'favicon.ico' %}">
     </head>
     <body>
-        <div class="container-fluid p-0">
-            <div class="row m-0 p-0">
+        <div class="container-fluid p-0 d-flex h-100 flex-column">
+            <div class="row m-0 p-0 flex-fill">
                 <div class="col m-0 p-0">
                     <div id="map"></div>
                 </div>
@@ -104,7 +100,8 @@
         <script>
           // Constants injected during template rendering.
           const geoserver_url = "{{ geoserver_url }}";
-          const device_geojson_url = "{% url 'device_geojson' %}";
+          const device_list_url = "{% url 'device_list' %}";
+          const device_geojson_url = "{% url 'device_download' %}";
           const car_icon_url = "{% static 'img/car.png' %}";
           const ute_icon_url = "{% static 'img/4wd_ute.png' %}";
           const light_unit_icon_url = "{% static 'img/light_unit.png' %}";
@@ -120,6 +117,6 @@
           const other_icon_url = "{% static 'img/other.png' %}";
           const refresh_icon_url = "{% static 'img/refresh-icon.png' %}";
         </script>
-        <script src="{% static 'js/resource_map.js' %}"></script>
+        <script src="{% static 'js/device_map.js' %}"></script>
     </body>
 </html>

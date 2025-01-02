@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>{{ page_title }}</title>
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="description" content="{{ page_title }}" />
+        <meta name="viewport"
+              content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <meta name="author"
+              content="Department of Biodiversity, Conservation and Attractions" />
+        <!-- CSS styling blocks -->
+        <link rel="stylesheet"
+              href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css"
+              integrity="sha512-b2QcS5SsA8tZodcDtGRELiGv5SaKSk1vDHDaQRda0htPYWZ6046lr3kJ5bAAQdpV2mmA/4v0wQF9MyU6/pDIAg=="
+              crossorigin="anonymous"
+              referrerpolicy="no-referrer" />
+        <link rel="stylesheet"
+              href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+              integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
+              crossorigin="anonymous"
+              referrerpolicy="no-referrer" />
+    </head>
+    <body>
+        <div class="container-fluid p-0">
+            <div class="row m-1">
+                <div class="col-10 col-sm-11">
+                    <div class="col-xs-12 col-sm-11 col-md-6">
+                        <form action="" method="get">
+                            <input id="search_field"
+                                   type="text"
+                                   class="form-control"
+                                   name="q"
+                                   placeholder="Search rego, callsign, etc..."
+                                   value="{{ query_string }}">
+                        </form>
+                    </div>
+                </div>
+                <div class="col-2 col-sm-1">
+                    <a class="btn btn-primary float-end"
+                       href="{% url 'device_map' %}"
+                       role="button"><i class="fa-solid fa-map"></i> Map</a>
+                </div>
+            </div>
+        </div>
+        <div class="row m-0 p-0 align-items-stretch" style="min-height: 80vh">
+            <div class="col m-0 p-0">
+                <table class="table table-sm table-striped table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Device ID</th>
+                            <th>Identifier</th>
+                            <th>Registration</th>
+                            <th>Type</th>
+                            <th>Callsign</th>
+                            <th>Region/District</th>
+                            <th>Last seen</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for object in object_list %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'device_detail' pk=object.pk %}">{{ object.id }}</a>
+                                </td>
+                                <td>{{ object.deviceid }}</td>
+                                <td>{{ object.registration }}</td>
+                                <td>{{ object.symbol|capfirst }}</td>
+                                <td>{{ object.callsign }}</td>
+                                <td>{{ object.get_district_display }}</td>
+                                <td>{{ object.seen }}</td>
+                                <td>
+                                    <a class="btn btn-primary" href="{% url 'device_route' pk=object.pk %}"><i class="fa-solid fa-download"></i> Route</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </body>
+</html>

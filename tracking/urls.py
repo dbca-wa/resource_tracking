@@ -1,14 +1,21 @@
 from django.urls import path
+from django.views.generic.base import RedirectView
 
 from tracking import views
 
 urlpatterns = [
-    path("map/", views.ResourceMap.as_view(), name="resource_map"),
-    path("map/<int:pk>/", views.DeviceMap.as_view(), name="device_map"),
-    path("devices/<int:pk>/stream/", views.DeviceStream.as_view(), name="device_detail_stream"),
-    path("devices.csv", views.DeviceView.as_view(format="csv"), name="device_csv"),
-    path("devices.geojson", views.DeviceView.as_view(), name="device_geojson"),
-    path("loggedpoint/<int:device_id>.csv", views.DeviceHistoryView.as_view(format="csv"), name="device_history_csv"),
-    path("loggedpoint/<int:device_id>.geojson", views.DeviceHistoryView.as_view(), name="device_history_geojson"),
-    path("route/<int:device_id>.geojson", views.DeviceRouteView.as_view(), name="device_route_geojson"),
+    path("devices/", views.DeviceList.as_view(), name="device_list"),
+    path("devices/download/", views.DeviceDownload.as_view(), name="device_download"),
+    path("devices/map/", views.DeviceMap.as_view(), name="device_map"),
+    path("devices/<int:pk>/", views.DeviceDetail.as_view(), name="device_detail"),
+    path("devices/<int:pk>/stream/", views.DeviceStream.as_view(), name="device_stream"),
+    path("devices/<int:pk>/history/", views.DeviceHistory.as_view(), name="device_history"),
+    path("devices/<int:pk>/route/", views.DeviceRoute.as_view(), name="device_route"),
+    # Older style route patterns, now redirected.
+    path("map/", RedirectView.as_view(pattern_name="device_map", permanent=True)),
+    path("devices.csv", RedirectView.as_view(pattern_name="device_download", permanent=True)),
+    path("devices.geojson", RedirectView.as_view(pattern_name="device_download", permanent=True)),
+    path("loggedpoint/<int:pk>.csv", RedirectView.as_view(pattern_name="device_history", permanent=True)),
+    path("loggedpoint/<int:pk>.geojson", RedirectView.as_view(pattern_name="device_history", permanent=True)),
+    path("route/<int:pk>.geojson", RedirectView.as_view(pattern_name="device_route", permanent=True)),
 ]

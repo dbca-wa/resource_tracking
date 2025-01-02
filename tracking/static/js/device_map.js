@@ -121,7 +121,7 @@ function setDeviceStyle(feature, layer) {
     Callsign: ${callsign}<br>
     Type: ${feature.properties.symbol}<br>
     Seen: ${feature.properties.age_text}<br>
-    <a href="/map/${feature.properties.id}/">Follow</a>`
+    <a href="/devices/${feature.properties.id}/">Follow</a>`
   );
   // Set the feature icon.
   if (feature.properties.icon == "sss-2_wheel_drive") {
@@ -230,6 +230,10 @@ const searchControl = new L.Control.Search({
 });
 map.addControl(searchControl);
 
-const refreshButton = L.easyButton(`<img src="${refresh_icon_url}">`, function (btn, map) {
+const refreshButton = L.easyButton("fa-solid fa-arrows-rotate", function (btn, map) {
   refreshTrackedDevicesLayer(trackedDevices);
+}).addTo(map);
+
+const deviceListLink = L.easyButton("fa-solid fa-list", function () {
+  window.open(device_list_url, "_self");
 }).addTo(map);
