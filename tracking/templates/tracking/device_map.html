@@ -41,11 +41,6 @@
               integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
               crossorigin="anonymous"
               referrerpolicy="no-referrer" />
-        <link rel="stylesheet"
-              href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css"
-              integrity="sha512-k+xZuzf4IaGQK9sSDjaNyrfwgxBfoF++7u6Q0ZVUs2rDczx9doNZkYXyyQbnJQcMR4o+IjvAcIj69hHxiOZEig=="
-              crossorigin="anonymous"
-              referrerpolicy="no-referrer" />
         <style>
             html,body {height: 100%;}
             #map {height: 100%;}
@@ -69,10 +64,34 @@
                 </div>
             </div>
         </div>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
-                integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
-                crossorigin="anonymous"
-                referrerpolicy="no-referrer"></script>
+        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+            <div id="toastRefresh"
+                 class="toast align-items-center bg-success-subtle border-0"
+                 role="alert"
+                 aria-live="assertive"
+                 aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">Tracked device data refreshed</div>
+                    <button type="button"
+                            class="btn-close me-2 m-auto"
+                            data-bs-dismiss="toast"
+                            aria-label="Close"></button>
+                </div>
+            </div>
+            <div id="toastError"
+                 class="toast align-items-center bg-danger-subtle border-0"
+                 role="alert"
+                 aria-live="assertive"
+                 aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">Error querying device data</div>
+                    <button type="button"
+                            class="btn-close me-2 m-auto"
+                            data-bs-dismiss="toast"
+                            aria-label="Close"></button>
+                </div>
+            </div>
+        </div>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"
                 integrity="sha512-X/YkDZyjTf4wyc2Vy16YGCPHwAY8rZJY+POgokZjQB2mhIRFJCckEGc6YyX9eNsPfn0PzThEuNs+uaomE5CO6A=="
                 crossorigin="anonymous"
@@ -93,14 +112,11 @@
                 integrity="sha512-Tndo4y/YJooD/mGXS9D6F1YyBcSyrWnnSWQ5Z9IcKt6bljicjyka9qcP99qMFbQ5+omfOtwwIapv1DjBCZcTJQ=="
                 crossorigin="anonymous"
                 referrerpolicy="no-referrer"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.js"
-                integrity="sha512-0Yc4Jv5wX4+mjDuLxmHFGqgDtMFAEBLpPq/0nPVmAOwHPMkYXiS1YVYWTcrVQztftk/32089DDTyrCJO8hBCZw=="
-                crossorigin="anonymous"
-                referrerpolicy="no-referrer"></script>
         <script>
           // Constants injected during template rendering.
           const geoserver_url = "{{ geoserver_url }}";
           const device_list_url = "{% url 'device_list' %}";
+          const device_map_url = "{% url 'device_map' %}";
           const device_geojson_url = "{% url 'device_download' %}";
           const car_icon_url = "{% static 'img/car.png' %}";
           const ute_icon_url = "{% static 'img/4wd_ute.png' %}";
@@ -115,8 +131,8 @@
           const fuel_truck_icon_url = "{% static 'img/fuel_truck.png' %}";
           const person_icon_url = "{% static 'img/person.png' %}";
           const other_icon_url = "{% static 'img/other.png' %}";
-          const refresh_icon_url = "{% static 'img/refresh-icon.png' %}";
         </script>
+        <script src="{% static 'js/map.js' %}"></script>
         <script src="{% static 'js/device_map.js' %}"></script>
     </body>
 </html>

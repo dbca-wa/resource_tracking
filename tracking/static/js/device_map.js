@@ -1,113 +1,6 @@
 "use strict";
-const geoserver_wmts_url =
-  geoserver_url +
-  "/gwc/service/wmts?service=WMTS&request=GetTile&version=1.0.0&tilematrixset=gda94&tilematrix=gda94:{z}&tilecol={x}&tilerow={y}";
-const geoserver_wmts_url_base = geoserver_wmts_url + "&format=image/jpeg";
-const geoserver_wmts_url_overlay = geoserver_wmts_url + "&format=image/png";
 
-// Base layers
-const mapboxStreets = L.tileLayer(geoserver_wmts_url_base + "&layer=dbca:mapbox-streets", {
-  tileSize: 1024,
-  zoomOffset: -2,
-});
-const landgateOrthomosaic = L.tileLayer(geoserver_wmts_url_base + "&layer=landgate:virtual_mosaic", {
-  tileSize: 1024,
-  zoomOffset: -2,
-});
-const stateMapBase = L.tileLayer(geoserver_wmts_url_base + "&layer=cddp:state_map_base", {
-  tileSize: 1024,
-  zoomOffset: -2,
-});
-
-// Overlay layers
-const dbcaBushfires = L.tileLayer(geoserver_wmts_url_overlay + "&layer=landgate:dbca_going_bushfires_dbca-001", {
-  tileSize: 1024,
-  zoomOffset: -2,
-  transparent: true,
-  opacity: 0.75,
-});
-const dfesBushfires = L.tileLayer(geoserver_wmts_url_overlay + "&layer=landgate:authorised_fireshape_dfes-032", {
-  tileSize: 1024,
-  zoomOffset: -2,
-  transparent: true,
-  opacity: 0.75,
-});
-const dbcaRegions = L.tileLayer(geoserver_wmts_url_overlay + "&layer=cddp:kaartdijin-boodja-public_CPT_DBCA_REGIONS", {
-  tileSize: 1024,
-  zoomOffset: -2,
-});
-const lgaBoundaries = L.tileLayer(geoserver_wmts_url_overlay + "&layer=cddp:local_gov_authority", {
-  tileSize: 1024,
-  zoomOffset: -2,
-});
-
-// Icon classes (note that URLs are injected into the base template.)
-const iconCar = L.icon({
-  iconUrl: car_icon_url,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-});
-const iconUte = L.icon({
-  iconUrl: ute_icon_url,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-});
-const iconLightUnit = L.icon({
-  iconUrl: light_unit_icon_url,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-});
-const iconGangTruck = L.icon({
-  iconUrl: gang_truck_icon_url,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-});
-const iconCommsBus = L.icon({
-  iconUrl: comms_bus_icon_url,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-});
-const iconRotary = L.icon({
-  iconUrl: rotary_aircraft_icon_url,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-});
-const iconPlane = L.icon({
-  iconUrl: plane_icon_url,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-});
-const iconDozer = L.icon({
-  iconUrl: dozer_icon_url,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-});
-const iconLoader = L.icon({
-  iconUrl: loader_icon_url,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-});
-const iconFloat = L.icon({
-  iconUrl: float_icon_url,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-});
-const iconFuelTruck = L.icon({
-  iconUrl: fuel_truck_icon_url,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-});
-const iconPerson = L.icon({
-  iconUrl: person_icon_url,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-});
-const iconOther = L.icon({
-  iconUrl: other_icon_url,
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-});
-
+// Function to set the icon and popup for each device feature added to the layer.
 function setDeviceStyle(feature, layer) {
   let callsign;
   if (feature.properties.callsign) {
@@ -155,70 +48,39 @@ function setDeviceStyle(feature, layer) {
   }
 }
 
-// Add the (initially) empty devices layer to the map.
+// Define the (initially) empty devices layer and add it to the map.
 const trackedDevices = L.geoJSON(null, {
   onEachFeature: setDeviceStyle,
-});
+}).addTo(map);
 
+// Function to refresh tracking devices from the source endpoint.
 function refreshTrackedDevicesLayer(trackedDevicesLayer) {
-  // Remove any existing data from the GeoJSON layer.
+  // Remove any existing data from the layer.
   trackedDevicesLayer.clearLayers();
-  // Initial notification.
-  Toastify({
-    text: "Refreshing tracked device data",
-    duration: 1500,
-  }).showToast();
   // Query the API endpoint for device data.
-  $.getJSON(device_geojson_url, function (data) {
-    // Add the device data to the GeoJSON layer.
-    trackedDevicesLayer.addData(data);
-    // Success notification.
-    Toastify({
-      text: "Tracked device data refreshed",
-      duration: 1500,
-    }).showToast();
-  });
+  fetch(device_geojson_url)
+    // Parse the response as JSON.
+    .then((resp) => resp.json())
+    // Replace the data in the tracked devices layer.
+    .then(function (data) {
+      // Add the device data to the GeoJSON layer.
+      trackedDevicesLayer.addData(data);
+      // Success notification.
+      toastRefresh.show();
+    })
+    // Error notification.
+    .catch(function () {
+      toastError.show();
+    });
 }
-// Immediately run the function, once.
+// Immediately run the "refresh" function to populate the layer.
 refreshTrackedDevicesLayer(trackedDevices);
 
-// Define map.
-const map = L.map("map", {
-  crs: L.CRS.EPSG4326, // WGS 84
-  center: [-31.96, 115.87],
-  zoom: 12,
-  minZoom: 4,
-  maxZoom: 18,
-  layers: [mapboxStreets, trackedDevices], // Sets default selections.
-  attributionControl: false,
-});
-
-// Define layer groups.
-const baseMaps = {
-  "Mapbox streets": mapboxStreets,
-  "Landgate orthomosaic": landgateOrthomosaic,
-  "State map base 250K": stateMapBase,
-};
-const overlayMaps = {
-  "Tracked devices": trackedDevices,
-  "DBCA Going Bushfires": dbcaBushfires,
-  "DFES Going Bushfires": dfesBushfires,
-  "DBCA regions": dbcaRegions,
-  "LGA boundaries": lgaBoundaries,
-};
-
-// Define layer control.
+// Layers control.
 L.control.layers(baseMaps, overlayMaps).addTo(map);
 
-// Define scale bar
-L.control.scale({ maxWidth: 500, imperial: false }).addTo(map);
-
-// Add a fullscreen control to the map.
-const fullScreen = new L.control.fullscreen();
-map.addControl(fullScreen);
-
 // Device registration search
-const searchControl = new L.Control.Search({
+new L.Control.Search({
   layer: trackedDevices,
   propertyName: "registration",
   textPlaceholder: "Search registration",
@@ -227,13 +89,9 @@ const searchControl = new L.Control.Search({
   zoom: 16,
   circleLocation: true,
   autoCollapse: true,
-});
-map.addControl(searchControl);
-
-const refreshButton = L.easyButton("fa-solid fa-arrows-rotate", function (btn, map) {
-  refreshTrackedDevicesLayer(trackedDevices);
 }).addTo(map);
-
-const deviceListLink = L.easyButton("fa-solid fa-list", function () {
-  window.open(device_list_url, "_self");
+//
+// Refresh tracked devices control.
+L.easyButton("fa-solid fa-arrows-rotate", function () {
+  refreshTrackedDevicesLayer(trackedDevices);
 }).addTo(map);

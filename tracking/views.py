@@ -18,10 +18,11 @@ class DeviceMap(TemplateView):
     """A map view displaying all device locations."""
 
     template_name = "tracking/device_map.html"
+    http_method_names = ["get", "head", "options", "trace"]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["page_title"] = "DBCA Resource Tracking System"
+        context["page_title"] = "DBCA Resource Tracking device map"
         context["geoserver_url"] = settings.GEOSERVER_URL
         return context
 
@@ -73,7 +74,8 @@ class DeviceDetail(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["page_title"] = "DBCA Resource Tracking device detail"
+        obj = self.get_object()
+        context["page_title"] = f"DBCA Resource Tracking device {obj.deviceid}"
         context["geoserver_url"] = settings.GEOSERVER_URL
         return context
 
@@ -82,7 +84,7 @@ class SpatialDataView(View):
     """Base view to return a queryset of spatial data as GeoJSON or CSV."""
 
     model = None
-    http_method_names = ["get"]
+    http_method_names = ["get", "head", "options", "trace"]
     srid = 4326
     format = "geojson"
     geometry_field = None
@@ -140,7 +142,7 @@ class SpatialDataView(View):
         return response
 
 
-class DeviceDownload(SpatialDataView):
+class DeviceListDownload(SpatialDataView):
     """Return structured data about tracking devices seen in the previous n days
     (14 by default).
     """
@@ -186,7 +188,7 @@ class DeviceDownload(SpatialDataView):
         return qs
 
 
-class DeviceHistory(SpatialDataView):
+class DeviceHistoryDownload(SpatialDataView):
     """Return structured data of the tracking points for a single device over the previous n days
     (14 by default).
     """
@@ -233,8 +235,8 @@ class DeviceHistory(SpatialDataView):
         return qs
 
 
-class DeviceRoute(DeviceHistory):
-    """Extend the DeviceHistory view to return a device's route history as a LineString geometry.
+class DeviceRouteDownload(DeviceHistoryDownload):
+    """Extend the DeviceHistoryDownload view to return a device's route history as a LineString geometry.
     This view only returns GeoJSON, not CSV.
     """
 
