@@ -1,126 +1,55 @@
+{% extends 'tracking/device_base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-    <head>
-        <title>{{ page_title }}</title>
-        <meta charset="utf-8" />
-        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-        <meta name="description" content="{{ page_title }}" />
-        <meta name="viewport"
-              content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-        <meta name="author"
-              content="Department of Biodiversity, Conservation and Attractions" />
-        <!-- CSS styling blocks -->
-        <link rel="stylesheet"
-              href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css"
-              integrity="sha512-b2QcS5SsA8tZodcDtGRELiGv5SaKSk1vDHDaQRda0htPYWZ6046lr3kJ5bAAQdpV2mmA/4v0wQF9MyU6/pDIAg=="
-              crossorigin="anonymous"
-              referrerpolicy="no-referrer" />
-        <link rel="stylesheet"
-              href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
-              integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw=="
-              crossorigin="anonymous"
-              referrerpolicy="no-referrer" />
-        <link rel="stylesheet"
-              href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.fullscreen/3.0.2/Control.FullScreen.min.css"
-              integrity="sha512-icRYRbqvwyLFADCizHy+7d4vVNnzF92F0ADsgIlPU2eegXZJ9iHtF1BMi7xdgo1lSyd0nsyI5Lvxhhlxx7WxZg=="
-              crossorigin="anonymous"
-              referrerpolicy="no-referrer" />
-        <link rel="stylesheet"
-              href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.EasyButton/2.4.0/easy-button.min.css"
-              integrity="sha512-Dl8Sq3zeaW4/XeowsD/0Fyn07Cy+1yJlG4/Bs8Lt91P2gZGB3lemVScG8dsNi2pIwhDwuTR22RGumk72cd5OhA=="
-              crossorigin="anonymous"
-              referrerpolicy="no-referrer" />
-        <link rel="stylesheet"
-              href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
-              integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
-              crossorigin="anonymous"
-              referrerpolicy="no-referrer" />
-        <link rel="shortcut icon" href="{% static 'favicon.ico' %}" />
-        <style>
+{% block extrahead %}
+    <style>
             html,body {height: 100%;}
             #map {height: 100%;}
-        </style>
-    </head>
-    <body>
-        <div class="container-fluid p-0 d-flex h-100 flex-column">
-            <div class="row m-1">
-                <div class="col">
-                    <div id="device-data-stream"></div>
-                </div>
-            </div>
-            <div class="row m-0 p-0 flex-grow-1">
-                <div class="col m-0 p-0">
-                    <div id="map"></div>
-                </div>
+    </style>
+{% endblock %}
+{% block bodycontent %}
+    <div class="container-fluid p-0 d-flex h-100 flex-column">
+        <div class="row m-1">
+            <div class="col">
+                <div id="device-data-stream"></div>
             </div>
         </div>
-        <div class="toast-container position-fixed bottom-0 end-0 p-3">
-            <div id="toastRefresh"
-                 class="toast align-items-center bg-success-subtle border-0"
-                 role="alert"
-                 aria-live="assertive"
-                 aria-atomic="true">
-                <div class="d-flex">
-                    <div class="toast-body">Tracked device data refreshed</div>
-                    <button type="button"
-                            class="btn-close me-2 m-auto"
-                            data-bs-dismiss="toast"
-                            aria-label="Close"></button>
-                </div>
-            </div>
-            <div id="toastError"
-                 class="toast align-items-center bg-danger-subtle border-0"
-                 role="alert"
-                 aria-live="assertive"
-                 aria-atomic="true">
-                <div class="d-flex">
-                    <div class="toast-body">Error querying device data</div>
-                    <button type="button"
-                            class="btn-close me-2 m-auto"
-                            data-bs-dismiss="toast"
-                            aria-label="Close"></button>
-                </div>
+        <div class="row m-0 p-0 flex-grow-1">
+            <div class="col m-0 p-0">
+                <div id="map"></div>
             </div>
         </div>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"
-                integrity="sha512-X/YkDZyjTf4wyc2Vy16YGCPHwAY8rZJY+POgokZjQB2mhIRFJCckEGc6YyX9eNsPfn0PzThEuNs+uaomE5CO6A=="
-                crossorigin="anonymous"
-                referrerpolicy="no-referrer"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"
-                integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg=="
-                crossorigin="anonymous"
-                referrerpolicy="no-referrer"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.fullscreen/3.0.2/Control.FullScreen.min.js"
-                integrity="sha512-G3uVfdWq1gdYQ0tfaN8APmD3UBQCv0Am3csZtRdaNbCBzNgh57yu7MhgrXozjeflGsRapDpBVdrKCQahT99p0Q=="
-                crossorigin="anonymous"
-                referrerpolicy="no-referrer"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.EasyButton/2.4.0/easy-button.min.js"
-                integrity="sha512-Tndo4y/YJooD/mGXS9D6F1YyBcSyrWnnSWQ5Z9IcKt6bljicjyka9qcP99qMFbQ5+omfOtwwIapv1DjBCZcTJQ=="
-                crossorigin="anonymous"
-                referrerpolicy="no-referrer"></script>
-        <script>
-          // Constants injected during template rendering.
-          const eventSource = new EventSource("{% url 'device_stream' pk=object.pk %}");
-          const geoserver_url = "{{ geoserver_url }}";
-          const device_list_url = "{% url 'device_list' %}";
-          const device_map_url = "{% url 'device_map' %}";
-          const device_geojson_url = "{% url 'device_download' %}";
-          const car_icon_url = "{% static 'img/car.png' %}";
-          const ute_icon_url = "{% static 'img/4wd_ute.png' %}";
-          const light_unit_icon_url = "{% static 'img/light_unit.png' %}";
-          const gang_truck_icon_url = "{% static 'img/gang_truck.png' %}";
-          const comms_bus_icon_url = "{% static 'img/comms_bus.png' %}";
-          const rotary_aircraft_icon_url = "{% static 'img/rotary.png' %}";
-          const plane_icon_url = "{% static 'img/plane.png' %}";
-          const dozer_icon_url = "{% static 'img/dozer.png' %}";
-          const loader_icon_url = "{% static 'img/loader.png' %}";
-          const float_icon_url = "{% static 'img/float.png' %}";
-          const fuel_truck_icon_url = "{% static 'img/fuel_truck.png' %}";
-          const person_icon_url = "{% static 'img/person.png' %}";
-          const other_icon_url = "{% static 'img/other.png' %}";
-        </script>
-        <script src="{% static 'js/map.js' %}"></script>
-        <script src="{% static 'js/device_detail.js' %}"></script>
-    </body>
-</html>
+    </div>
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="toastRefresh"
+             class="toast align-items-center bg-success-subtle border-0"
+             role="alert"
+             aria-live="assertive"
+             aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">Tracked device data refreshed</div>
+                <button type="button"
+                        class="btn-close me-2 m-auto"
+                        data-bs-dismiss="toast"
+                        aria-label="Close"></button>
+            </div>
+        </div>
+        <div id="toastError"
+             class="toast align-items-center bg-danger-subtle border-0"
+             role="alert"
+             aria-live="assertive"
+             aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">Error querying device data</div>
+                <button type="button"
+                        class="btn-close me-2 m-auto"
+                        data-bs-dismiss="toast"
+                        aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block extrajs %}
+    <script>const eventSource = new EventSource("{% url 'device_stream' pk=object.pk %}");</script>
+    <script src="{% static 'js/map.js' %}"></script>
+    <script src="{% static 'js/device_detail.js' %}"></script>
+{% endblock %}
