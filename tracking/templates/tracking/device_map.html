@@ -1,0 +1,58 @@
+{% extends 'tracking/device_base.html' %}
+{% load static %}
+{% block extrahead %}
+    <style>
+            html,body {height: 100%;}
+            #map {height: 100%;}
+            .leaflet-control-search .search-cancel {
+                background: url("{% static 'img/search-icon.png' %}") no-repeat 0 -46px !important;
+            }
+            .leaflet-control-search .search-button {
+                background: url("{% static 'img/search-icon.png' %}") no-repeat 4px 4px #fff !important;
+            }
+            .leaflet-control-search .search-button:hover {
+                background: url("{% static 'img/search-icon.png' %}") no-repeat 4px -20px #fafafa !important;
+            }
+    </style>
+{% endblock %}
+{% block bodycontent %}
+    <div class="container-fluid p-0 d-flex h-100 flex-column">
+        <div class="row m-0 p-0 flex-fill">
+            <div class="col m-0 p-0">
+                <div id="map"></div>
+            </div>
+        </div>
+    </div>
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="toastRefresh"
+             class="toast align-items-center bg-success-subtle border-0"
+             role="alert"
+             aria-live="assertive"
+             aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">Tracked device data refreshed</div>
+                <button type="button"
+                        class="btn-close me-2 m-auto"
+                        data-bs-dismiss="toast"
+                        aria-label="Close"></button>
+            </div>
+        </div>
+        <div id="toastError"
+             class="toast align-items-center bg-danger-subtle border-0"
+             role="alert"
+             aria-live="assertive"
+             aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">Error querying device data</div>
+                <button type="button"
+                        class="btn-close me-2 m-auto"
+                        data-bs-dismiss="toast"
+                        aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block extrajs %}
+    <script src="{% static 'js/map.js' %}"></script>
+    <script src="{% static 'js/device_map.js' %}"></script>
+{% endblock %}

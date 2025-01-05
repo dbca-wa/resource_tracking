@@ -24,38 +24,55 @@ class ViewTestCase(TestCase):
         # Login
         self.client.force_login(User.objects.create(username="testuser"))
 
-    def test_device_csv_download(self):
-        """Test the devices.csv download view"""
-        url = reverse("device_csv")
+    def test_device_list_view(self):
+        """Test the device list view"""
+        url = reverse("device_list")
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
-    def test_device_geojson_download(self):
-        """Test the devices.geojson download view"""
-        url = reverse("device_geojson")
+    def test_device_download(self):
+        """Test the devices download view returns JSON"""
+        url = reverse("device_download")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["Content-Type"], "application/vnd.geo+json")
+
+    def test_device_csv_download(self):
+        """Test the devices download view returns CSV"""
+        url = reverse("device_download")
+        response = self.client.get(url + "?format=csv")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["Content-Type"], "text/csv")
+
+    def test_device_map_view(self):
+        """Test the device map view"""
+        url = reverse("device_map")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_device_detail_view(self):
+        """Test the device detail view"""
+        url = reverse("device_detail", kwargs={"pk": self.device.pk})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
     def test_device_history_geojson_view(self):
         """Test the device history GeoJSON view"""
-        url = reverse("device_history_geojson", kwargs={"device_id": self.device.pk})
+        url = reverse("device_history", kwargs={"pk": self.device.pk})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["Content-Type"], "application/vnd.geo+json")
 
     def test_device_history_csv_view(self):
         """Test the device history CSV view"""
-        url = reverse("device_history_csv", kwargs={"device_id": self.device.pk})
-        response = self.client.get(url)
+        url = reverse("device_history", kwargs={"pk": self.device.pk})
+        response = self.client.get(url + "?format=csv")
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["Content-Type"], "text/csv")
 
     def test_device_route_geojson_view(self):
         """Test the device route GeoJSON view"""
-        url = reverse("device_route_geojson", kwargs={"device_id": self.device.pk})
+        url = reverse("device_route", kwargs={"pk": self.device.pk})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-
-    def test_resource_map_view(self):
-        """Test the resource map view"""
-        url = reverse("resource_map")
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["Content-Type"], "application/vnd.geo+json")

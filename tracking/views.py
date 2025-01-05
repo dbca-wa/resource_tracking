@@ -8,17 +8,83 @@ from django.core.serializers import serialize
 from django.db.models import Q
 from django.http import HttpResponse, HttpResponseBadRequest, StreamingHttpResponse
 from django.utils import timezone
-from django.views.generic import TemplateView, View
+from django.views.generic import DetailView, ListView, TemplateView, View
 
 from tracking.api import CSVSerializer
 from tracking.models import Device, LoggedPoint
+
+
+class DeviceMap(TemplateView):
+    """A map view displaying all device locations."""
+
+    template_name = "tracking/device_map.html"
+    http_method_names = ["get", "head", "options", "trace"]
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["page_title"] = "DBCA Resource Tracking device map"
+        context["geoserver_url"] = settings.GEOSERVER_URL
+        return context
+
+
+class DeviceList(ListView):
+    """A list view to display a list of tracking devices, and/or download them as structured data."""
+
+    model = Device
+    paginate_by = None
+    http_method_names = ["get", "head", "options", "trace"]
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["page_title"] = "DBCA Resource Tracking device list"
+        if self.request.GET.get("q", None):
+            context["query_string"] = self.request.GET["q"]
+        return context
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+
+        if self.request.GET.get("days", None):
+            days = int(self.request.GET["days"])
+        else:
+            days = 14
+        qs = qs.filter(seen__gte=timezone.now() - timedelta(days=days))
+
+        # Querying on device callsign, registration and/or device ID.
+        if self.request.GET.get("q", None):
+            query_str = self.request.GET["q"]
+            qs = qs.filter(
+                Q(callsign__icontains=query_str)
+                | Q(registration__icontains=query_str)
+                | Q(deviceid__icontains=query_str)
+                | Q(district__icontains=query_str)
+            )
+
+        return qs
+
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+
+class DeviceDetail(DetailView):
+    """A detail view to show single device's details and location."""
+
+    model = Device
+    http_method_names = ["get", "head", "options", "trace"]
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        obj = self.get_object()
+        context["page_title"] = f"DBCA Resource Tracking device {obj.deviceid}"
+        context["geoserver_url"] = settings.GEOSERVER_URL
+        return context
 
 
 class SpatialDataView(View):
     """Base view to return a queryset of spatial data as GeoJSON or CSV."""
 
     model = None
-    http_method_names = ["get"]
+    http_method_names = ["get", "head", "options", "trace"]
     srid = 4326
     format = "geojson"
     geometry_field = None
@@ -38,8 +104,8 @@ class SpatialDataView(View):
         qs = self.get_queryset()
         filename_prefix = self.get_filename_prefix()
 
-        # CSV format download
-        if self.format == "csv":
+        # CSV format download.
+        if self.format == "csv" or request.GET.get("format", None) == "csv":
             data = {"objects": []}
             for device in qs:
                 d = device.__dict__
@@ -55,7 +121,7 @@ class SpatialDataView(View):
                 content_type="text/csv",
                 headers={"Content-Disposition": f"attachment; filename={filename}"},
             )
-        # GeoJSON format download
+        # GeoJSON format download (default).
         else:
             geojson = serialize(
                 "geojson",
@@ -66,7 +132,7 @@ class SpatialDataView(View):
             )
 
             timestamp = datetime.strftime(datetime.today(), "%Y-%m-%d_%H%M")
-            filename = f"{filename_prefix}_{timestamp}.geojson"
+            filename = f"{filename_prefix}_{timestamp}.json"
             response = HttpResponse(
                 geojson,
                 content_type="application/vnd.geo+json",
@@ -76,7 +142,7 @@ class SpatialDataView(View):
         return response
 
 
-class DeviceView(SpatialDataView):
+class DeviceListDownload(SpatialDataView):
     """Return structured data about tracking devices seen in the previous n days
     (14 by default).
     """
@@ -103,14 +169,14 @@ class DeviceView(SpatialDataView):
     def get_queryset(self):
         qs = super().get_queryset()
 
-        if "days" in self.request.GET and self.request.GET["days"]:
+        if self.request.GET.get("days", None):
             days = int(self.request.GET["days"])
         else:
             days = 14
         qs = qs.filter(seen__gte=timezone.now() - timedelta(days=days))
 
         # Querying on device callsign, registration and/or device ID.
-        if "q" in self.request.GET and self.request.GET["q"]:
+        if self.request.GET.get("q", None):
             query_str = self.request.GET["q"]
             qs = qs.filter()
             qs = qs.filter(
@@ -122,7 +188,7 @@ class DeviceView(SpatialDataView):
         return qs
 
 
-class DeviceHistoryView(SpatialDataView):
+class DeviceHistoryDownload(SpatialDataView):
     """Return structured data of the tracking points for a single device over the previous n days
     (14 by default).
     """
@@ -132,20 +198,17 @@ class DeviceHistoryView(SpatialDataView):
     properties = ("id", "heading", "velocity", "altitude", "seen", "raw", "device_id")
 
     def dispatch(self, *args, **kwargs):
-        if "device_id" not in self.kwargs:
-            return HttpResponseBadRequest("Missing device_id")
+        if "pk" not in self.kwargs:
+            return HttpResponseBadRequest("Missing device PK")
         return super().dispatch(*args, **kwargs)
 
     def get_filename_prefix(self):
-        device_id = self.kwargs["device_id"]
-        device = Device.objects.get(pk=device_id)
+        device = Device.objects.get(pk=self.kwargs["pk"])
         return f"{device.deviceid}_loggedpoint"
 
     def get_queryset(self):
         qs = super().get_queryset()
-
-        device_id = self.kwargs["device_id"]
-        qs = qs.filter(device_id=device_id)
+        qs = qs.filter(device_id=self.kwargs["pk"])
 
         start = self.request.GET.get("start", default=None)
         if start is None:
@@ -172,16 +235,15 @@ class DeviceHistoryView(SpatialDataView):
         return qs
 
 
-class DeviceRouteView(DeviceHistoryView):
-    """Extend the DeviceHistoryView to return a device's route history as a LineString geometry.
+class DeviceRouteDownload(DeviceHistoryDownload):
+    """Extend the DeviceHistoryDownload view to return a device's route history as a LineString geometry.
     This view only returns GeoJSON, not CSV.
     """
 
     def get(self, request, *args, **kwargs):
         """Override this method to return a linestring dataset instead of points."""
         qs = self.get_queryset()
-        device_id = self.kwargs["device_id"]
-        device = Device.objects.get(pk=device_id)
+        device = Device.objects.get(pk=self.kwargs["pk"])
         filename_prefix = f"{device.deviceid}_route"
 
         start_point = None
@@ -222,7 +284,7 @@ class DeviceRouteView(DeviceHistoryView):
             ),
         )
         timestamp = datetime.strftime(datetime.today(), "%Y-%m-%d_%H%M")
-        filename = f"{filename_prefix}_{timestamp}.geojson"
+        filename = f"{filename_prefix}_{timestamp}.json"
         response = HttpResponse(
             geojson,
             content_type="application/vnd.geo+json",
@@ -232,23 +294,14 @@ class DeviceRouteView(DeviceHistoryView):
         return response
 
 
-class ResourceMap(TemplateView):
-    """A map view displaying all resource locations."""
-
-    template_name = "tracking/resource_map.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["page_title"] = "DBCA Resource Tracking System"
-        context["geoserver_url"] = settings.GEOSERVER_URL
-        return context
-
-
 class DeviceStream(View):
-    """A view that returns Server-Sent Events (SSE) consisting of
+    """An asynchronous view that returns Server-Sent Events (SSE) consisting of
     a tracking device's location, forever. This is a one-way communication channel,
     where the client browser is responsible for maintaining the connection.
     """
+
+    http_method_names = ["get"]
+    view_is_async = True
 
     async def stream(self, *args, **kwargs):
         """Returns an iterator that queries and then yields tracking device data every n seconds."""
@@ -267,13 +320,14 @@ class DeviceStream(View):
                         "point": device.point.ewkt,
                         "icon": device.icon,
                         "registration": device.registration,
-                        "type": device.symbol,
+                        "type": device.get_symbol_display(),
                         "callsign": device.callsign,
                     }
                 ).decode("utf-8")
             except:
                 data = {}
 
+            #
             # Only send a message event if the device location has changed.
             if device and device.point.ewkt != last_location:
                 last_location = device.point.ewkt
@@ -295,14 +349,3 @@ class DeviceStream(View):
                 "Connection": "keep-alive",
             },
         )
-
-
-class DeviceMap(TemplateView):
-    """A map view to show single device's location."""
-
-    template_name = "tracking/device_detail.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["pk"] = kwargs["pk"]
-        return context

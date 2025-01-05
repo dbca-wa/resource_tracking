@@ -1,0 +1,67 @@
+{% extends 'tracking/device_base.html' %}
+{% block bodycontent %}
+    <div class="container-fluid p-0">
+        <div class="row m-1">
+            <div class="col-8 col-sm-7">
+                <div class="col-xs-12 col-sm-11 col-md-6">
+                    <form action="" method="get">
+                        <input id="search_field"
+                               type="text"
+                               class="form-control"
+                               name="q"
+                               placeholder="Search rego, callsign, etc..."
+                               value="{{ query_string }}" />
+                    </form>
+                </div>
+            </div>
+            <div class="col-4 col-sm-5">
+                <a class="btn btn-primary float-end d-none d-sm-block"
+                   href="{% url 'device_download' %}"
+                   role="button"><i class="fa-solid fa-download"></i> GeoJSON</a>
+                <a class="btn btn-primary float-end d-none d-sm-block mx-1"
+                   href="{% url 'device_download' %}?format=csv"
+                   role="button"><i class="fa-solid fa-download"></i> CSV</a>
+                <a class="btn btn-primary float-end d-none d-sm-block"
+                   href="{% url 'device_map' %}"
+                   role="button"><i class="fa-solid fa-map"></i> Map</a>
+                <a class="float-end d-block d-sm-none" href="{% url 'device_map' %}">Map</a>
+            </div>
+        </div>
+    </div>
+    <div class="row m-0 p-0 align-items-stretch" style="min-height: 80vh">
+        <div class="col m-0 p-0">
+            <table class="table table-sm table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Device ID</th>
+                        <th>Identifier</th>
+                        <th>Registration</th>
+                        <th>Type</th>
+                        <th>Callsign</th>
+                        <th>Region/District</th>
+                        <th>Last seen</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for object in object_list %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'device_detail' pk=object.pk %}">{{ object.id }}</a>
+                            </td>
+                            <td>{{ object.deviceid }}</td>
+                            <td>{{ object.registration }}</td>
+                            <td>{{ object.symbol|capfirst }}</td>
+                            <td>{{ object.callsign }}</td>
+                            <td>{{ object.get_district_display }}</td>
+                            <td>{{ object.seen }}</td>
+                            <td>
+                                <a class="btn btn-primary" href="{% url 'device_route' pk=object.pk %}"><i class="fa-solid fa-download"></i> Route</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}
