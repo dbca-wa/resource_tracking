@@ -76,6 +76,3 @@ eventSource.onmessage = function (event) {
   refreshTrackedDeviceLayer(trackedDeviceLayer, device);
   toastRefresh.show();
 };
-eventSource.onerror = function () {
-  toastError.show();
-};

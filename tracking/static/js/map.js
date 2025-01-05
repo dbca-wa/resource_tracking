@@ -93,12 +93,26 @@ const iconOther = L.icon({
 
 const toastRefresh = bootstrap.Toast.getOrCreateInstance(document.getElementById("toastRefresh"));
 const toastError = bootstrap.Toast.getOrCreateInstance(document.getElementById("toastError"));
+
+// Define layer groups.
+const baseMaps = {
+  OpenStreetMap: openStreetMap,
+  "Mapbox streets": mapboxStreets,
+  "Landgate orthomosaic": landgateOrthomosaic,
+  "State map base 250K": stateMapBase,
+};
+const overlayMaps = {
+  "DBCA Going Bushfires": dbcaBushfires,
+  "DFES Going Bushfires": dfesBushfires,
+  "DBCA regions": dbcaRegions,
+  "LGA boundaries": lgaBoundaries,
+};
 const map = L.map("map", {
   center: [-31.96, 115.87],
   zoom: 12,
   minZoom: 4,
   maxZoom: 18,
-  // layers: [mapboxStreets, trackedDevices], // Sets default selections.
+  layers: [openStreetMap],
   attributionControl: false,
 });
 // Scale bar
@@ -107,17 +121,3 @@ L.control.scale({ maxWidth: 500, imperial: false }).addTo(map);
 L.control.fullscreen().addTo(map);
 // Link to device list view.
 L.easyButton("fa-solid fa-list", () => window.open(device_list_url, "_self"), "Device list", "idDeviceListControl").addTo(map);
-
-// Define layer groups.
-const baseMaps = {
-  "Mapbox streets": mapboxStreets,
-  "Landgate orthomosaic": landgateOrthomosaic,
-  "State map base 250K": stateMapBase,
-  OpenStreetMap: openStreetMap,
-};
-const overlayMaps = {
-  "DBCA Going Bushfires": dbcaBushfires,
-  "DFES Going Bushfires": dfesBushfires,
-  "DBCA regions": dbcaRegions,
-  "LGA boundaries": lgaBoundaries,
-};
