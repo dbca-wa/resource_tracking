@@ -49,7 +49,7 @@
     </div>
 {% endblock %}
 {% block extrajs %}
-    <script>const eventSource = new EventSource("{% url 'device_stream' pk=object.pk %}");</script>
+    <script>const event_source_url = "{% url 'device_stream' pk=object.pk %}";</script>
     <script src="{% static 'js/map.js' %}"></script>
     <script src="{% static 'js/device_detail.js' %}"></script>
 {% endblock %}

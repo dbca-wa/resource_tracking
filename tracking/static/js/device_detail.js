@@ -57,7 +57,8 @@ function refreshTrackedDeviceLayer(trackedDeviceLayer, device) {
   map.flyTo([point.lat, point.lon], map.getZoom());
 }
 
-// The EventSource object is defined on the HTML template.
+// The EventSource URL is defined on the HTML template.
+let eventSource = new EventSource(event_source_url);
 // Ping event, to help maintain the connection.
 let ping = 0;
 eventSource.addEventListener("ping", function (event) {
@@ -76,3 +77,4 @@ eventSource.onmessage = function (event) {
   refreshTrackedDeviceLayer(trackedDeviceLayer, device);
   toastRefresh.show();
 };
+eventSource.onerror = () => toastError.show();

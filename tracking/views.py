@@ -327,17 +327,18 @@ class DeviceStream(View):
             except:
                 data = {}
 
-            #
             # Only send a message event if the device location has changed.
+            # Include a recommended retry delay for reconnections of 15000 ms.
+            # Reference: https://javascript.info/server-sent-events
             if device and device.point.ewkt != last_location:
                 last_location = device.point.ewkt
-                yield f"data: {data}\n\n"
+                yield f"event: message\nretry: 15000\ndata: {data}\n\n"
             else:
                 # Always send a ping to keep the connection open.
-                yield "event: ping\ndata: {}\n\n"
+                yield "event: ping\nretry: 15000\ndata: {}\n\n"
 
             # Sleep for a period before repeating.
-            await asyncio.sleep(30)
+            await asyncio.sleep(10)
 
     async def get(self, request, *args, **kwargs):
         return StreamingHttpResponse(
