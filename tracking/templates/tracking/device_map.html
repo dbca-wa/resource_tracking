@@ -53,6 +53,7 @@
     </div>
 {% endblock %}
 {% block extrajs %}
+    {% comment %}Additional JavaScript variables are defined in the base template.{% endcomment %}
     <script src="{% static 'js/map.js' %}"></script>
     <script src="{% static 'js/device_map.js' %}"></script>
 {% endblock %}

@@ -58,7 +58,7 @@ function refreshTrackedDevicesLayer(trackedDevicesLayer) {
   // Remove any existing data from the layer.
   trackedDevicesLayer.clearLayers();
   // Query the API endpoint for device data.
-  fetch(device_geojson_url)
+  fetch(context.device_geojson_url)
     // Parse the response as JSON.
     .then((resp) => resp.json())
     // Replace the data in the tracked devices layer.

@@ -7,11 +7,31 @@ from django.contrib.gis.geos import LineString
 from django.core.serializers import serialize
 from django.db.models import Q
 from django.http import HttpResponse, HttpResponseBadRequest, StreamingHttpResponse
+from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import DetailView, ListView, TemplateView, View
 
 from tracking.api import CSVSerializer
 from tracking.models import Device, LoggedPoint
+
+# Define a dictionary of context variables to supply to JavaScript in view templates.
+# NOTE: we can't include values needing `reverse` in the dict below due to circular imports.
+JAVASCRIPT_CONTEXT = {
+    "geoserver_url": settings.GEOSERVER_URL,
+    "car_icon_url": f"{settings.STATIC_URL}img/car.png",
+    "ute_icon_url": f"{settings.STATIC_URL}img/4wd_ute.png",
+    "light_unit_icon_url": f"{settings.STATIC_URL}img/light_unit.png",
+    "gang_truck_icon_url": f"{settings.STATIC_URL}img/gang_truck.png",
+    "comms_bus_icon_url": f"{settings.STATIC_URL}img/comms_bus.png",
+    "rotary_aircraft_icon_url": f"{settings.STATIC_URL}img/rotary.png",
+    "plane_icon_url": f"{settings.STATIC_URL}img/plane.png",
+    "dozer_icon_url": f"{settings.STATIC_URL}img/dozer.png",
+    "loader_icon_url": f"{settings.STATIC_URL}img/loader.png",
+    "float_icon_url": f"{settings.STATIC_URL}img/float.png",
+    "fuel_truck_icon_url": f"{settings.STATIC_URL}img/fuel_truck.png",
+    "person_icon_url": f"{settings.STATIC_URL}img/person.png",
+    "other_icon_url": f"{settings.STATIC_URL}img/other.png",
+}
 
 
 class DeviceMap(TemplateView):
@@ -23,7 +43,10 @@ class DeviceMap(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["page_title"] = "DBCA Resource Tracking device map"
-        context["geoserver_url"] = settings.GEOSERVER_URL
+        context["javascript_context"] = JAVASCRIPT_CONTEXT
+        context["javascript_context"]["device_list_url"] = reverse("device_list")
+        context["javascript_context"]["device_map_url"] = reverse("device_map")
+        context["javascript_context"]["device_geojson_url"] = reverse("device_download")
         return context
 
 
@@ -76,7 +99,11 @@ class DeviceDetail(DetailView):
         context = super().get_context_data(**kwargs)
         obj = self.get_object()
         context["page_title"] = f"DBCA Resource Tracking device {obj.deviceid}"
-        context["geoserver_url"] = settings.GEOSERVER_URL
+        context["javascript_context"] = JAVASCRIPT_CONTEXT
+        context["javascript_context"]["device_list_url"] = reverse("device_list")
+        context["javascript_context"]["device_map_url"] = reverse("device_map")
+        context["javascript_context"]["device_geojson_url"] = reverse("device_download")
+        context["javascript_context"]["event_source_url"] = reverse("device_stream", kwargs={"pk": obj.pk})
         return context
 
 

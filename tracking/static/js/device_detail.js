@@ -39,7 +39,7 @@ const trackedDeviceLayer = L.geoJSON(null, {}).addTo(map);
 // Layers control.
 L.control.layers(baseMaps, overlayMaps).addTo(map);
 // Link to device map view.
-L.easyButton("fa-solid fa-map", () => window.open(device_map_url, "_self"), "Device map", "idDeviceMapControl").addTo(map);
+L.easyButton("fa-solid fa-map", () => window.open(context.device_map_url, "_self"), "Device map", "idDeviceMapControl").addTo(map);
 
 // Function to consume streamed device data and repopulate the layer.
 function refreshTrackedDeviceLayer(trackedDeviceLayer, device) {
@@ -58,7 +58,7 @@ function refreshTrackedDeviceLayer(trackedDeviceLayer, device) {
 }
 
 // The EventSource URL is defined on the HTML template.
-let eventSource = new EventSource(event_source_url);
+let eventSource = new EventSource(context.event_source_url);
 // Ping event, to help maintain the connection.
 let ping = 0;
 eventSource.addEventListener("ping", function (event) {
