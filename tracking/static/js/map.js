@@ -1,7 +1,10 @@
 "use strict";
 
+// Parse additional variables from the DOM element.
+const context = JSON.parse(document.getElementById("javascript_context").textContent);
+
 const geoserver_wmts_url =
-  geoserver_url +
+  context.geoserver_url +
   "/gwc/service/wmts?service=WMTS&request=GetTile&version=1.0.0&tilematrixset=mercator&tilematrix=mercator:{z}&tilecol={x}&tilerow={y}";
 const geoserver_wmts_url_base = geoserver_wmts_url + "&format=image/jpeg";
 const geoserver_wmts_url_overlay = geoserver_wmts_url + "&format=image/png";
@@ -26,67 +29,67 @@ const lgaBoundaries = L.tileLayer(geoserver_wmts_url_overlay + "&layer=cddp:loca
 
 // Icon classes (note that URLs are injected into the base template.)
 const iconCar = L.icon({
-  iconUrl: car_icon_url,
+  iconUrl: context.car_icon_url,
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
 const iconUte = L.icon({
-  iconUrl: ute_icon_url,
+  iconUrl: context.ute_icon_url,
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
 const iconLightUnit = L.icon({
-  iconUrl: light_unit_icon_url,
+  iconUrl: context.light_unit_icon_url,
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
 const iconGangTruck = L.icon({
-  iconUrl: gang_truck_icon_url,
+  iconUrl: context.gang_truck_icon_url,
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
 const iconCommsBus = L.icon({
-  iconUrl: comms_bus_icon_url,
+  iconUrl: context.comms_bus_icon_url,
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
 const iconRotary = L.icon({
-  iconUrl: rotary_aircraft_icon_url,
+  iconUrl: context.rotary_aircraft_icon_url,
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
 const iconPlane = L.icon({
-  iconUrl: plane_icon_url,
+  iconUrl: context.plane_icon_url,
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
 const iconDozer = L.icon({
-  iconUrl: dozer_icon_url,
+  iconUrl: context.dozer_icon_url,
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
 const iconLoader = L.icon({
-  iconUrl: loader_icon_url,
+  iconUrl: context.loader_icon_url,
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
 const iconFloat = L.icon({
-  iconUrl: float_icon_url,
+  iconUrl: context.float_icon_url,
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
 const iconFuelTruck = L.icon({
-  iconUrl: fuel_truck_icon_url,
+  iconUrl: context.fuel_truck_icon_url,
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
 const iconPerson = L.icon({
-  iconUrl: person_icon_url,
+  iconUrl: context.person_icon_url,
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
 const iconOther = L.icon({
-  iconUrl: other_icon_url,
+  iconUrl: context.other_icon_url,
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
@@ -120,4 +123,4 @@ L.control.scale({ maxWidth: 500, imperial: false }).addTo(map);
 // Fullscreen control
 L.control.fullscreen().addTo(map);
 // Link to device list view.
-L.easyButton("fa-solid fa-list", () => window.open(device_list_url, "_self"), "Device list", "idDeviceListControl").addTo(map);
+L.easyButton("fa-solid fa-list", () => window.open(context.device_list_url, "_self"), "Device list", "idDeviceListControl").addTo(map);

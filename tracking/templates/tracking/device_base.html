@@ -66,26 +66,8 @@
                 integrity="sha512-Tndo4y/YJooD/mGXS9D6F1YyBcSyrWnnSWQ5Z9IcKt6bljicjyka9qcP99qMFbQ5+omfOtwwIapv1DjBCZcTJQ=="
                 crossorigin="anonymous"
                 referrerpolicy="no-referrer"></script>
-        <script>
-          // Constants injected during template rendering.
-          const geoserver_url = "{{ geoserver_url }}";
-          const device_list_url = "{% url 'device_list' %}";
-          const device_map_url = "{% url 'device_map' %}";
-          const device_geojson_url = "{% url 'device_download' %}";
-          const car_icon_url = "{% static 'img/car.png' %}";
-          const ute_icon_url = "{% static 'img/4wd_ute.png' %}";
-          const light_unit_icon_url = "{% static 'img/light_unit.png' %}";
-          const gang_truck_icon_url = "{% static 'img/gang_truck.png' %}";
-          const comms_bus_icon_url = "{% static 'img/comms_bus.png' %}";
-          const rotary_aircraft_icon_url = "{% static 'img/rotary.png' %}";
-          const plane_icon_url = "{% static 'img/plane.png' %}";
-          const dozer_icon_url = "{% static 'img/dozer.png' %}";
-          const loader_icon_url = "{% static 'img/loader.png' %}";
-          const float_icon_url = "{% static 'img/float.png' %}";
-          const fuel_truck_icon_url = "{% static 'img/fuel_truck.png' %}";
-          const person_icon_url = "{% static 'img/person.png' %}";
-          const other_icon_url = "{% static 'img/other.png' %}";
-        </script>
+        {% comment %}Make additional Javascript variables available from passed-in context.{% endcomment %}
+        {{ javascript_context|json_script:"javascript_context" }}
         {% block extrajs %}{% endblock %}
     </body>
 </html>
