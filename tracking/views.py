@@ -359,7 +359,7 @@ class DeviceStream(View):
             # Reference: https://javascript.info/server-sent-events
             if device and device.point.ewkt != last_location:
                 last_location = device.point.ewkt
-                yield f"event: message\nretry: 15000\ndata: {data}\n\n"
+                yield f"event: message\nretry: 15000\ndata: {data}\nid: {int(device.seen.timestamp())}\n\n"
             else:
                 # Always send a ping to keep the connection open.
                 yield "event: ping\nretry: 15000\ndata: {}\n\n"
