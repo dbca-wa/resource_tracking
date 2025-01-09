@@ -15,7 +15,7 @@ BASE_DIR = str(Path(__file__).resolve().parents[1])
 
 # Application definition
 project = tomllib.load(open(os.path.join(BASE_DIR, "pyproject.toml"), "rb"))
-APPLICATION_VERSION_NO = project["tool"]["poetry"]["version"]
+APPLICATION_VERSION_NO = project["project"]["version"]
 DEBUG = env("DEBUG", False)
 SECRET_KEY = env("SECRET_KEY", "PlaceholderSecretKey")
 CSRF_COOKIE_SECURE = env("CSRF_COOKIE_SECURE", False)
