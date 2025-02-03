@@ -5,7 +5,7 @@ metadata:
   labels:
     app: resourcetracking-cronjob
 spec:
-  schedule: ""
+  schedule: ''
   concurrencyPolicy: Forbid
   jobTemplate:
     spec:
@@ -18,13 +18,14 @@ spec:
             - name: resourcetracking-cronjob
               image: ghcr.io/dbca-wa/resource_tracking
               imagePullPolicy: Always
-              command: ["python"]
-              args: ["--version"]
+              command: ['python']
+              args: ['--version']
               env:
                 - name: TZ
-                  value: "Australia/Perth"
+                  value: 'Australia/Perth'
               securityContext:
                 runAsNonRoot: true
+                runAsUser: 1000
                 privileged: false
                 allowPrivilegeEscalation: false
                 capabilities:

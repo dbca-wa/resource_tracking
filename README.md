@@ -6,22 +6,28 @@ variety of sources and aggregates it into a single database.
 ## Installation
 
 The recommended way to set up this project for development is using
-[Poetry](https://python-poetry.org/docs/) to install and manage a virtual Python
-environment. With Poetry installed, change into the project directory and run:
+[uv](https://docs.astral.sh/uv/)
+to install and manage a Python virtual environment.
+With uv installed, install the required Python version (see `pyproject.toml`). Example:
 
-    poetry install
+    uv python install 3.12
+
+Change into the project directory and run:
+
+    uv python pin 3.12
+    uv sync
 
 Activate the virtualenv like so:
 
-    poetry shell
+    source .venv/bin/activate
 
-To run Python commands in the activated virtualenv, thereafter run them as normal:
+To run Python commands in the activated virtualenv, thereafter run them like so:
 
     python manage.py
 
-Manage new or updating project dependencies with Poetry also, like so:
+Manage new or updated project dependencies with uv also, like so:
 
-    poetry add newpackage==1.0
+    uv add newpackage==1.0
 
 ## Environment variables
 
@@ -76,6 +82,6 @@ This project includes the following pre-commit hooks:
 Pre-commit hooks may have additional system dependencies to run. Optionally
 install pre-commit hooks locally like so:
 
-    poetry run pre-commit install
+    pre-commit install
 
 Reference: <https://pre-commit.com/>
