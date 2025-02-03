@@ -51,7 +51,7 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 # Install the project.
 WORKDIR /app
-COPY gunicorn.py manage.py ./
+COPY gunicorn.py manage.py pyproject.toml ./
 COPY resource_tracking ./resource_tracking
 COPY tracking ./tracking
 RUN python manage.py collectstatic --noinput
