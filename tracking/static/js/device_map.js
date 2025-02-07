@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 // Function to set the icon and popup for each device feature added to the layer.
 function setDeviceStyle(feature, layer) {
@@ -6,7 +6,7 @@ function setDeviceStyle(feature, layer) {
   if (feature.properties.callsign) {
     callsign = feature.properties.callsign;
   } else {
-    callsign = "";
+    callsign = '';
   }
   layer.bindPopup(
     `ID: ${feature.properties.id}<br>
@@ -17,31 +17,31 @@ function setDeviceStyle(feature, layer) {
     <a href="/devices/${feature.properties.id}/">Follow</a>`
   );
   // Set the feature icon.
-  if (feature.properties.icon == "sss-2_wheel_drive") {
+  if (feature.properties.icon == 'sss-2_wheel_drive') {
     layer.setIcon(iconCar);
-  } else if (feature.properties.icon == "sss-4_wheel_drive_passenger") {
+  } else if (feature.properties.icon == 'sss-4_wheel_drive_passenger') {
     layer.setIcon(iconCar);
-  } else if (feature.properties.icon == "sss-4_wheel_drive_ute") {
+  } else if (feature.properties.icon == 'sss-4_wheel_drive_ute') {
     layer.setIcon(iconUte);
-  } else if (feature.properties.icon == "sss-light_unit") {
+  } else if (feature.properties.icon == 'sss-light_unit') {
     layer.setIcon(iconLightUnit);
-  } else if (feature.properties.icon == "sss-gang_truck") {
+  } else if (feature.properties.icon == 'sss-gang_truck') {
     layer.setIcon(iconGangTruck);
-  } else if (feature.properties.icon == "sss-comms_bus") {
+  } else if (feature.properties.icon == 'sss-comms_bus') {
     layer.setIcon(iconCommsBus);
-  } else if (feature.properties.icon == "sss-rotary_aircraft") {
+  } else if (feature.properties.icon == 'sss-rotary_aircraft') {
     layer.setIcon(iconRotary);
-  } else if (feature.properties.icon == "sss-spotter_aircraft") {
+  } else if (feature.properties.icon == 'sss-spotter_aircraft') {
     layer.setIcon(iconPlane);
-  } else if (feature.properties.icon == "sss-dozer") {
+  } else if (feature.properties.icon == 'sss-dozer') {
     layer.setIcon(iconDozer);
-  } else if (feature.properties.icon == "sss-float") {
+  } else if (feature.properties.icon == 'sss-float') {
     layer.setIcon(iconFloat);
-  } else if (feature.properties.icon == "sss-loader") {
+  } else if (feature.properties.icon == 'sss-loader') {
     layer.setIcon(iconLoader);
-  } else if (feature.properties.icon == "sss-aviation_fuel_truck") {
+  } else if (feature.properties.icon == 'sss-aviation_fuel_truck') {
     layer.setIcon(iconFuelTruck);
-  } else if (feature.properties.icon == "sss-person") {
+  } else if (feature.properties.icon == 'sss-person') {
     layer.setIcon(iconPerson);
   } else {
     layer.setIcon(iconOther);
@@ -82,16 +82,16 @@ L.control.layers(baseMaps, overlayMaps).addTo(map);
 // Device registration search
 new L.Control.Search({
   layer: trackedDevices,
-  propertyName: "registration",
-  textPlaceholder: "Search registration",
+  propertyName: 'registration',
+  textPlaceholder: 'Search registration',
   delayType: 1000,
-  textErr: "Registration not found",
+  textErr: 'Registration not found',
   zoom: 16,
   circleLocation: true,
   autoCollapse: true,
 }).addTo(map);
 //
 // Refresh tracked devices control.
-L.easyButton("fa-solid fa-arrows-rotate", function () {
+L.easyButton('fa-solid fa-arrows-rotate', function () {
   refreshTrackedDevicesLayer(trackedDevices);
 }).addTo(map);
