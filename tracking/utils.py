@@ -200,6 +200,7 @@ def parse_dfes_feature(feature):
             "heading": properties["Direction"],
             "altitude": 0,  # DFES feed does not report altiude.
             "type": "dfes",
+            "vehicle_group": properties["VehicleGroupName"].strip(),
         }
     except:
         return False
