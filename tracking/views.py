@@ -67,11 +67,13 @@ class DeviceList(ListView):
     def get_queryset(self):
         qs = super().get_queryset()
 
+        # Always filter out "hidden" devices.
+        qs = qs.filter(hidden=False)
+
+        # Optional filter to limit devices to those seen within the last n days.
         if self.request.GET.get("days", None):
             days = int(self.request.GET["days"])
-        else:
-            days = 14
-        qs = qs.filter(seen__gte=timezone.now() - timedelta(days=days))
+            qs = qs.filter(seen__gte=timezone.now() - timedelta(days=days))
 
         # Querying on device callsign, registration and/or device ID.
         if self.request.GET.get("q", None):
@@ -170,9 +172,7 @@ class SpatialDataView(View):
 
 
 class DeviceListDownload(SpatialDataView):
-    """Return structured data about tracking devices seen in the previous n days
-    (14 by default).
-    """
+    """Return structured data about tracking devices."""
 
     model = Device
     geometry_field = "point"
@@ -196,11 +196,13 @@ class DeviceListDownload(SpatialDataView):
     def get_queryset(self):
         qs = super().get_queryset()
 
+        # Always filter out "hidden" devices.
+        qs = qs.filter(hidden=False)
+
+        # Optional filter to limit devices to those seen within the last n days.
         if self.request.GET.get("days", None):
             days = int(self.request.GET["days"])
-        else:
-            days = 14
-        qs = qs.filter(seen__gte=timezone.now() - timedelta(days=days))
+            qs = qs.filter(seen__gte=timezone.now() - timedelta(days=days))
 
         # Querying on device callsign, registration and/or device ID.
         if self.request.GET.get("q", None):
@@ -216,31 +218,40 @@ class DeviceListDownload(SpatialDataView):
 
 
 class DeviceHistoryDownload(SpatialDataView):
-    """Return structured data of the tracking points for a single device over the previous n days
+    """Return structured data of the tracking points for a single device over the most-recent n days
     (14 by default).
     """
 
     model = LoggedPoint
     geometry_field = "point"
-    properties = ("id", "heading", "velocity", "altitude", "seen", "raw", "device_id")
+    properties = ("id", "heading", "velocity", "altitude", "seen", "device_id")
 
     def dispatch(self, *args, **kwargs):
         if "pk" not in self.kwargs:
             return HttpResponseBadRequest("Missing device PK")
         return super().dispatch(*args, **kwargs)
 
+    def get_device(self):
+        if not Device.objects.filter(pk=self.kwargs["pk"]).exists():
+            return HttpResponseBadRequest("Unknown device")
+        return Device.objects.get(pk=self.kwargs["pk"])
+
     def get_filename_prefix(self):
-        device = Device.objects.get(pk=self.kwargs["pk"])
+        device = self.get_device()
         return f"{device.deviceid}_loggedpoint"
 
     def get_queryset(self):
         qs = super().get_queryset()
-        qs = qs.filter(device_id=self.kwargs["pk"])
+        device = self.get_device()
+        qs = qs.filter(device=device)
 
         start = self.request.GET.get("start", default=None)
         if start is None:
-            # start is missing, use the default value: 14 days before
-            start = timezone.now() - timedelta(days=14)
+            # Use the date when the device was last seen.
+            if device.seen:
+                start = device.seen.date() - timedelta(days=14)
+            else:
+                start = timezone.now() - timedelta(days=14)
         else:
             try:
                 # Parse the start date as ISO8601 date format
@@ -270,9 +281,8 @@ class DeviceRouteDownload(DeviceHistoryDownload):
     def get(self, request, *args, **kwargs):
         """Override this method to return a linestring dataset instead of points."""
         qs = self.get_queryset()
-        device = Device.objects.get(pk=self.kwargs["pk"])
+        device = self.get_device()
         filename_prefix = f"{device.deviceid}_route"
-
         start_point = None
 
         # Modify the query of LoggedPoint objects in-place: set an attribute called `route` on
@@ -292,7 +302,8 @@ class DeviceRouteDownload(DeviceHistoryDownload):
             start_point = loggedpoint
 
         # Exclude the last loggedpoint in the queryset because it won't have the `route` attribute.
-        qs = qs[: len(qs) - 1]
+        if qs:
+            qs = qs[: len(qs) - 1]
 
         geojson = serialize(
             "geojson",
@@ -305,7 +316,6 @@ class DeviceRouteDownload(DeviceHistoryDownload):
                 "velocity",
                 "altitude",
                 "seen",
-                "raw",
                 "device_id",
                 "label",
             ),
@@ -359,7 +369,7 @@ class DeviceStream(View):
             # Reference: https://javascript.info/server-sent-events
             if device and device.point.ewkt != last_location:
                 last_location = device.point.ewkt
-                yield f"event: message\nretry: 15000\ndata: {data}\n\n"
+                yield f"event: message\nretry: 15000\ndata: {data}\nid: {int(device.seen.timestamp())}\n\n"
             else:
                 # Always send a ping to keep the connection open.
                 yield "event: ping\nretry: 15000\ndata: {}\n\n"

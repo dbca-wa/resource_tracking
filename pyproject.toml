@@ -1,35 +1,48 @@
-[tool.poetry]
+[project]
 name = "resource_tracking"
-version = "1.4.24"
+version = "1.4.25"
 description = "DBCA internal corporate application to download and serve data from remote tracking devices."
-authors = ["DBCA OIM <asi@dbca.wa.gov.au>"]
+authors = [
+  { name = "Ashley Felton", email = "ashley.felton@dbca.wa.gov.au" },
+  { name = "Rocky Chen", email = "rocky.chen@dbca.wa.gov.au" },
+  { name = "Adon Metcalfe", email = "adon.metcalfe@dbca.wa.gov.au" },
+  { name = "Wilson Cheung", email = "wilson.cheung@dbca.wa.gov.au" },
+  { name = "Patrick Maslen", email = "patrick.maslen@dbca.wa.gov.au" },
+  { name = "Brendan Cale", email = "brendan.cale@dbca.wa.gov.au" },
+]
 license = "Apache-2.0"
-package-mode = false
+requires-python = ">=3.12,<4.0"
+dependencies = [
+  "django == 4.2.18",
+  "psycopg[binary,pool] == 3.2.4",
+  "dbca-utils == 2.0.3",
+  "django-extensions == 3.2.3",
+  "python-dotenv == 1.0.1",
+  "dj-database-url == 2.3.0",
+  "gunicorn == 23.0.0",
+  "unicodecsv == 0.14.1",
+  "whitenoise[brotli] == 6.8.2",
+  "sentry-sdk[django]==2.20.0",
+  "django-tastypie == 0.14.7",
+  "django-geojson == 4.1.0",
+  "azure-storage-blob == 12.23.1",
+  "uvicorn[standard] == 0.34.0",
+  "uvicorn-worker == 0.3.0",
+  "orjson == 3.10.13",
+]
 
-[tool.poetry.dependencies]
-python = "^3.12"
-django = "4.2.17"
-psycopg = { version = "3.2.3", extras = ["binary", "pool"] }
-dbca-utils = "2.0.2"
-python-dotenv = "1.0.1"
-dj-database-url = "2.3.0"
-gunicorn = "23.0.0"
-django-extensions = "3.2.3"
-django-tastypie = "0.14.7"
-django-geojson = "4.1.0"
-unicodecsv = "0.14.1"
-whitenoise = { version = "6.8.2", extras = ["brotli"] }
-azure-storage-blob = "12.23.1"
-sentry-sdk = { version = "2.19.2", extras = ["django"] }
-uvicorn = { extras = ["standard"], version = "^0.34.0" }
-uvicorn-worker = "^0.3.0"
-orjson = "3.10.13"
+[dependency-groups]
+dev = [
+  "ipython >= 8.31.0",
+  "ipdb >= 0.13.13",
+  "mixer >= 7.2.2",
+  "pre-commit >= 4.0.1",
+]
 
-[tool.poetry.group.dev.dependencies]
-ipython = "^8.31.0"
-ipdb = "^0.13.13"
-pre-commit = "^4.0.1"
-mixer = "^7.2.2"
+[project.urls]
+homepage = "https://github.com/dbca-wa/resource_tracking"
+source = "https://github.com/dbca-wa/resource_tracking.git"
+GitHub = "https://github.com/dbca-wa/resource_tracking"
 
 # Reference: https://docs.astral.sh/ruff/configuration/
 [tool.ruff]
@@ -44,7 +57,3 @@ ignore = [
 # Reference: https://www.djlint.com/docs/configuration/
 [tool.djlint]
 profile = "django"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.masonry.api"

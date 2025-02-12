@@ -1,11 +1,11 @@
-name: "Run unit tests"
+name: 'Run unit tests'
 
 on:
   # Triggers the workflow on push or pull request events but only for the master branch
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
   workflow_dispatch:
 
 jobs:
@@ -46,34 +46,21 @@ jobs:
         with:
           python-version: '3.12'
       #----------------------------------------------
-      # Install & configure Poetry
+      # Install & configure uv
       #----------------------------------------------
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v5
         with:
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-          installer-parallel: true
+          enable-cache: true
       #----------------------------------------------
-      # Load cached venv if cache exists
+      # Install project dependencies
       #----------------------------------------------
-      - name: Load cached venv
-        id: cached-poetry-dependencies
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
-      #----------------------------------------------
-      # Install project dependencies if cache does not exist
-      #----------------------------------------------
-      - name: Install project dependencies
-        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-        run: poetry install --no-interaction --no-root
+      - name: Install dependencies
+        run: uv sync
       #----------------------------------------------
       # Run unit tests
       #----------------------------------------------
       - name: Run tests
         run: |
-          source .venv/bin/activate
-          python manage.py collectstatic
-          python manage.py test --noinput --failfast --verbosity 0
+          uv run python manage.py collectstatic
+          uv run python manage.py test --noinput --failfast --verbosity 0

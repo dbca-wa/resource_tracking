@@ -383,6 +383,11 @@ def save_dfes_feed():
             skipped_device += 1
             continue
 
+        # Skip archived, decommissioned vehicles.
+        if data["vehicle_group"] in ["Decommissioned", "Archive"]:
+            skipped_device += 1
+            continue
+
         # Validate lat/lon values.
         if not validate_latitude_longitude(data["latitude"], data["longitude"]):
             LOGGER.warning(
