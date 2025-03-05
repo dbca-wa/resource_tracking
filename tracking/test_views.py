@@ -76,3 +76,10 @@ class ViewTestCase(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["Content-Type"], "application/vnd.geo+json")
+
+    def test_device_metrics_source(self):
+        """Test the device metrics view"""
+        url = reverse("device_metrics_source", kwargs={"source_device_type": self.device.source_device_type})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["Content-Type"], "application/json")
