@@ -22,7 +22,7 @@ dependencies = [
   "gunicorn == 23.0.0",
   "unicodecsv == 0.14.1",
   "whitenoise[brotli] == 6.8.2",
-  "sentry-sdk[django]==2.20.0",
+  "sentry-sdk[django]==2.24.1",
   "django-tastypie == 0.14.7",
   "django-geojson == 4.1.0",
   "azure-storage-blob == 12.23.1",
