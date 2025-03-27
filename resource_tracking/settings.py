@@ -178,6 +178,7 @@ SENTRY_PROFILES_SAMPLE_RATE = env("SENTRY_PROFILES_SAMPLE_RATE", 0.0)  # Proport
 SENTRY_ENVIRONMENT = env("SENTRY_ENVIRONMENT", None)
 if SENTRY_DSN and SENTRY_ENVIRONMENT:
     import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
 
     sentry_sdk.init(
         dsn=SENTRY_DSN,
@@ -187,4 +188,5 @@ if SENTRY_DSN and SENTRY_ENVIRONMENT:
         profiles_sample_rate=SENTRY_PROFILES_SAMPLE_RATE,
         release=APPLICATION_VERSION_NO,
         before_send=sentry_excluded_exceptions,
+        integrations=[DjangoIntegration(cache_spans=True)],
     )

@@ -6,13 +6,13 @@ from django.conf import settings
 from django.contrib.gis.geos import LineString
 from django.core.serializers import serialize
 from django.db.models import Q
-from django.http import HttpResponse, HttpResponseBadRequest, StreamingHttpResponse
+from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse, StreamingHttpResponse
 from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import DetailView, ListView, TemplateView, View
 
 from tracking.api import CSVSerializer
-from tracking.models import Device, LoggedPoint
+from tracking.models import SOURCE_DEVICE_TYPE_CHOICES, Device, LoggedPoint
 
 # Define a dictionary of context variables to supply to JavaScript in view templates.
 # NOTE: we can't include values needing `reverse` in the dict below due to circular imports.
@@ -86,9 +86,6 @@ class DeviceList(ListView):
             )
 
         return qs
-
-    def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
 
 
 class DeviceDetail(DetailView):
@@ -386,4 +383,46 @@ class DeviceStream(View):
                 "Cache-Control": "private, no-store",
                 "Connection": "keep-alive",
             },
+        )
+
+
+class DeviceMetricsSource(View):
+    """A basic metrics view that returns the count of logged points for a given source device type
+    over the previous n minutes."""
+
+    http_method_names = ["get"]
+
+    def get(self, request, *args, **kwargs):
+        source_device_type = kwargs["source_device_type"]
+        # Basic validation of the source device type.
+        if source_device_type not in [i[0] for i in SOURCE_DEVICE_TYPE_CHOICES]:
+            return HttpResponseBadRequest("Bad request")
+
+        if request.GET.get("minutes", None):
+            try:
+                minutes = int(request.GET["minutes"])
+            except ValueError:
+                return HttpResponseBadRequest("Bad request")
+            # Maximum duration considered is 24h, minimum is 1 minute.
+            if minutes > 1440 or minutes < 1:
+                return HttpResponseBadRequest("Bad request")
+        else:
+            # Default to the previous 15 minutes.
+            minutes = 15
+
+        since = timezone.now() - timedelta(minutes=minutes)
+        logged_point_count = LoggedPoint.objects.filter(seen__gte=since, source_device_type=source_device_type).count()
+        source_device_type_display = source_device_type
+        for i in SOURCE_DEVICE_TYPE_CHOICES:
+            if source_device_type == i[0]:
+                source_device_type_display = i[1]
+                break
+
+        return JsonResponse(
+            {
+                "timestamp": timezone.now(),
+                "source_device_type": source_device_type_display,
+                "minutes": minutes,
+                "logged_point_count": logged_point_count,
+            }
         )

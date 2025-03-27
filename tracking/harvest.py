@@ -459,7 +459,9 @@ def save_tracplus_feed():
         return
 
     content = resp.content.decode("utf-8")
-    latest = list(csv.DictReader(content.split("\n")))
+    # Split the content body on newline boundaries.
+    lines = content.splitlines()
+    latest = list(csv.DictReader(lines))
     LOGGER.info(f"{len(latest)} records downloaded, processing")
 
     created_device = 0
