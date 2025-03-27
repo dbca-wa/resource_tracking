@@ -29,4 +29,4 @@ patches:
   - path: service_patch.yaml
 images:
   - name: ghcr.io/dbca-wa/resource_tracking
-    newTag: 1.4.26
+    newTag: 1.4.27
