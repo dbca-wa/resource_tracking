@@ -24,7 +24,7 @@ dependencies = [
   "whitenoise[brotli]==6.9.0",
   "sentry-sdk[django]==2.24.1",
   "django-tastypie==0.15.1",
-  "django-geojson==4.1.0",
+  "django-geojson==4.2.0",
   "azure-storage-blob==12.25.0",
   "uvicorn[standard]==0.34.0",
   "uvicorn-worker==0.3.0",
