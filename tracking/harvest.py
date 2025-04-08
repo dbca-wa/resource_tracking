@@ -1,5 +1,7 @@
 import csv
 import logging
+import xml.etree.ElementTree as ET
+from datetime import datetime
 from imaplib import IMAP4
 
 import requests
@@ -620,6 +622,92 @@ def save_tracertrak_feed():
             loggedpoint.heading = data["heading"]
             loggedpoint.velocity = data["velocity"]
             loggedpoint.altitude = data["altitude"]
+            loggedpoint.save()
+            logged_points += 1
+
+    LOGGER.info(
+        f"Created {created_device}, updated {updated_device}, skipped {skipped_device}, {logged_points} new logged points"
+    )
+
+
+def save_netstar_feed():
+    """Download the Netstar API feed (returns XML) and create/update devices returned."""
+    LOGGER.info("Querying Netstar API")
+    try:
+        resp = requests.get(url=settings.NETSTAR_URL, auth=(settings.NETSTAR_USER, settings.NETSTAR_PASS))
+    except (requests.ConnectionError, requests.Timeout) as err:
+        LOGGER.warning(f"Connection error: {err}")
+        return
+
+    # Don't raise an exception on non-200 response.
+    if not resp.status_code == 200:
+        LOGGER.warning(f"Netstar API response returned non-200 status: {resp.status_code}")
+        return
+
+    # Parse the API response.
+    ns = {"fleet": "http://schemas.aemp.org/fleet"}  # The XML response is namedspaced.
+    tree = ET.ElementTree(ET.fromstring(resp.content))
+    root = tree.getroot()
+
+    LOGGER.info(f"Netstar API returned {len(root)} fleet devices, processing")
+
+    updated_device = 0
+    created_device = 0
+    skipped_device = 0
+    logged_points = 0
+
+    for equipment in root.findall("fleet:Equipment", ns):
+        try:
+            equipment_header = equipment.find("fleet:EquipmentHeader", ns)
+            equipment_id = equipment_header.find("fleet:EquipmentID", ns).text
+            location = equipment.find("fleet:Location", ns)
+            timestamp = location.attrib["datetime"]
+            latitude = location.find("fleet:Latitude", ns).text
+            longitude = location.find("fleet:Longitude", ns).text
+            data = {
+                "device_id": f"netstar_{equipment_id}".lower(),
+                "timestamp": datetime.fromisoformat(timestamp),
+                "latitude": float(latitude),
+                "longitude": float(longitude),
+            }
+        except Exception as e:
+            LOGGER.warning("Exception during parsing Netstar data")
+            LOGGER.error(e)
+            continue
+
+        # Validate lat/lon values.
+        if not validate_latitude_longitude(data["latitude"], data["longitude"]):
+            LOGGER.warning(
+                f"Bad geometry while parsing data for Netstar device {data['device_id']}: {data['latitude']}, {data['longitude']}"
+            )
+            skipped_device += 1
+            continue
+
+        try:
+            device, created = Device.objects.get_or_create(deviceid=data["device_id"])
+        except Exception as e:
+            LOGGER.warning(f"Exception during creation/query of Netstar device: {data}")
+            LOGGER.error(e)
+            continue
+
+        if created:
+            created_device += 1
+            device.source_device_type = "netstar"
+        else:
+            updated_device += 1
+
+        seen = data["timestamp"]
+        point = f"POINT({data['longitude']} {data['latitude']})"
+
+        if not device.seen or device.seen < seen:
+            device.seen = seen
+            device.point = point
+
+        device.save()
+
+        loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
+        if created:
+            loggedpoint.source_device_type = "netstar"
             loggedpoint.save()
             logged_points += 1
 
