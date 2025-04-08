@@ -119,6 +119,7 @@ SOURCE_DEVICE_TYPE_CHOICES = (
     ("dfes", "DFES"),
     ("mp70", "MP70"),
     ("fleetcare", "Fleetcare"),
+    ("netstar", "Netstar"),
     ("other", "Other"),
 )
 
