@@ -230,3 +230,24 @@ def parse_tracertrak_feature(feature):
         return False
 
     return data
+
+
+def parse_netstar_feature(feature):
+    """Features will be a JSON object."""
+
+    try:
+        data = {
+            "device_id": f"{feature['TrackerID']}",
+            "timestamp": datetime.fromisoformat(feature["Time"]).replace(tzinfo=timezone.utc),
+            "longitude": feature["Longitude"],
+            "latitude": feature["Latitude"],
+            "velocity": feature["Speed"] * 1000,  # Convert km/h to m/h
+            "heading": feature["Direction"],
+            "altitude": 0,  # Feed does not report altiude.
+            "type": "netstar",
+            "registration": feature["Rego"],
+        }
+    except:
+        return False
+
+    return data

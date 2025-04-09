@@ -1,7 +1,5 @@
 import csv
 import logging
-import xml.etree.ElementTree as ET
-from datetime import datetime
 from imaplib import IMAP4
 
 import requests
@@ -15,6 +13,7 @@ from tracking.utils import (
     parse_dplus_payload,
     parse_iriditrak_message,
     parse_mp70_payload,
+    parse_netstar_feature,
     parse_spot_message,
     parse_tracertrak_feature,
     parse_tracplus_row,
@@ -645,46 +644,37 @@ def save_netstar_feed():
         return
 
     # Parse the API response.
-    ns = {"fleet": "http://schemas.aemp.org/fleet"}  # The XML response is namedspaced.
-    tree = ET.ElementTree(ET.fromstring(resp.content))
-    root = tree.getroot()
+    try:
+        vehicles = resp.json()["Vehicles"]
+    except requests.models.JSONDecodeError as err:
+        LOGGER.warning(f"Error parsing Netstar API response: {err.doc}")
+        return
 
-    LOGGER.info(f"Netstar API returned {len(root)} fleet devices, processing")
+    LOGGER.info(f"Netstar API returned {len(vehicles)} vehicles, processing")
 
     updated_device = 0
     created_device = 0
     skipped_device = 0
     logged_points = 0
 
-    for equipment in root.findall("fleet:Equipment", ns):
-        try:
-            equipment_header = equipment.find("fleet:EquipmentHeader", ns)
-            equipment_id = equipment_header.find("fleet:EquipmentID", ns).text
-            location = equipment.find("fleet:Location", ns)
-            timestamp = location.attrib["datetime"]
-            latitude = location.find("fleet:Latitude", ns).text
-            longitude = location.find("fleet:Longitude", ns).text
-            data = {
-                "device_id": f"netstar_{equipment_id}".lower(),
-                "timestamp": datetime.fromisoformat(timestamp),
-                "latitude": float(latitude),
-                "longitude": float(longitude),
-            }
-        except Exception as e:
-            LOGGER.warning("Exception during parsing Netstar data")
-            LOGGER.error(e)
+    for vehicle in vehicles:
+        data = parse_netstar_feature(vehicle)
+
+        if not data:
+            LOGGER.warning(f"Unable to parse Netstar feed feature: {vehicle['TrackerID']}")
+            skipped_device += 1
             continue
 
         # Validate lat/lon values.
         if not validate_latitude_longitude(data["latitude"], data["longitude"]):
             LOGGER.warning(
-                f"Bad geometry while parsing data for Netstar device {data['device_id']}: {data['latitude']}, {data['longitude']}"
+                f"Bad geometry while parsing data for Netstar device {vehicle['TrackerID']}: {data['latitude']}, {data['longitude']}"
             )
             skipped_device += 1
             continue
 
         try:
-            device, created = Device.objects.get_or_create(deviceid=data["device_id"])
+            device, created = Device.objects.get_or_create(deviceid=f"ns_{data['device_id']}")
         except Exception as e:
             LOGGER.warning(f"Exception during creation/query of Netstar device: {data}")
             LOGGER.error(e)
@@ -692,10 +682,11 @@ def save_netstar_feed():
 
         if created:
             created_device += 1
-            device.source_device_type = "netstar"
+            device.source_device_type = data["type"]
         else:
             updated_device += 1
 
+        device.registration = data["registration"]
         seen = data["timestamp"]
         point = f"POINT({data['longitude']} {data['latitude']})"
 
