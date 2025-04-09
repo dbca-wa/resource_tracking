@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: resourcetracking-cronjob
+spec:
+  schedule: '* * * * *'
+  suspend: true
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: resourcetracking-cronjob
+              args: ['manage.py', 'harvest_netstar_feed']
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: resourcetracking-env-uat
+                      key: DATABASE_URL
+                - name: NETSTAR_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: resourcetracking-env-uat
+                      key: NETSTAR_URL
+                - name: NETSTAR_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: resourcetracking-env-uat
+                      key: NETSTAR_USER
+                - name: NETSTAR_PASS
+                  valueFrom:
+                    secretKeyRef:
+                      name: resourcetracking-env-uat
+                      key: NETSTAR_PASS
+                - name: SENTRY_DSN
+                  valueFrom:
+                    secretKeyRef:
+                      name: resourcetracking-env-uat
+                      key: SENTRY_DSN
+                - name: SENTRY_ENVIRONMENT
+                  value: 'uat'

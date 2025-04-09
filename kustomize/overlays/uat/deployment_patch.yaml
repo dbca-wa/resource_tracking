@@ -64,6 +64,21 @@ spec:
                 secretKeyRef:
                   name: resourcetracking-env-uat
                   key: TRACERTRAK_AUTH_TOKEN
+            - name: NETSTAR_URL
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-uat
+                  key: NETSTAR_URL
+            - name: NETSTAR_USER
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-uat
+                  key: NETSTAR_USER
+            - name: NETSTAR_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-uat
+                  key: NETSTAR_PASS
             - name: GEOSERVER_URL
               valueFrom:
                 secretKeyRef:
@@ -85,4 +100,4 @@ spec:
                   name: resourcetracking-env-uat
                   key: SENTRY_PROFILES_SAMPLE_RATE
             - name: SENTRY_ENVIRONMENT
-              value: "uat"
+              value: 'uat'
