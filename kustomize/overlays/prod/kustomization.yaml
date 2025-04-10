@@ -8,6 +8,7 @@ resources:
   - cronjobs/harvest-email-iriditrak
   - cronjobs/harvest-email-mp70
   - cronjobs/harvest-email-spot
+  - cronjobs/harvest-netstar
   - cronjobs/harvest-tracertrak
   - cronjobs/harvest-tracplus
   - ingress.yaml
@@ -29,4 +30,4 @@ patches:
   - path: service_patch.yaml
 images:
   - name: ghcr.io/dbca-wa/resource_tracking
-    newTag: 1.4.27
+    newTag: 1.4.28

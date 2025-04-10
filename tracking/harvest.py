@@ -13,6 +13,7 @@ from tracking.utils import (
     parse_dplus_payload,
     parse_iriditrak_message,
     parse_mp70_payload,
+    parse_netstar_feature,
     parse_spot_message,
     parse_tracertrak_feature,
     parse_tracplus_row,
@@ -620,6 +621,84 @@ def save_tracertrak_feed():
             loggedpoint.heading = data["heading"]
             loggedpoint.velocity = data["velocity"]
             loggedpoint.altitude = data["altitude"]
+            loggedpoint.save()
+            logged_points += 1
+
+    LOGGER.info(
+        f"Created {created_device}, updated {updated_device}, skipped {skipped_device}, {logged_points} new logged points"
+    )
+
+
+def save_netstar_feed():
+    """Download the Netstar API feed (returns XML) and create/update devices returned."""
+    LOGGER.info("Querying Netstar API")
+    try:
+        resp = requests.get(url=settings.NETSTAR_URL, auth=(settings.NETSTAR_USER, settings.NETSTAR_PASS))
+    except (requests.ConnectionError, requests.Timeout) as err:
+        LOGGER.warning(f"Connection error: {err}")
+        return
+
+    # Don't raise an exception on non-200 response.
+    if not resp.status_code == 200:
+        LOGGER.warning(f"Netstar API response returned non-200 status: {resp.status_code}")
+        return
+
+    # Parse the API response.
+    try:
+        vehicles = resp.json()["Vehicles"]
+    except requests.models.JSONDecodeError as err:
+        LOGGER.warning(f"Error parsing Netstar API response: {err.doc}")
+        return
+
+    LOGGER.info(f"Netstar API returned {len(vehicles)} vehicles, processing")
+
+    updated_device = 0
+    created_device = 0
+    skipped_device = 0
+    logged_points = 0
+
+    for vehicle in vehicles:
+        data = parse_netstar_feature(vehicle)
+
+        if not data:
+            LOGGER.warning(f"Unable to parse Netstar feed feature: {vehicle['TrackerID']}")
+            skipped_device += 1
+            continue
+
+        # Validate lat/lon values.
+        if not validate_latitude_longitude(data["latitude"], data["longitude"]):
+            LOGGER.warning(
+                f"Bad geometry while parsing data for Netstar device {vehicle['TrackerID']}: {data['latitude']}, {data['longitude']}"
+            )
+            skipped_device += 1
+            continue
+
+        try:
+            device, created = Device.objects.get_or_create(deviceid=f"ns_{data['device_id']}")
+        except Exception as e:
+            LOGGER.warning(f"Exception during creation/query of Netstar device: {data}")
+            LOGGER.error(e)
+            continue
+
+        if created:
+            created_device += 1
+            device.source_device_type = data["type"]
+        else:
+            updated_device += 1
+
+        device.registration = data["registration"]
+        seen = data["timestamp"]
+        point = f"POINT({data['longitude']} {data['latitude']})"
+
+        if not device.seen or device.seen < seen:
+            device.seen = seen
+            device.point = point
+
+        device.save()
+
+        loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
+        if created:
+            loggedpoint.source_device_type = "netstar"
             loggedpoint.save()
             logged_points += 1
 

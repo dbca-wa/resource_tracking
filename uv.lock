@@ -50,7 +50,7 @@ wheels = [
 
 [[package]]
 name = "azure-storage-blob"
-version = "12.25.0"
+version = "12.25.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "azure-core" },
@@ -58,9 +58,9 @@ dependencies = [
     { name = "isodate" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8a/a6/343e225ffd1c27971fa3059b8bbb90088042ff9a41f631fdf2f9df4f190e/azure_storage_blob-12.25.0.tar.gz", hash = "sha256:42364ca8f9f49dbccd0acc10144ed47bb6770bf78719970b51915f048891abba", size = 570274 }
+sdist = { url = "https://files.pythonhosted.org/packages/8b/f3/f764536c25cc3829d36857167f03933ce9aee2262293179075439f3cd3ad/azure_storage_blob-12.25.1.tar.gz", hash = "sha256:4f294ddc9bc47909ac66b8934bd26b50d2000278b10ad82cc109764fdc6e0e3b", size = 570541 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8a/90/b2bb0c338a486e62428d5126236d09e03e890f59c4939292e13ee57e5007/azure_storage_blob-12.25.0-py3-none-any.whl", hash = "sha256:a38e18bf10258fb19028f343db0d3d373280c6427a619c98c06d76485805b755", size = 406921 },
+    { url = "https://files.pythonhosted.org/packages/57/33/085d9352d416e617993821b9d9488222fbb559bc15c3641d6cbd6d16d236/azure_storage_blob-12.25.1-py3-none-any.whl", hash = "sha256:1f337aab12e918ec3f1b638baada97550673911c4ceed892acc8e4e891b74167", size = 406990 },
 ]
 
 [[package]]
@@ -314,14 +314,14 @@ wheels = [
 
 [[package]]
 name = "django-geojson"
-version = "4.1.0"
+version = "4.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b9/65/9a3df3ecbc78d5d3f5de240d87d689466012a17690f624febb95178d776e/django_geojson-4.1.0.tar.gz", hash = "sha256:d044803ef8ce5039d89a5c53ecf6cb9dd0068acb31ceade041f6c14b1b2a723a", size = 20939 }
+sdist = { url = "https://files.pythonhosted.org/packages/c6/94/b7f83ffa37fbc4e8055243a298198858ead93d8d63c7e4c6aeae2b539765/django_geojson-4.2.0.tar.gz", hash = "sha256:1d35a22384c89165cfc5a47c3033b918b1035b86bd3862500a003e93cecb7816", size = 21107 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/46/44/9e9763876dc137bddcf44ee5650b7e5b4bd2e72846d09967a15d5d55a6d0/django_geojson-4.1.0-py3-none-any.whl", hash = "sha256:27cb3dc94f448300157d05646a8d3ff14e9e36a58181c47a654e307c449fd9da", size = 22680 },
+    { url = "https://files.pythonhosted.org/packages/70/fc/f59aa9e7742cdada368582c9b16c3f007d046b9854f97fead8e7ee501e00/django_geojson-4.2.0-py3-none-any.whl", hash = "sha256:bdee93c1915147cbd37ee6299c1eaa588d86693f8402f48b0803825eee6bf23b", size = 22812 },
 ]
 
 [[package]]
@@ -727,11 +727,11 @@ wheels = [
 
 [[package]]
 name = "python-dotenv"
-version = "1.0.1"
+version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/bc/57/e84d88dfe0aec03b7a2d4327012c1627ab5f03652216c63d49846d7a6c58/python-dotenv-1.0.1.tar.gz", hash = "sha256:e324ee90a023d808f1959c46bcbc04446a10ced277783dc6ee09987c37ec10ca", size = 39115 }
+sdist = { url = "https://files.pythonhosted.org/packages/88/2c/7bb1416c5620485aa793f2de31d3df393d3686aa8a8506d11e10e13c5baf/python_dotenv-1.1.0.tar.gz", hash = "sha256:41f90bc6f5f177fb41f53e87666db362025010eb28f60a01c9143bfa33a2b2d5", size = 39920 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6a/3e/b68c118422ec867fa7ab88444e1274aa40681c606d59ac27de5a5588f082/python_dotenv-1.0.1-py3-none-any.whl", hash = "sha256:f7b63ef50f1b690dddf550d03497b66d609393b40b564ed0d674909a68ebf16a", size = 19863 },
+    { url = "https://files.pythonhosted.org/packages/1e/18/98a99ad95133c6a6e2005fe89faedf294a748bd5dc803008059409ac9b1e/python_dotenv-1.1.0-py3-none-any.whl", hash = "sha256:d7c01d9e2293916c18baf562d95698754b0dbbb5e74d457c45d4f6561fb9d55d", size = 20256 },
 ]
 
 [[package]]
@@ -786,7 +786,7 @@ wheels = [
 
 [[package]]
 name = "resource-tracking"
-version = "1.4.26"
+version = "1.4.27"
 source = { virtual = "." }
 dependencies = [
     { name = "azure-storage-blob" },
@@ -817,18 +817,18 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "azure-storage-blob", specifier = "==12.25.0" },
+    { name = "azure-storage-blob", specifier = "==12.25.1" },
     { name = "dbca-utils", specifier = "==2.0.3" },
     { name = "dj-database-url", specifier = "==2.3.0" },
     { name = "django", specifier = "==4.2.20" },
     { name = "django-extensions", specifier = "==3.2.3" },
-    { name = "django-geojson", specifier = "==4.1.0" },
+    { name = "django-geojson", specifier = "==4.2.0" },
     { name = "django-tastypie", specifier = "==0.15.1" },
     { name = "gunicorn", specifier = "==23.0.0" },
     { name = "orjson", specifier = "==3.10.16" },
     { name = "psycopg", extras = ["binary", "pool"], specifier = "==3.2.6" },
-    { name = "python-dotenv", specifier = "==1.0.1" },
-    { name = "sentry-sdk", extras = ["django"], specifier = "==2.24.1" },
+    { name = "python-dotenv", specifier = "==1.1.0" },
+    { name = "sentry-sdk", extras = ["django"], specifier = "==2.25.1" },
     { name = "unicodecsv", specifier = "==0.14.1" },
     { name = "uvicorn", extras = ["standard"], specifier = "==0.34.0" },
     { name = "uvicorn-worker", specifier = "==0.3.0" },
@@ -845,15 +845,15 @@ dev = [
 
 [[package]]
 name = "sentry-sdk"
-version = "2.24.1"
+version = "2.25.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f1/ef/4847dcd63e3f3c451cf701a825d21200f1322d46ac97586d5c90a13dfea1/sentry_sdk-2.24.1.tar.gz", hash = "sha256:8ba3c29990fa48865b908b3b9dc5ae7fa7e72407c7c9e91303e5206b32d7b8b1", size = 318124 }
+sdist = { url = "https://files.pythonhosted.org/packages/85/2f/a0f732270cc7c1834f5ec45539aec87c360d5483a8bd788217a9102ccfbd/sentry_sdk-2.25.1.tar.gz", hash = "sha256:f9041b7054a7cf12d41eadabe6458ce7c6d6eea7a97cfe1b760b6692e9562cf0", size = 322190 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/65/95/91137ffe7a5956496155af5ffbe45ee4ddfa795a569136147e766abd14b1/sentry_sdk-2.24.1-py2.py3-none-any.whl", hash = "sha256:36baa6a1128b9d98d2adc5e9b2f887eff0a6af558fc2b96ed51919042413556d", size = 336945 },
+    { url = "https://files.pythonhosted.org/packages/96/b6/84049ab0967affbc7cc7590d86ae0170c1b494edb69df8786707100420e5/sentry_sdk-2.25.1-py2.py3-none-any.whl", hash = "sha256:60b016d0772789454dc55a284a6a44212044d4a16d9f8448725effee97aaf7f6", size = 339851 },
 ]
 
 [package.optional-dependencies]

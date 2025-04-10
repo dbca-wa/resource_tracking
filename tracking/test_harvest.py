@@ -13,6 +13,7 @@ from tracking.utils import (
     parse_dfes_feature,
     parse_iriditrak_message,
     parse_mp70_payload,
+    parse_netstar_feature,
     parse_tracplus_row,
     validate_latitude_longitude,
 )
@@ -65,6 +66,29 @@ DFES_FEED_FEATURE_VALID = """{
     }
 }"""
 DFES_TIMESTAMP = datetime(2023, 10, 5, 1, 40, 7, tzinfo=timezone.utc)
+NETSTAR_FEED_FEATURE_VALID = """
+{
+      "TrackerID": 101,
+      "VehicleName": "752TIP19A",
+      "Time": "2025-04-09T03:47:54",
+      "Latitude": -31.965133333333331,
+      "Longitude": 115.98455833333334,
+      "GpsLocked": false,
+      "Speed": 0.0,
+      "Direction": 319.0,
+      "Ignition": false,
+      "OdometerInMetres": 90200,
+      "EngineHoursInSeconds": 404725,
+      "SuburbOrZone": "FORRESTFIELD",
+      "VehicleIdExternal": "F257831",
+      "Rego": "752TIP19A",
+      "Model": "NPS",
+      "Manufacturer": "ISUZU",
+      "EmergencyDistressAlarm": false,
+      "RolloverAlert": false,
+      "OnSat": false
+}"""
+NETSTAR_TIMESTAMP = datetime(2025, 4, 9, 3, 47, 54, tzinfo=timezone.utc)
 
 
 class HarvestTestCase(TestCase):
@@ -122,3 +146,9 @@ class HarvestTestCase(TestCase):
         data = parse_dfes_feature(feature)
         self.assertTrue(data)
         self.assertEqual(data["timestamp"], DFES_TIMESTAMP)
+
+    def test_parse_netstar_feature(self):
+        feature = json.loads(NETSTAR_FEED_FEATURE_VALID)
+        data = parse_netstar_feature(feature)
+        self.assertTrue(data)
+        self.assertEqual(data["timestamp"], NETSTAR_TIMESTAMP)
