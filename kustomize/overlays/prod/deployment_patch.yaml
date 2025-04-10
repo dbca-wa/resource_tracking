@@ -10,7 +10,7 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - name: PROD_SCARY_WARNING
-              value: "True"
+              value: 'True'
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -66,6 +66,21 @@ spec:
                 secretKeyRef:
                   name: resourcetracking-env-prod
                   key: TRACERTRAK_AUTH_TOKEN
+            - name: NETSTAR_URL
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: NETSTAR_URL
+            - name: NETSTAR_USER
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: NETSTAR_USER
+            - name: NETSTAR_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: resourcetracking-env-prod
+                  key: NETSTAR_PASS
             - name: GEOSERVER_URL
               valueFrom:
                 secretKeyRef:
@@ -87,4 +102,4 @@ spec:
                   name: resourcetracking-env-prod
                   key: SENTRY_PROFILES_SAMPLE_RATE
             - name: SENTRY_ENVIRONMENT
-              value: "prod"
+              value: 'prod'
