@@ -14,7 +14,9 @@ from django.db.utils import OperationalError
 BASE_DIR = str(Path(__file__).resolve().parents[1])
 
 # Application definition
-project = tomllib.load(open(os.path.join(BASE_DIR, "pyproject.toml"), "rb"))
+pyproject = open(os.path.join(BASE_DIR, "pyproject.toml"), "rb")
+project = tomllib.load(pyproject)
+pyproject.close()
 APPLICATION_VERSION_NO = project["project"]["version"]
 DEBUG = env("DEBUG", False)
 SECRET_KEY = env("SECRET_KEY", "PlaceholderSecretKey")
@@ -28,6 +30,17 @@ else:
 INTERNAL_IPS = ["127.0.0.1", "::1"]
 ROOT_URLCONF = "resource_tracking.urls"
 WSGI_APPLICATION = "resource_tracking.wsgi.application"
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        # Use whitenoise to add compression and caching support for static files.
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
+# Tracking data source configuration.
 TRACPLUS_URL = env("TRACPLUS_URL", "")
 DFES_URL = env("DFES_URL", "")
 DFES_USER = env("DFES_USER", "")
@@ -114,7 +127,6 @@ LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Australia/Perth"
 TZ = ZoneInfo(TIME_ZONE)
 USE_I18N = True
-USE_L10N = True
 USE_TZ = True
 
 
@@ -125,7 +137,6 @@ STATICFILES_DIRS = (
     os.path.join(BASE_DIR, "resource_tracking", "static"),
     os.path.join(BASE_DIR, "tracking", "static"),
 )
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 WHITENOISE_ROOT = STATIC_ROOT
 
 # Logging settings - log to stdout
