@@ -124,6 +124,7 @@ class HarvestTestCase(TestCase):
         # Iriditrak timestamp is parsed from the sent email.
         iriditrak_email = open(os.path.join(settings.BASE_DIR, "tracking", "iriditrak_test.msg"))
         message = email.message_from_string(iriditrak_email.read())
+        iriditrak_email.close()
         data = parse_iriditrak_message(message)
         self.assertEqual(IRIDTRAK_TIMESTAMP, data["timestamp"])
 
