@@ -135,6 +135,7 @@ class SpatialDataView(View):
             data = {"objects": []}
             for device in qs:
                 d = device.__dict__
+                # We don't want to include the _state key value.
                 d.pop("_state", None)
                 data["objects"].append(d)
 
@@ -182,7 +183,6 @@ class DeviceListDownload(SpatialDataView):
         "deviceid",
         "heading",
         "icon",
-        "id",
         "registration",
         "seen",
         "symbol",
@@ -247,6 +247,7 @@ class DeviceHistoryDownload(SpatialDataView):
             # Use the date when the device was last seen.
             if device.seen:
                 start = device.seen.date() - timedelta(days=14)
+                start = datetime(start.year, start.month, start.day, 0, 0).astimezone(settings.TZ)
             else:
                 start = timezone.now() - timedelta(days=14)
         else:

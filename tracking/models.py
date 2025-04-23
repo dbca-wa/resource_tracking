@@ -1,12 +1,9 @@
 import logging
 
 from django.conf import settings
-from django.contrib.auth.models import Group, User
 from django.contrib.gis.db import models
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.core.validators import MaxValueValidator
-from django.db.models.signals import post_save, pre_save
-from django.dispatch import receiver
 from django.forms import ValidationError
 from django.utils import timezone
 
@@ -189,11 +186,26 @@ class Device(models.Model):
     class Meta:
         ordering = ("-seen",)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.registration} {self.deviceid}"
+
+    def get_kmh(self) -> int:
+        """Returns known velocity in km/h for the device as an integer."""
+        if self.velocity:
+            return int(self.velocity / 1000)
+        else:
+            return 0
+
+    def get_vector(self) -> str:
+        """Returns a string for the device's known heading and velocity."""
+        if self.heading:
+            return f"Heading {self.heading} degrees, {self.get_kmh()} km/h"
+        else:
+            return f"Unknown heading, {self.get_kmh()}"
 
     @property
     def age_minutes(self):
+        """Returns the number of minutes since this device was last seen."""
         if not self.seen:
             return None
         delta = timezone.now() - self.seen
@@ -201,7 +213,8 @@ class Device(models.Model):
         return minutes
 
     @property
-    def age_colour(self):
+    def age_colour(self) -> str:
+        """Returns a string value to tint device icon, based on the last seen time."""
         if not self.seen:
             return "red"
         minutes = self.age_minutes
@@ -213,13 +226,15 @@ class Device(models.Model):
             return "red"
 
     @property
-    def age_text(self):
-        # Returns age in humanized form
+    def age_text(self) -> str:
+        """Returns last seen time in humanized form."""
         return naturaltime(self.seen).replace("\xa0", " ")
 
     @property
-    def icon(self):
-        return "sss-{}".format(self.symbol.lower().replace(" ", "_"))
+    def icon(self) -> str:
+        """Returns a URL-safe string to represent the name of an icon for this device."""
+        symbol = self.symbol.lower().replace(" ", "_")
+        return f"sss-{symbol}"
 
     def save(self, force_insert=False, force_update=False, *args, **kwargs):
         if self.district:
@@ -287,23 +302,9 @@ class LoggedPoint(models.Model):
 
     raw = models.TextField(editable=False, null=True, blank=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.device} {self.seen.astimezone(settings.TZ)}"
 
     class Meta:
         ordering = ("-seen",)
         unique_together = (("device", "seen"),)
-
-
-@receiver(pre_save, sender=User)
-def user_pre_save(sender, instance, **kwargs):
-    # Set is_staff to True so users can edit Device details
-    instance.is_staff = True
-
-
-@receiver(post_save, sender=User)
-def user_post_save(sender, instance, **kwargs):
-    # Add users to the 'Edit Resource Tracking Device' group so users can edit Device details
-    # NOTE: does not work when saving user in Django Admin
-    g, created = Group.objects.get_or_create(name="Edit Resource Tracking Device")
-    instance.groups.add(g)
