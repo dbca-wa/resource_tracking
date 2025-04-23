@@ -43,6 +43,8 @@ function setDeviceStyle(feature, layer) {
     layer.setIcon(iconFuelTruck);
   } else if (feature.properties.icon == 'sss-person') {
     layer.setIcon(iconPerson);
+  } else if (feature.properties.icon == 'sss-boat') {
+    layer.setIcon(iconBoat);
   } else {
     layer.setIcon(iconOther);
   }

@@ -1,33 +1,33 @@
-"use strict";
-
 // Function to style the marker icon.
 function setDeviceMarkerIcon(device, marker) {
-  if (device.icon == "sss-2_wheel_drive") {
+  if (device.icon == 'sss-2_wheel_drive') {
     marker.setIcon(iconCar);
-  } else if (device.icon == "sss-4_wheel_drive_passenger") {
+  } else if (device.icon == 'sss-4_wheel_drive_passenger') {
     marker.setIcon(iconCar);
-  } else if (device.icon == "sss-4_wheel_drive_ute") {
+  } else if (device.icon == 'sss-4_wheel_drive_ute') {
     marker.setIcon(iconUte);
-  } else if (device.icon == "sss-light_unit") {
+  } else if (device.icon == 'sss-light_unit') {
     marker.setIcon(iconLightUnit);
-  } else if (device.icon == "sss-gang_truck") {
+  } else if (device.icon == 'sss-gang_truck') {
     marker.setIcon(iconGangTruck);
-  } else if (device.icon == "sss-comms_bus") {
+  } else if (device.icon == 'sss-comms_bus') {
     marker.setIcon(iconCommsBus);
-  } else if (device.icon == "sss-rotary_aircraft") {
+  } else if (device.icon == 'sss-rotary_aircraft') {
     marker.setIcon(iconRotary);
-  } else if (device.icon == "sss-spotter_aircraft") {
+  } else if (device.icon == 'sss-spotter_aircraft') {
     marker.setIcon(iconPlane);
-  } else if (device.icon == "sss-dozer") {
+  } else if (device.icon == 'sss-dozer') {
     marker.setIcon(iconDozer);
-  } else if (device.icon == "sss-float") {
+  } else if (device.icon == 'sss-float') {
     marker.setIcon(iconFloat);
-  } else if (device.icon == "sss-loader") {
+  } else if (device.icon == 'sss-loader') {
     marker.setIcon(iconLoader);
-  } else if (device.icon == "sss-aviation_fuel_truck") {
+  } else if (device.icon == 'sss-aviation_fuel_truck') {
     marker.setIcon(iconFuelTruck);
-  } else if (device.icon == "sss-person") {
+  } else if (device.icon == 'sss-person') {
     marker.setIcon(iconPerson);
+  } else if (device.icon == 'sss-boat') {
+    marker.setIcon(iconBoat);
   } else {
     marker.setIcon(iconOther);
   }
@@ -39,7 +39,7 @@ const trackedDeviceLayer = L.geoJSON(null, {}).addTo(map);
 // Layers control.
 L.control.layers(baseMaps, overlayMaps).addTo(map);
 // Link to device map view.
-L.easyButton("fa-solid fa-map", () => window.open(context.device_map_url, "_self"), "Device map", "idDeviceMapControl").addTo(map);
+L.easyButton('fa-solid fa-map', () => window.open(context.device_map_url, '_self'), 'Device map', 'idDeviceMapControl').addTo(map);
 
 // Function to consume streamed device data and repopulate the layer.
 function refreshTrackedDeviceLayer(trackedDeviceLayer, device) {
@@ -61,12 +61,12 @@ function refreshTrackedDeviceLayer(trackedDeviceLayer, device) {
 let eventSource = new EventSource(context.event_source_url);
 // Ping event, to help maintain the connection.
 let ping = 0;
-eventSource.addEventListener("ping", function (event) {
+eventSource.addEventListener('ping', function (event) {
   ping++;
 });
 
 // The standard "message" event indicates that the device has updated.
-const deviceDataEl = document.getElementById("device-data-stream");
+const deviceDataEl = document.getElementById('device-data-stream');
 eventSource.onmessage = function (event) {
   const device = JSON.parse(event.data);
   device.seen = new Date(device.seen);

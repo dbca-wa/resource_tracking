@@ -86,6 +86,11 @@ const iconPerson = L.icon({
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
+const iconBoat = L.icon({
+  iconUrl: context.boat_icon_url,
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
+});
 const iconOther = L.icon({
   iconUrl: context.other_icon_url,
   iconSize: [32, 32],

@@ -30,6 +30,7 @@ JAVASCRIPT_CONTEXT = {
     "float_icon_url": f"{settings.STATIC_URL}img/float.png",
     "fuel_truck_icon_url": f"{settings.STATIC_URL}img/fuel_truck.png",
     "person_icon_url": f"{settings.STATIC_URL}img/person.png",
+    "boat_icon_url": f"{settings.STATIC_URL}img/boat.png",
     "other_icon_url": f"{settings.STATIC_URL}img/other.png",
 }
 
@@ -175,6 +176,7 @@ class DeviceListDownload(SpatialDataView):
     model = Device
     geometry_field = "point"
     properties = (
+        "id",
         "age_colour",
         "age_minutes",
         "age_text",
