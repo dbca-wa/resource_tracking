@@ -28,7 +28,7 @@ dependencies = [
   "azure-storage-blob==12.25.1",
   "uvicorn[standard]==0.34.0",
   "uvicorn-worker==0.3.0",
-  "orjson==3.10.16",
+  "orjson==3.10.18",
 ]
 
 [dependency-groups]
