@@ -59,8 +59,16 @@ const trackedDevices = L.geoJSON(null, {
 function refreshTrackedDevicesLayer(trackedDevicesLayer) {
   // Remove any existing data from the layer.
   trackedDevicesLayer.clearLayers();
+  // Get the current map bounds.
+  const bounds = map.getBounds();
+  const ne = bounds.getNorthEast();
+  const [lat1, lng1] = [ne['lat'], ne['lng']];
+  const sw = bounds.getSouthWest();
+  const [lat2, lng2] = [sw['lat'], sw['lng']];
+
   // Query the API endpoint for device data.
-  fetch(context.device_geojson_url)
+  const url = `${context.device_geojson_url}?bbox=${lat1},${lng1},${lat2},${lng2}`;
+  fetch(url)
     // Parse the response as JSON.
     .then((resp) => resp.json())
     // Replace the data in the tracked devices layer.
@@ -97,3 +105,9 @@ new L.Control.Search({
 L.easyButton('fa-solid fa-arrows-rotate', function () {
   refreshTrackedDevicesLayer(trackedDevices);
 }).addTo(map);
+
+// Map zoom and move events.
+// The moveend event covers panning and zooming.
+map.on('moveend', function (_) {
+  refreshTrackedDevicesLayer(trackedDevices);
+});
