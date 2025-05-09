@@ -1,9 +1,10 @@
 import asyncio
+import re
 from datetime import datetime, timedelta
 
 import orjson as json
 from django.conf import settings
-from django.contrib.gis.geos import LineString
+from django.contrib.gis.geos import LineString, Polygon
 from django.core.serializers import serialize
 from django.db.models import Q
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse, StreamingHttpResponse
@@ -202,6 +203,25 @@ class DeviceListDownload(SpatialDataView):
         if self.request.GET.get("days", None):
             days = int(self.request.GET["days"])
             qs = qs.filter(seen__gte=timezone.now() - timedelta(days=days))
+
+        # Optional filter to limit devices seen within a given bounding box.
+        # Expects a bbox param in the format <NE lat>,<NE lng>,<SW lat>,<SW lng>
+        # i.e. the data returned from a Leaflet map.getBounds() call.
+        # Example: 116.089,-31.879,115.650,-32.040
+        if self.request.GET.get("bbox", None):
+            # lat1, lng1, lat2, lng2
+            pattern = re.compile(
+                r"^(?P<lat1>[-+]?[0-9]*\.?[0-9]+),(?P<lng1>[-+]?[0-9]*\.?[0-9]+),(?P<lat2>[-+]?[0-9]*\.?[0-9]+),(?P<lng2>[-+]?[0-9]*\.?[0-9]+)$"
+            )
+            bbox_str = self.request.GET["bbox"]
+            coords = pattern.match(bbox_str)
+            if coords:  # Regex must return a full match.
+                lat1 = float(coords.group("lat1"))
+                lng1 = float(coords.group("lng1"))
+                lat2 = float(coords.group("lat2"))
+                lng2 = float(coords.group("lng2"))
+                polygon = Polygon(((lng1, lat1), (lng1, lat2), (lng2, lat2), (lng2, lat1), (lng1, lat1)))
+                qs = qs.filter(point__coveredby=polygon)
 
         # Querying on device callsign, registration and/or device ID.
         if self.request.GET.get("q", None):
