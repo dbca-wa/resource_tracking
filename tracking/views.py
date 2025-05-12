@@ -14,6 +14,7 @@ from django.views.generic import DetailView, ListView, TemplateView, View
 
 from tracking.api import CSVSerializer
 from tracking.models import SOURCE_DEVICE_TYPE_CHOICES, Device, LoggedPoint
+from tracking.utils import get_next_pages, get_previous_pages
 
 # Define a dictionary of context variables to supply to JavaScript in view templates.
 # NOTE: we can't include values needing `reverse` in the dict below due to circular imports.
@@ -46,9 +47,9 @@ class DeviceMap(TemplateView):
         context = super().get_context_data(**kwargs)
         context["page_title"] = "DBCA Resource Tracking device map"
         context["javascript_context"] = JAVASCRIPT_CONTEXT
-        context["javascript_context"]["device_list_url"] = reverse("device_list")
-        context["javascript_context"]["device_map_url"] = reverse("device_map")
-        context["javascript_context"]["device_geojson_url"] = reverse("device_download")
+        context["javascript_context"]["device_list_url"] = reverse("tracking:device_list")
+        context["javascript_context"]["device_map_url"] = reverse("tracking:device_map")
+        context["javascript_context"]["device_geojson_url"] = reverse("tracking:device_download")
         return context
 
 
@@ -56,7 +57,7 @@ class DeviceList(ListView):
     """A list view to display a list of tracking devices, and/or download them as structured data."""
 
     model = Device
-    paginate_by = None
+    paginate_by = 20
     http_method_names = ["get", "head", "options"]
 
     def get_context_data(self, **kwargs):
@@ -64,6 +65,8 @@ class DeviceList(ListView):
         context["page_title"] = "DBCA Resource Tracking device list"
         if self.request.GET.get("q", None):
             context["query_string"] = self.request.GET["q"]
+        context["previous_pages"] = get_previous_pages(context["page_obj"])
+        context["next_pages"] = get_next_pages(context["page_obj"])
         return context
 
     def get_queryset(self):
@@ -101,11 +104,11 @@ class DeviceDetail(DetailView):
         obj = self.get_object()
         context["page_title"] = f"DBCA Resource Tracking device {obj.deviceid}"
         context["javascript_context"] = JAVASCRIPT_CONTEXT
-        context["javascript_context"]["device_list_url"] = reverse("device_list")
-        context["javascript_context"]["device_map_url"] = reverse("device_map")
-        context["javascript_context"]["device_geojson_url"] = reverse("device_download")
-        context["javascript_context"]["device_route_url"] = reverse("device_route", kwargs={"pk": obj.pk})
-        context["javascript_context"]["event_source_url"] = reverse("device_stream", kwargs={"pk": obj.pk})
+        context["javascript_context"]["device_list_url"] = reverse("tracking:device_list")
+        context["javascript_context"]["device_map_url"] = reverse("tracking:device_map")
+        context["javascript_context"]["device_geojson_url"] = reverse("tracking:device_download")
+        context["javascript_context"]["device_route_url"] = reverse("tracking:device_route", kwargs={"pk": obj.pk})
+        context["javascript_context"]["event_source_url"] = reverse("tracking:device_stream", kwargs={"pk": obj.pk})
         return context
 
 
@@ -228,11 +231,7 @@ class DeviceListDownload(SpatialDataView):
         if self.request.GET.get("q", None):
             query_str = self.request.GET["q"]
             qs = qs.filter()
-            qs = qs.filter(
-                Q(callsign__icontains=query_str)
-                | Q(registration__icontains=query_str)
-                | Q(deviceid__icontains=query_str)
-            )
+            qs = qs.filter(Q(callsign__icontains=query_str) | Q(registration__icontains=query_str) | Q(deviceid__icontains=query_str))
 
         return qs
 
