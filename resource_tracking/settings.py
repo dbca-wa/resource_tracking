@@ -39,6 +39,8 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+# User group allowed to edit device metadata.
+DEVICE_EDITOR_USER_GROUP = env("DEVICE_EDITOR_USER_GROUP", "Edit Resource Tracking Device")
 
 # Tracking data source configuration.
 TRACPLUS_URL = env("TRACPLUS_URL", "")
