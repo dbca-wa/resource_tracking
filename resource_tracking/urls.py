@@ -3,7 +3,6 @@ from django.urls import include, path
 from django.views.generic.base import RedirectView
 
 from resource_tracking.api import v1_api
-from tracking import urls as tracking_urls
 from tracking.admin import tracking_admin_site
 from tracking.views import DeviceMetricsSource
 
@@ -21,6 +20,6 @@ urlpatterns = [
         DeviceMetricsSource.as_view(),
         name="device_metrics_source",
     ),
-    path("", include(tracking_urls)),
+    path("", include("tracking.urls")),
     path("", RedirectView.as_view(pattern_name="admin:index"), name="home"),
 ]
