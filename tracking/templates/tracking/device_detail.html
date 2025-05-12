@@ -10,6 +10,10 @@
     <div class="container-fluid p-0 d-flex h-100 flex-column">
         <div class="row m-1">
             <div class="col">
+                <div class="position-relative">
+                    <a class="btn btn-primary position-absolute top-0 end-0 m-3"
+                       href="{% url 'device_route' pk=object.pk %}"><i class="fa-solid fa-download"></i> Route</a>
+                </div>
                 <div id="device-data-stream"></div>
             </div>
         </div>

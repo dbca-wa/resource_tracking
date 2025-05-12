@@ -36,6 +36,9 @@ function setDeviceMarkerIcon(device, marker) {
 // Define the (initially) empty device layer and add it to the map.
 const trackedDeviceLayer = L.geoJSON(null, {}).addTo(map);
 
+// Define an empty device route polyline object and add it to the map.
+let trackedDeviceRoute = new L.Polyline([], {}).addTo(map);
+
 // Layers control.
 L.control.layers(baseMaps, overlayMaps).addTo(map);
 // Link to device map view.
@@ -55,6 +58,8 @@ function refreshTrackedDeviceLayer(trackedDeviceLayer, device) {
   // Add the marker to the layer and fly to that location.
   deviceMarker.addTo(trackedDeviceLayer);
   map.flyTo([point.lat, point.lon], map.getZoom());
+  // Update the device route.
+  updateDeviceRoute(point);
 }
 
 // The EventSource URL is defined on the HTML template.
@@ -78,3 +83,32 @@ eventSource.onmessage = function (event) {
   toastRefresh.show();
 };
 eventSource.onerror = () => toastError.show();
+
+// Function to query the tracking device's route data for the previous n hours
+function queryDeviceRoute(hours) {
+  let start = new Date();
+  start.setHours(start.getHours() - hours);
+  const url = `${context.device_route_url}?start=${start.toISOString()}`;
+  fetch(url)
+    // Parse the response as JSON.
+    .then((resp) => resp.json())
+    .then(function (data) {
+      let deviceRouteFeatures = [];
+      // Instantiate a Polyline object from the list of coordinates.
+      for (const feature of data['features']) {
+        coord = feature['geometry']['coordinates'][0];
+        // GeoJSON coordinates are returned in [x, y], so reverse these for [lat, lng].
+        deviceRouteFeatures.push([coord[1], coord[0]]);
+      }
+      trackedDeviceRoute.setLatLngs(deviceRouteFeatures);
+    });
+}
+// Immediately run the query device route function to populate the polyline.
+queryDeviceRoute(24);
+
+// Function to prepend a new point to the device route polyline.
+function updateDeviceRoute(point) {
+  let deviceRouteFeatures = trackedDeviceRoute.getLatLngs();
+  deviceRouteFeatures = [[point['lat'], point['lon']], ...deviceRouteFeatures];
+  trackedDeviceRoute.setLatLngs(deviceRouteFeatures);
+}

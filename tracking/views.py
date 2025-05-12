@@ -40,7 +40,7 @@ class DeviceMap(TemplateView):
     """A map view displaying all device locations."""
 
     template_name = "tracking/device_map.html"
-    http_method_names = ["get", "head", "options", "trace"]
+    http_method_names = ["get", "head", "options"]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -57,7 +57,7 @@ class DeviceList(ListView):
 
     model = Device
     paginate_by = None
-    http_method_names = ["get", "head", "options", "trace"]
+    http_method_names = ["get", "head", "options"]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -94,7 +94,7 @@ class DeviceDetail(DetailView):
     """A detail view to show single device's details and location."""
 
     model = Device
-    http_method_names = ["get", "head", "options", "trace"]
+    http_method_names = ["get", "head", "options"]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -104,6 +104,7 @@ class DeviceDetail(DetailView):
         context["javascript_context"]["device_list_url"] = reverse("device_list")
         context["javascript_context"]["device_map_url"] = reverse("device_map")
         context["javascript_context"]["device_geojson_url"] = reverse("device_download")
+        context["javascript_context"]["device_route_url"] = reverse("device_route", kwargs={"pk": obj.pk})
         context["javascript_context"]["event_source_url"] = reverse("device_stream", kwargs={"pk": obj.pk})
         return context
 
@@ -112,7 +113,7 @@ class SpatialDataView(View):
     """Base view to return a queryset of spatial data as GeoJSON or CSV."""
 
     model = None
-    http_method_names = ["get", "head", "options", "trace"]
+    http_method_names = ["get", "head", "options"]
     srid = 4326
     format = "geojson"
     geometry_field = None
@@ -275,18 +276,18 @@ class DeviceHistoryDownload(SpatialDataView):
         else:
             try:
                 # Parse the start date as ISO8601 date format
-                start = datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
+                start = datetime.fromisoformat(start)
             except:
-                return HttpResponseBadRequest("Bad start format, use ISO8601")
+                return HttpResponseBadRequest("Bad start format, use ISO 8601 format start parameter")
         qs = qs.filter(seen__gte=start)
 
         end = self.request.GET.get("end", default=None)
         if end is not None:
             try:
                 # Parse the end date as ISO8601 date format
-                end = datetime.strptime(end, "%Y-%m-%d %H:%M:%S")
+                end = datetime.fromisoformat(start)
             except:
-                return HttpResponseBadRequest("Bad end format, use ISO8601")
+                return HttpResponseBadRequest("Bad end format, use ISO 8601 format end parameter")
 
             qs = qs.filter(seen__lt=end)
 
