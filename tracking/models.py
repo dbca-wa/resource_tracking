@@ -5,6 +5,7 @@ from django.contrib.gis.db import models
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from django.core.validators import MaxValueValidator
 from django.forms import ValidationError
+from django.urls import reverse
 from django.utils import timezone
 
 LOGGER = logging.getLogger("tracking")
@@ -279,6 +280,28 @@ class Device(models.Model):
             "float",
         ):
             raise ValidationError("Please enter a RIN number")
+
+    def get_absolute_url(self):
+        return reverse(
+            "tracking:device_detail",
+            kwargs={"pk": self.pk},
+        )
+
+    def user_editable(self) -> bool:
+        """Returns a boolean for whether metadata about this tracking device should be user-editable.
+        Some device types are not user-editable (i.e. the upstream data is the single source of truth).
+        """
+        if self.source_device_type in [
+            "iriditrak",
+            "dplus",
+            "spot",
+            "mp70",
+            "fleetcare",
+            "other",
+        ]:
+            return True
+        else:
+            return False
 
 
 class LoggedPoint(models.Model):
