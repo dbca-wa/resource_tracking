@@ -7,12 +7,13 @@ from django.conf import settings
 from django.contrib.gis.geos import LineString, Polygon
 from django.core.serializers import serialize
 from django.db.models import Q
-from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse, StreamingHttpResponse
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseRedirect, JsonResponse, StreamingHttpResponse
 from django.urls import reverse
 from django.utils import timezone
-from django.views.generic import DetailView, ListView, TemplateView, View
+from django.views.generic import DetailView, ListView, TemplateView, UpdateView, View
 
 from tracking.api import CSVSerializer
+from tracking.forms import DeviceForm
 from tracking.models import SOURCE_DEVICE_TYPE_CHOICES, Device, LoggedPoint
 from tracking.utils import get_next_pages, get_previous_pages
 
@@ -110,6 +111,39 @@ class DeviceDetail(DetailView):
         context["javascript_context"]["device_route_url"] = reverse("tracking:device_route", kwargs={"pk": obj.pk})
         context["javascript_context"]["event_source_url"] = reverse("tracking:device_stream", kwargs={"pk": obj.pk})
         return context
+
+
+class DeviceUpdate(UpdateView):
+    form_class = DeviceForm
+    model = Device
+    http_method_names = ["get", "post", "put", "patch", "head", "options"]
+
+    def dispatch(self, request, *args, **kwargs):
+        """User authorisation checks occur here."""
+        obj = self.get_object()
+        # Check user authorisation (user has the required group and/or is a superuser).
+        if not request.user.groups.filter(name=settings.DEVICE_EDITOR_USER_GROUP).exists() and not request.user.is_superuser:
+            return HttpResponseRedirect(reverse("tracking:device_detail", kwargs={"pk": obj.pk}))
+        # Check that the instance is user-editable (business rules on Device model).
+        if not obj.user_editable():
+            return HttpResponseRedirect(reverse("tracking:device_detail", kwargs={"pk": obj.pk}))
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        obj = self.get_object()
+        context["page_title"] = f"Update DBCA tracking device {obj.deviceid}"
+        return context
+
+    def post(self, request, *args, **kwargs):
+        if request.POST.get("cancel", None):
+            obj = self.get_object()
+            return reverse("tracking:device_detail", kwargs={"pk": obj.pk})
+        return super().post(request, *args, **kwargs)
+
+    def get_success_url(self):
+        obj = self.get_object()
+        return reverse("tracking:device_detail", kwargs={"pk": obj.pk})
 
 
 class SpatialDataView(View):

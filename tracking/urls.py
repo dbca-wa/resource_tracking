@@ -9,6 +9,7 @@ urlpatterns = [
     path("devices/download/", views.DeviceListDownload.as_view(), name="device_download"),
     path("devices/map/", views.DeviceMap.as_view(), name="device_map"),
     path("devices/<int:pk>/", views.DeviceDetail.as_view(), name="device_detail"),
+    path("devices/<int:pk>/update/", views.DeviceUpdate.as_view(), name="device_update"),
     path("devices/<int:pk>/stream/", views.DeviceStream.as_view(), name="device_stream"),
     path("devices/<int:pk>/history/", views.DeviceHistoryDownload.as_view(), name="device_history"),
     path("devices/<int:pk>/route/", views.DeviceRouteDownload.as_view(), name="device_route"),

@@ -65,6 +65,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.gis",
+    "crispy_forms",
+    "crispy_bootstrap5",
     "tastypie",
     "django_extensions",
     "djgeojson",
@@ -167,6 +169,11 @@ LOGGING = {
 # Tastypie settings
 TASTYPIE_DEFAULT_FORMATS = ["json"]
 TASTYPIE_DATETIME_FORMATTING = "iso-8601-strict"
+
+
+# Crispy forms config
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
+CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 
 def sentry_excluded_exceptions(event, hint):
