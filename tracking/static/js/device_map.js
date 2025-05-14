@@ -43,13 +43,15 @@ function setDeviceStyle(feature, layer) {
     layer.setIcon(iconFuelTruck);
   } else if (feature.properties.icon == 'sss-person') {
     layer.setIcon(iconPerson);
+  } else if (feature.properties.icon == 'sss-boat') {
+    layer.setIcon(iconBoat);
   } else {
     layer.setIcon(iconOther);
   }
 }
 
 // Define the (initially) empty devices layer and add it to the map.
-const trackedDevices = L.geoJSON(null, {
+const trackedDevicesLayer = L.geoJSON(null, {
   onEachFeature: setDeviceStyle,
 }).addTo(map);
 
@@ -57,8 +59,15 @@ const trackedDevices = L.geoJSON(null, {
 function refreshTrackedDevicesLayer(trackedDevicesLayer) {
   // Remove any existing data from the layer.
   trackedDevicesLayer.clearLayers();
+  // Get the current map bounds.
+  const bounds = map.getBounds();
+  const ne = bounds.getNorthEast();
+  const [lat1, lng1] = [ne['lat'], ne['lng']];
+  const sw = bounds.getSouthWest();
+  const [lat2, lng2] = [sw['lat'], sw['lng']];
   // Query the API endpoint for device data.
-  fetch(context.device_geojson_url)
+  const url = `${context.device_geojson_url}?bbox=${lat1},${lng1},${lat2},${lng2}`;
+  fetch(url)
     // Parse the response as JSON.
     .then((resp) => resp.json())
     // Replace the data in the tracked devices layer.
@@ -74,14 +83,16 @@ function refreshTrackedDevicesLayer(trackedDevicesLayer) {
     });
 }
 // Immediately run the "refresh" function to populate the layer.
-refreshTrackedDevicesLayer(trackedDevices);
+refreshTrackedDevicesLayer(trackedDevicesLayer);
+// Begin a timer to refresh the tracked devices layer every 60 seconds.
+let trackedDevicesLayerTimer = setInterval(refreshTrackedDevicesLayer, 60000, trackedDevicesLayer);
 
 // Layers control.
 L.control.layers(baseMaps, overlayMaps).addTo(map);
 
 // Device registration search
 new L.Control.Search({
-  layer: trackedDevices,
+  layer: trackedDevicesLayer,
   propertyName: 'registration',
   textPlaceholder: 'Search registration',
   delayType: 1000,
@@ -93,5 +104,14 @@ new L.Control.Search({
 //
 // Refresh tracked devices control.
 L.easyButton('fa-solid fa-arrows-rotate', function () {
-  refreshTrackedDevicesLayer(trackedDevices);
+  refreshTrackedDevicesLayer(trackedDevicesLayer);
 }).addTo(map);
+
+// Map zoom and move events.
+// The moveend event covers panning and zooming.
+map.on('moveend', function (_) {
+  refreshTrackedDevicesLayer(trackedDevicesLayer);
+  // Reset the interval timer and start a new one.
+  clearInterval(trackedDevicesLayerTimer);
+  trackedDevicesLayerTimer = setInterval(refreshTrackedDevicesLayer, 60000, trackedDevicesLayer);
+});

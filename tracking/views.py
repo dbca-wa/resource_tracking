@@ -1,18 +1,21 @@
 import asyncio
+import re
 from datetime import datetime, timedelta
 
 import orjson as json
 from django.conf import settings
-from django.contrib.gis.geos import LineString
+from django.contrib.gis.geos import LineString, Polygon
 from django.core.serializers import serialize
 from django.db.models import Q
-from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse, StreamingHttpResponse
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseRedirect, JsonResponse, StreamingHttpResponse
 from django.urls import reverse
 from django.utils import timezone
-from django.views.generic import DetailView, ListView, TemplateView, View
+from django.views.generic import DetailView, ListView, TemplateView, UpdateView, View
 
 from tracking.api import CSVSerializer
+from tracking.forms import DeviceForm
 from tracking.models import SOURCE_DEVICE_TYPE_CHOICES, Device, LoggedPoint
+from tracking.utils import get_next_pages, get_previous_pages
 
 # Define a dictionary of context variables to supply to JavaScript in view templates.
 # NOTE: we can't include values needing `reverse` in the dict below due to circular imports.
@@ -30,6 +33,7 @@ JAVASCRIPT_CONTEXT = {
     "float_icon_url": f"{settings.STATIC_URL}img/float.png",
     "fuel_truck_icon_url": f"{settings.STATIC_URL}img/fuel_truck.png",
     "person_icon_url": f"{settings.STATIC_URL}img/person.png",
+    "boat_icon_url": f"{settings.STATIC_URL}img/boat.png",
     "other_icon_url": f"{settings.STATIC_URL}img/other.png",
 }
 
@@ -38,15 +42,15 @@ class DeviceMap(TemplateView):
     """A map view displaying all device locations."""
 
     template_name = "tracking/device_map.html"
-    http_method_names = ["get", "head", "options", "trace"]
+    http_method_names = ["get", "head", "options"]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["page_title"] = "DBCA Resource Tracking device map"
         context["javascript_context"] = JAVASCRIPT_CONTEXT
-        context["javascript_context"]["device_list_url"] = reverse("device_list")
-        context["javascript_context"]["device_map_url"] = reverse("device_map")
-        context["javascript_context"]["device_geojson_url"] = reverse("device_download")
+        context["javascript_context"]["device_list_url"] = reverse("tracking:device_list")
+        context["javascript_context"]["device_map_url"] = reverse("tracking:device_map")
+        context["javascript_context"]["device_geojson_url"] = reverse("tracking:device_download")
         return context
 
 
@@ -54,14 +58,16 @@ class DeviceList(ListView):
     """A list view to display a list of tracking devices, and/or download them as structured data."""
 
     model = Device
-    paginate_by = None
-    http_method_names = ["get", "head", "options", "trace"]
+    paginate_by = 20
+    http_method_names = ["get", "head", "options"]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["page_title"] = "DBCA Resource Tracking device list"
         if self.request.GET.get("q", None):
             context["query_string"] = self.request.GET["q"]
+        context["previous_pages"] = get_previous_pages(context["page_obj"])
+        context["next_pages"] = get_next_pages(context["page_obj"])
         return context
 
     def get_queryset(self):
@@ -92,25 +98,59 @@ class DeviceDetail(DetailView):
     """A detail view to show single device's details and location."""
 
     model = Device
-    http_method_names = ["get", "head", "options", "trace"]
+    http_method_names = ["get", "head", "options"]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         obj = self.get_object()
         context["page_title"] = f"DBCA Resource Tracking device {obj.deviceid}"
         context["javascript_context"] = JAVASCRIPT_CONTEXT
-        context["javascript_context"]["device_list_url"] = reverse("device_list")
-        context["javascript_context"]["device_map_url"] = reverse("device_map")
-        context["javascript_context"]["device_geojson_url"] = reverse("device_download")
-        context["javascript_context"]["event_source_url"] = reverse("device_stream", kwargs={"pk": obj.pk})
+        context["javascript_context"]["device_list_url"] = reverse("tracking:device_list")
+        context["javascript_context"]["device_map_url"] = reverse("tracking:device_map")
+        context["javascript_context"]["device_geojson_url"] = reverse("tracking:device_download")
+        context["javascript_context"]["device_route_url"] = reverse("tracking:device_route", kwargs={"pk": obj.pk})
+        context["javascript_context"]["event_source_url"] = reverse("tracking:device_stream", kwargs={"pk": obj.pk})
         return context
+
+
+class DeviceUpdate(UpdateView):
+    form_class = DeviceForm
+    model = Device
+    http_method_names = ["get", "post", "put", "patch", "head", "options"]
+
+    def dispatch(self, request, *args, **kwargs):
+        """User authorisation checks occur here."""
+        obj = self.get_object()
+        # Check user authorisation (user has the required group and/or is a superuser).
+        if not request.user.groups.filter(name=settings.DEVICE_EDITOR_USER_GROUP).exists() and not request.user.is_superuser:
+            return HttpResponseRedirect(reverse("tracking:device_detail", kwargs={"pk": obj.pk}))
+        # Check that the instance is user-editable (business rules on Device model).
+        if not obj.user_editable():
+            return HttpResponseRedirect(reverse("tracking:device_detail", kwargs={"pk": obj.pk}))
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        obj = self.get_object()
+        context["page_title"] = f"Update DBCA tracking device {obj.deviceid}"
+        return context
+
+    def post(self, request, *args, **kwargs):
+        if request.POST.get("cancel", None):
+            obj = self.get_object()
+            return reverse("tracking:device_detail", kwargs={"pk": obj.pk})
+        return super().post(request, *args, **kwargs)
+
+    def get_success_url(self):
+        obj = self.get_object()
+        return reverse("tracking:device_detail", kwargs={"pk": obj.pk})
 
 
 class SpatialDataView(View):
     """Base view to return a queryset of spatial data as GeoJSON or CSV."""
 
     model = None
-    http_method_names = ["get", "head", "options", "trace"]
+    http_method_names = ["get", "head", "options"]
     srid = 4326
     format = "geojson"
     geometry_field = None
@@ -135,6 +175,7 @@ class SpatialDataView(View):
             data = {"objects": []}
             for device in qs:
                 d = device.__dict__
+                # We don't want to include the _state key value.
                 d.pop("_state", None)
                 data["objects"].append(d)
 
@@ -174,6 +215,7 @@ class DeviceListDownload(SpatialDataView):
     model = Device
     geometry_field = "point"
     properties = (
+        "id",
         "age_colour",
         "age_minutes",
         "age_text",
@@ -182,7 +224,6 @@ class DeviceListDownload(SpatialDataView):
         "deviceid",
         "heading",
         "icon",
-        "id",
         "registration",
         "seen",
         "symbol",
@@ -201,15 +242,30 @@ class DeviceListDownload(SpatialDataView):
             days = int(self.request.GET["days"])
             qs = qs.filter(seen__gte=timezone.now() - timedelta(days=days))
 
+        # Optional filter to limit devices seen within a given bounding box.
+        # Expects a bbox param in the format <NE lat>,<NE lng>,<SW lat>,<SW lng>
+        # i.e. the data returned from a Leaflet map.getBounds() call.
+        # Example: 116.089,-31.879,115.650,-32.040
+        if self.request.GET.get("bbox", None):
+            # lat1, lng1, lat2, lng2
+            pattern = re.compile(
+                r"^(?P<lat1>[-+]?[0-9]*\.?[0-9]+),(?P<lng1>[-+]?[0-9]*\.?[0-9]+),(?P<lat2>[-+]?[0-9]*\.?[0-9]+),(?P<lng2>[-+]?[0-9]*\.?[0-9]+)$"
+            )
+            bbox_str = self.request.GET["bbox"]
+            coords = pattern.match(bbox_str)
+            if coords:  # Regex must return a full match.
+                lat1 = float(coords.group("lat1"))
+                lng1 = float(coords.group("lng1"))
+                lat2 = float(coords.group("lat2"))
+                lng2 = float(coords.group("lng2"))
+                polygon = Polygon(((lng1, lat1), (lng1, lat2), (lng2, lat2), (lng2, lat1), (lng1, lat1)))
+                qs = qs.filter(point__coveredby=polygon)
+
         # Querying on device callsign, registration and/or device ID.
         if self.request.GET.get("q", None):
             query_str = self.request.GET["q"]
             qs = qs.filter()
-            qs = qs.filter(
-                Q(callsign__icontains=query_str)
-                | Q(registration__icontains=query_str)
-                | Q(deviceid__icontains=query_str)
-            )
+            qs = qs.filter(Q(callsign__icontains=query_str) | Q(registration__icontains=query_str) | Q(deviceid__icontains=query_str))
 
         return qs
 
@@ -247,23 +303,24 @@ class DeviceHistoryDownload(SpatialDataView):
             # Use the date when the device was last seen.
             if device.seen:
                 start = device.seen.date() - timedelta(days=14)
+                start = datetime(start.year, start.month, start.day, 0, 0).astimezone(settings.TZ)
             else:
                 start = timezone.now() - timedelta(days=14)
         else:
             try:
                 # Parse the start date as ISO8601 date format
-                start = datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
+                start = datetime.fromisoformat(start)
             except:
-                return HttpResponseBadRequest("Bad start format, use ISO8601")
+                return HttpResponseBadRequest("Bad start format, use ISO 8601 format start parameter")
         qs = qs.filter(seen__gte=start)
 
         end = self.request.GET.get("end", default=None)
         if end is not None:
             try:
                 # Parse the end date as ISO8601 date format
-                end = datetime.strptime(end, "%Y-%m-%d %H:%M:%S")
+                end = datetime.fromisoformat(start)
             except:
-                return HttpResponseBadRequest("Bad end format, use ISO8601")
+                return HttpResponseBadRequest("Bad end format, use ISO 8601 format end parameter")
 
             qs = qs.filter(seen__lt=end)
 

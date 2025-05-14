@@ -42,6 +42,7 @@ Other environment variables will be required to run the project in production
 
     ALLOWED_HOSTS
     CSRF_TRUSTED_ORIGINS
+    GEOSERVER_URL
     EMAIL_HOST
     EMAIL_USER
     EMAIL_PASSWORD
@@ -49,7 +50,11 @@ Other environment variables will be required to run the project in production
     DFES_URL
     DFES_USER
     DFES_PASS
-    GEOSERVER_URL
+    TRACERTRAK_URL
+    TRACERTRAK_AUTH_TOKEN
+    NETSTAR_URL
+    NETSTAR_USER
+    NETSTAR_PASS
 
 ## Running
 
