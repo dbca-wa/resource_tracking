@@ -75,7 +75,7 @@ const deviceDataEl = document.getElementById('device-data-stream');
 eventSource.onmessage = function (event) {
   const device = JSON.parse(event.data);
   device.seen = new Date(device.seen);
-  deviceDataEl.innerHTML = `Identifier: ${device.deviceid}<br>
+  deviceDataEl.innerHTML = `Device ID: ${device.deviceid}<br>
     Registration: ${device.registration}<br>
     Type: ${device.type}<br>
     Last seen: ${device.seen.toString()}`;

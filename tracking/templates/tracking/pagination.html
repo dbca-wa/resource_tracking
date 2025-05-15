@@ -30,7 +30,7 @@
         {% endif %}
         {# Previous n pages #}
         {% for n in previous_pages %}
-            <li class="page-item">
+            <li class="page-item d-none d-md-block">
                 <a class="page-link"
                    href="?page={{ n }}{% if query_string %}&q={{ query_string }}{% endif %}"
                    aria-label="Page {{ n }}">{{ n }}</a>
@@ -42,7 +42,7 @@
         </li>
         {# Next n pages #}
         {% for n in next_pages %}
-            <li class="page-item">
+            <li class="page-item d-none d-md-block">
                 <a class="page-link"
                    href="?page={{ n }}{% if query_string %}&q={{ query_string }}{% endif %}"
                    aria-label="Page {{ n }}">{{ n }}</a>
