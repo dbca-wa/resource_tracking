@@ -1,4 +1,3 @@
-import asyncio
 import re
 from datetime import datetime, timedelta
 
@@ -7,7 +6,7 @@ from django.conf import settings
 from django.contrib.gis.geos import LineString, Polygon
 from django.core.serializers import serialize
 from django.db.models import Q
-from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseRedirect, JsonResponse, StreamingHttpResponse
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse, StreamingHttpResponse
 from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import DetailView, ListView, TemplateView, UpdateView, View
@@ -123,10 +122,10 @@ class DeviceUpdate(UpdateView):
         obj = self.get_object()
         # Check user authorisation (user has the required group and/or is a superuser).
         if not request.user.groups.filter(name=settings.DEVICE_EDITOR_USER_GROUP).exists() and not request.user.is_superuser:
-            return HttpResponseRedirect(reverse("tracking:device_detail", kwargs={"pk": obj.pk}))
+            return HttpResponseForbidden(f"User updates to tracking device {obj.deviceid} are unauthorised.")
         # Check that the instance is user-editable (business rules on Device model).
         if not obj.user_editable():
-            return HttpResponseRedirect(reverse("tracking:device_detail", kwargs={"pk": obj.pk}))
+            return HttpResponseForbidden(f"User updates to tracking device {obj.deviceid} are unauthorised.")
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
