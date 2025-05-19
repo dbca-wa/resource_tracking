@@ -42,29 +42,27 @@ refreshTrackedDevicesLayer(trackedDevicesLayer);
 // Begin a timer to refresh the tracked devices layer every 60 seconds.
 let trackedDevicesLayerTimer = setInterval(refreshTrackedDevicesLayer, 60000, trackedDevicesLayer);
 
-const formatDeviceListData = function (data) {
-  // Reformat the GeoJSON response from the device list search into a simple array of objects.
-  const formattedData = [];
-  for (const feature of data.features) {
-    formattedData.push({
-      registration: feature.properties.registration,
-      lat: feature.geometry.coordinates[1],
-      lon: feature.geometry.coordinates[0],
-    });
+const formatDeviceListData = function (geojson) {
+  // The formatData callback function needs to return an object having
+  // See the _defaultFormatData function of the Leaflet Search control.
+  const devices = {};
+
+  for (const feature of geojson.features) {
+    devices[feature.properties.registration] = L.latLng(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
   }
-  return formattedData;
+  return devices;
 };
 
 // Device registration search control.
 new L.Control.Search({
+  // url endpoint is queried for a GeoJSON response.
   url: `${context.device_list_url}?q={s}&format=json`,
+  // formatData is a callback that formats the response so Leaflet Search can use it.
   formatData: formatDeviceListData,
-  propertyName: 'registration',
-  tooltipLimit: 5,
-  propertyLoc: ['lat', 'lon'],
-  textPlaceholder: 'Search',
+  tooltipLimit: 10,
+  textPlaceholder: 'Search registration',
   delayType: 1000,
-  textErr: 'Device not found',
+  textErr: 'Not found',
   zoom: 16,
   circleLocation: true,
   autoCollapse: true,
