@@ -64,7 +64,7 @@ function queryDeviceRoute(hours) {
       let deviceRouteFeatures = [];
       // Instantiate a Polyline object from the list of coordinates.
       for (const feature of data['features']) {
-        coord = feature['geometry']['coordinates'][0];
+        const coord = feature['geometry']['coordinates'][0];
         // GeoJSON coordinates are returned in [x, y], so reverse these for [lat, lng].
         deviceRouteFeatures.push([coord[1], coord[0]]);
       }
