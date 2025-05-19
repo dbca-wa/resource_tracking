@@ -35,6 +35,8 @@ const refreshTrackedDeviceLayer = function (data) {
   trackedDeviceLayer.addData(geojson);
   map.flyTo([point.lat, point.lon], map.getZoom());
   toastRefresh.show();
+  // Update the device route polyline.
+  updateDeviceRoute(point);
 };
 
 // The EventSource URL is defined on the HTML template.
@@ -77,6 +79,6 @@ queryDeviceRoute(24);
 // Function to prepend a new point to the device route polyline.
 function updateDeviceRoute(point) {
   let deviceRouteFeatures = trackedDeviceRoute.getLatLngs();
-  deviceRouteFeatures = [[point['lat'], point['lon']], ...deviceRouteFeatures];
+  deviceRouteFeatures = [[point.lat, point.lon], ...deviceRouteFeatures];
   trackedDeviceRoute.setLatLngs(deviceRouteFeatures);
 }
