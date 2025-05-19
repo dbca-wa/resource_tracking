@@ -1,3 +1,4 @@
+import asyncio
 import re
 from datetime import datetime, timedelta
 
@@ -91,6 +92,25 @@ class DeviceList(ListView):
             )
 
         return qs
+
+    def get(self, request, *args, **kwargs):
+        # Optionally, allow requests to this view to return a GeoJSON response.
+        # Used by the device map view search.
+        if self.request.GET.get("format", None) == "json":
+            qs = self.get_queryset()
+            geojson = serialize(
+                "geojson",
+                qs,
+                geometry_field=DeviceListDownload.geometry_field,
+                srid=DeviceListDownload.srid,
+                properties=DeviceListDownload.properties,
+            )
+            return HttpResponse(
+                geojson,
+                content_type="application/vnd.geo+json",
+            )
+
+        return super().get(request, *args, **kwargs)
 
 
 class DeviceDetail(DetailView):

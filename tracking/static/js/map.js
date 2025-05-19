@@ -1,6 +1,6 @@
 'use strict';
 
-// Parse additional variables from the DOM element.
+// Parse additional variables from the DOM element
 const context = JSON.parse(document.getElementById('javascript_context').textContent);
 
 const geoserver_wmts_url = `${context.geoserver_url}/gwc/service/wmts?service=WMTS&request=GetTile&version=1.0.0&tilematrixset=mercator&tilematrix=mercator:{z}&tilecol={x}&tilerow={y}`;
@@ -25,7 +25,7 @@ const dfesBushfires = L.tileLayer(`${geoserver_wmts_url_overlay}&layer=landgate:
 const dbcaRegions = L.tileLayer(`${geoserver_wmts_url_overlay}&layer=cddp:kaartdijin-boodja-public_CPT_DBCA_REGIONS`, { opacity: 0.75 });
 const lgaBoundaries = L.tileLayer(`${geoserver_wmts_url_overlay}&layer=cddp:local_gov_authority`, { opacity: 0.75 });
 
-// Icon classes (note that URLs are injected into the base template.)
+// Icon classes (note that URLs are injected into the base template)
 const iconCar = L.icon({
   iconUrl: context.car_icon_url,
   iconSize: [32, 32],
@@ -97,10 +97,60 @@ const iconOther = L.icon({
   iconAnchor: [16, 16],
 });
 
+// Function to set the icon and popup for tracking device features added to a GeoJSON layer.
+function setDeviceStyle(feature, layer) {
+  // Feature callsign might be null.
+  let callsign;
+  if (feature.properties.callsign) {
+    callsign = feature.properties.callsign;
+  } else {
+    callsign = '';
+  }
+  layer.bindPopup(
+    `Device ID: <a href="/devices/${feature.properties.id}/">${feature.properties.deviceid}</a><br>
+    Registration: ${feature.properties.registration}<br>
+    Callsign: ${callsign}<br>
+    Type: ${feature.properties.symbol}<br>
+    Seen: ${feature.properties.age_text}`
+  );
+  // Set the feature icon.
+  if (feature.properties.icon == 'sss-2_wheel_drive') {
+    layer.setIcon(iconCar);
+  } else if (feature.properties.icon == 'sss-4_wheel_drive_passenger') {
+    layer.setIcon(iconCar);
+  } else if (feature.properties.icon == 'sss-4_wheel_drive_ute') {
+    layer.setIcon(iconUte);
+  } else if (feature.properties.icon == 'sss-light_unit') {
+    layer.setIcon(iconLightUnit);
+  } else if (feature.properties.icon == 'sss-gang_truck') {
+    layer.setIcon(iconGangTruck);
+  } else if (feature.properties.icon == 'sss-comms_bus') {
+    layer.setIcon(iconCommsBus);
+  } else if (feature.properties.icon == 'sss-rotary_aircraft') {
+    layer.setIcon(iconRotary);
+  } else if (feature.properties.icon == 'sss-spotter_aircraft') {
+    layer.setIcon(iconPlane);
+  } else if (feature.properties.icon == 'sss-dozer') {
+    layer.setIcon(iconDozer);
+  } else if (feature.properties.icon == 'sss-float') {
+    layer.setIcon(iconFloat);
+  } else if (feature.properties.icon == 'sss-loader') {
+    layer.setIcon(iconLoader);
+  } else if (feature.properties.icon == 'sss-aviation_fuel_truck') {
+    layer.setIcon(iconFuelTruck);
+  } else if (feature.properties.icon == 'sss-person') {
+    layer.setIcon(iconPerson);
+  } else if (feature.properties.icon == 'sss-boat') {
+    layer.setIcon(iconBoat);
+  } else {
+    layer.setIcon(iconOther);
+  }
+}
+
 const toastRefresh = bootstrap.Toast.getOrCreateInstance(document.getElementById('toastRefresh'));
 const toastError = bootstrap.Toast.getOrCreateInstance(document.getElementById('toastError'));
 
-// Define layer groups.
+// Define layer groups
 const baseMaps = {
   OpenStreetMap: openStreetMap,
   'Mapbox streets': mapboxStreets,
@@ -113,6 +163,8 @@ const overlayMaps = {
   'DBCA regions': dbcaRegions,
   'LGA boundaries': lgaBoundaries,
 };
+
+// Define our map
 const map = L.map('map', {
   center: [-31.96, 115.87],
   zoom: 12,
@@ -121,9 +173,11 @@ const map = L.map('map', {
   layers: [openStreetMap],
   attributionControl: false,
 });
+// Layers control
+L.control.layers(baseMaps, overlayMaps).addTo(map);
 // Scale bar
 L.control.scale({ maxWidth: 500, imperial: false }).addTo(map);
 // Fullscreen control
 L.control.fullscreen().addTo(map);
-// Link to device list view.
+// Link to device list view
 L.easyButton('fa-solid fa-list', () => window.open(context.device_list_url, '_self'), 'Device list', 'idDeviceListControl').addTo(map);
