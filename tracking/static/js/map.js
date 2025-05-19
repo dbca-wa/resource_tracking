@@ -107,7 +107,7 @@ function setDeviceStyle(feature, layer) {
     callsign = '';
   }
   layer.bindPopup(
-    `Device ID: <a href="/devices/${feature.properties.id}/">${feature.properties.deviceid}</a><br>
+    `Device ID: <a href="${context.device_list_url}${feature.properties.id}/">${feature.properties.deviceid}</a><br>
     Registration: ${feature.properties.registration}<br>
     Callsign: ${callsign}<br>
     Type: ${feature.properties.symbol}<br>

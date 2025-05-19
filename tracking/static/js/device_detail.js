@@ -1,37 +1,4 @@
-// Function to style the marker icon.
-function setDeviceMarkerIcon(device, marker) {
-  if (device.icon == 'sss-2_wheel_drive') {
-    marker.setIcon(iconCar);
-  } else if (device.icon == 'sss-4_wheel_drive_passenger') {
-    marker.setIcon(iconCar);
-  } else if (device.icon == 'sss-4_wheel_drive_ute') {
-    marker.setIcon(iconUte);
-  } else if (device.icon == 'sss-light_unit') {
-    marker.setIcon(iconLightUnit);
-  } else if (device.icon == 'sss-gang_truck') {
-    marker.setIcon(iconGangTruck);
-  } else if (device.icon == 'sss-comms_bus') {
-    marker.setIcon(iconCommsBus);
-  } else if (device.icon == 'sss-rotary_aircraft') {
-    marker.setIcon(iconRotary);
-  } else if (device.icon == 'sss-spotter_aircraft') {
-    marker.setIcon(iconPlane);
-  } else if (device.icon == 'sss-dozer') {
-    marker.setIcon(iconDozer);
-  } else if (device.icon == 'sss-float') {
-    marker.setIcon(iconFloat);
-  } else if (device.icon == 'sss-loader') {
-    marker.setIcon(iconLoader);
-  } else if (device.icon == 'sss-aviation_fuel_truck') {
-    marker.setIcon(iconFuelTruck);
-  } else if (device.icon == 'sss-person') {
-    marker.setIcon(iconPerson);
-  } else if (device.icon == 'sss-boat') {
-    marker.setIcon(iconBoat);
-  } else {
-    marker.setIcon(iconOther);
-  }
-}
+'use strict';
 
 // Define the (initially) empty device layer and add it to the map.
 const trackedDeviceLayer = L.geoJSON(null, {

@@ -432,6 +432,8 @@ class DeviceStream(View):
                         "registration": device.registration,
                         "type": device.get_symbol_display(),
                         "callsign": device.callsign,
+                        "symbol": device.symbol,
+                        "age_text": device.age_text,
                     }
                 ).decode("utf-8")
             except:
