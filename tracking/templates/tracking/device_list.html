@@ -3,7 +3,7 @@
     <div class="container-fluid p-0">
         <div class="row m-1">
             <div class="col-8 col-sm-7">
-                <div class="col-xs-12 col-sm-11 col-md-6">
+                <div class="col-xs-12 col-sm-11 col-md-10 col-lg-8">
                     <form action="" method="get" class="mb-2">
                         <input id="search_field"
                                type="text"
@@ -16,17 +16,15 @@
                 </div>
             </div>
             <div class="col-4 col-sm-5">
-                <a class="btn btn-primary float-end d-none d-sm-block"
+                <a class="btn btn-primary float-end d-none d-md-block"
                    href="{% url 'tracking:device_download' %}"
                    role="button"><i class="fa-solid fa-download"></i> GeoJSON</a>
-                <a class="btn btn-primary float-end d-none d-sm-block mx-1"
+                <a class="btn btn-primary float-end d-none d-md-block mx-1"
                    href="{% url 'tracking:device_download' %}?format=csv"
                    role="button"><i class="fa-solid fa-download"></i> CSV</a>
-                <a class="btn btn-primary float-end d-none d-sm-block"
+                <a class="btn btn-primary float-end"
                    href="{% url 'tracking:device_map' %}"
                    role="button"><i class="fa-solid fa-map"></i> Map</a>
-                <a class="float-end d-block d-sm-none"
-                   href="{% url 'tracking:device_map' %}">Map</a>
             </div>
         </div>
     </div>
@@ -35,7 +33,7 @@
             <table class="table table-sm table-striped table-bordered">
                 <thead>
                     <tr>
-                        <th>Identifier</th>
+                        <th>Device ID</th>
                         <th>Registration</th>
                         <th>Type</th>
                         <th>Region/District</th>
@@ -47,20 +45,29 @@
                     {% for object in object_list %}
                         <tr>
                             <td>
-                                <a href="{% url 'tracking:device_detail' pk=object.pk %}">{{ object.deviceid }}</a>
+                                <a class="btn btn-primary"
+                                   href="{% url 'tracking:device_detail' pk=object.pk %}">
+                                    <i class="fa-solid fa-circle-info"></i>
+                                {{ object.deviceid }}</a>
                             </td>
                             <td>{{ object.registration }}</td>
                             <td>{{ object.symbol|capfirst }}</td>
                             <td>{{ object.get_district_display }}</td>
                             <td class="d-none d-md-table-cell">{{ object.seen }}</td>
                             <td class="d-none d-md-table-cell">
-                                <a class="btn btn-primary"
-                                   href="{% url 'tracking:device_route' pk=object.pk %}"><i class="fa-solid fa-download"></i> Route</a>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+                            <a class="btn btn-primary"
+                               href="{% url 'tracking:device_route' pk=object.pk %}"><i class="fa-solid fa-draw-polygon"></i>
+                            <span class="d-none d-lg-inline">Route</span>
+                        </a>
+                        {% if object.user_editable %}
+                            <a class="btn btn-primary"
+                               href="{% url 'tracking:device_update' pk=object.pk %}"><i class="fa-solid fa-pencil"></i></a>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+</div>
 {% endblock %}

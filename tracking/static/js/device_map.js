@@ -1,57 +1,9 @@
 'use strict';
 
-// Function to set the icon and popup for each device feature added to the layer.
-function setDeviceStyle(feature, layer) {
-  let callsign;
-  if (feature.properties.callsign) {
-    callsign = feature.properties.callsign;
-  } else {
-    callsign = '';
-  }
-  layer.bindPopup(
-    `ID: ${feature.properties.id}<br>
-    Registration: ${feature.properties.registration}<br>
-    Callsign: ${callsign}<br>
-    Type: ${feature.properties.symbol}<br>
-    Seen: ${feature.properties.age_text}<br>
-    <a href="/devices/${feature.properties.id}/">Follow</a>`
-  );
-  // Set the feature icon.
-  if (feature.properties.icon == 'sss-2_wheel_drive') {
-    layer.setIcon(iconCar);
-  } else if (feature.properties.icon == 'sss-4_wheel_drive_passenger') {
-    layer.setIcon(iconCar);
-  } else if (feature.properties.icon == 'sss-4_wheel_drive_ute') {
-    layer.setIcon(iconUte);
-  } else if (feature.properties.icon == 'sss-light_unit') {
-    layer.setIcon(iconLightUnit);
-  } else if (feature.properties.icon == 'sss-gang_truck') {
-    layer.setIcon(iconGangTruck);
-  } else if (feature.properties.icon == 'sss-comms_bus') {
-    layer.setIcon(iconCommsBus);
-  } else if (feature.properties.icon == 'sss-rotary_aircraft') {
-    layer.setIcon(iconRotary);
-  } else if (feature.properties.icon == 'sss-spotter_aircraft') {
-    layer.setIcon(iconPlane);
-  } else if (feature.properties.icon == 'sss-dozer') {
-    layer.setIcon(iconDozer);
-  } else if (feature.properties.icon == 'sss-float') {
-    layer.setIcon(iconFloat);
-  } else if (feature.properties.icon == 'sss-loader') {
-    layer.setIcon(iconLoader);
-  } else if (feature.properties.icon == 'sss-aviation_fuel_truck') {
-    layer.setIcon(iconFuelTruck);
-  } else if (feature.properties.icon == 'sss-person') {
-    layer.setIcon(iconPerson);
-  } else if (feature.properties.icon == 'sss-boat') {
-    layer.setIcon(iconBoat);
-  } else {
-    layer.setIcon(iconOther);
-  }
-}
-
 // Define the (initially) empty devices layer and add it to the map.
 const trackedDevicesLayer = L.geoJSON(null, {
+  // onEachFeature is a function called on each feature in the layer. It receives two arguments:
+  // `feature` (the GeoJSON feature) and `layer` (the Leaflet layer that created the feature).
   onEachFeature: setDeviceStyle,
 }).addTo(map);
 
@@ -68,8 +20,11 @@ function refreshTrackedDevicesLayer(trackedDevicesLayer) {
   // Query the API endpoint for device data.
   const url = `${context.device_geojson_url}?bbox=${lat1},${lng1},${lat2},${lng2}`;
   fetch(url)
-    // Parse the response as JSON.
-    .then((resp) => resp.json())
+    // Parse the response as GeoJSON.
+    //.then((resp) => resp.json())
+    .then(function (resp) {
+      return resp.json();
+    })
     // Replace the data in the tracked devices layer.
     .then(function (data) {
       // Add the device data to the GeoJSON layer.
@@ -87,24 +42,30 @@ refreshTrackedDevicesLayer(trackedDevicesLayer);
 // Begin a timer to refresh the tracked devices layer every 60 seconds.
 let trackedDevicesLayerTimer = setInterval(refreshTrackedDevicesLayer, 60000, trackedDevicesLayer);
 
-// Layers control.
-L.control.layers(baseMaps, overlayMaps).addTo(map);
+const formatDeviceListData = function (geojson) {
+  // The formatData callback function needs to return an object having
+  // See the _defaultFormatData function of the Leaflet Search control.
+  const devices = {};
 
-// Device registration search
+  for (const feature of geojson.features) {
+    devices[feature.properties.registration] = L.latLng(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+  }
+  return devices;
+};
+
+// Device registration search control.
 new L.Control.Search({
-  layer: trackedDevicesLayer,
-  propertyName: 'registration',
+  // url endpoint is queried for a GeoJSON response.
+  url: `${context.device_list_url}?q={s}&format=json`,
+  // formatData is a callback that formats the response so Leaflet Search can use it.
+  formatData: formatDeviceListData,
+  tooltipLimit: 10,
   textPlaceholder: 'Search registration',
   delayType: 1000,
-  textErr: 'Registration not found',
+  textErr: 'Not found',
   zoom: 16,
   circleLocation: true,
   autoCollapse: true,
-}).addTo(map);
-//
-// Refresh tracked devices control.
-L.easyButton('fa-solid fa-arrows-rotate', function () {
-  refreshTrackedDevicesLayer(trackedDevicesLayer);
 }).addTo(map);
 
 // Map zoom and move events.

@@ -7,7 +7,7 @@ from django.conf import settings
 from django.contrib.gis.geos import LineString, Polygon
 from django.core.serializers import serialize
 from django.db.models import Q
-from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseRedirect, JsonResponse, StreamingHttpResponse
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse, StreamingHttpResponse
 from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import DetailView, ListView, TemplateView, UpdateView, View
@@ -93,6 +93,25 @@ class DeviceList(ListView):
 
         return qs
 
+    def get(self, request, *args, **kwargs):
+        # Optionally, allow requests to this view to return a GeoJSON response.
+        # Used by the device map view search.
+        if self.request.GET.get("format", None) == "json":
+            qs = self.get_queryset()
+            geojson = serialize(
+                "geojson",
+                qs,
+                geometry_field=DeviceListDownload.geometry_field,
+                srid=DeviceListDownload.srid,
+                properties=DeviceListDownload.properties,
+            )
+            return HttpResponse(
+                geojson,
+                content_type="application/vnd.geo+json",
+            )
+
+        return super().get(request, *args, **kwargs)
+
 
 class DeviceDetail(DetailView):
     """A detail view to show single device's details and location."""
@@ -123,10 +142,10 @@ class DeviceUpdate(UpdateView):
         obj = self.get_object()
         # Check user authorisation (user has the required group and/or is a superuser).
         if not request.user.groups.filter(name=settings.DEVICE_EDITOR_USER_GROUP).exists() and not request.user.is_superuser:
-            return HttpResponseRedirect(reverse("tracking:device_detail", kwargs={"pk": obj.pk}))
+            return HttpResponseForbidden(f"User updates to tracking device {obj.deviceid} are unauthorised.")
         # Check that the instance is user-editable (business rules on Device model).
         if not obj.user_editable():
-            return HttpResponseRedirect(reverse("tracking:device_detail", kwargs={"pk": obj.pk}))
+            return HttpResponseForbidden(f"User updates to tracking device {obj.deviceid} are unauthorised.")
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -413,6 +432,8 @@ class DeviceStream(View):
                         "registration": device.registration,
                         "type": device.get_symbol_display(),
                         "callsign": device.callsign,
+                        "symbol": device.symbol,
+                        "age_text": device.age_text,
                     }
                 ).decode("utf-8")
             except:
