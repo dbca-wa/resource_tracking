@@ -453,6 +453,7 @@ class DeviceStream(View):
             await asyncio.sleep(10)
 
     async def get(self, request, *args, **kwargs):
+        # Returns a streaming HTTP response that is consumed by the EventSource instance on the client.
         return StreamingHttpResponse(
             self.stream(*args, **kwargs),
             content_type="text/event-stream",
