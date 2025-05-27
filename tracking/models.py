@@ -153,8 +153,8 @@ class Device(models.Model):
     usual_driver = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. John Jones")
     usual_location = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. Karijini National Park")
     current_driver = models.CharField(max_length=50, null=True, blank=True, help_text="e.g. Jodie Jones")
-    callsign = models.CharField(max_length=50, null=True, blank=True, help_text="")
-    callsign_display = models.CharField(max_length=50, null=True, blank=True, verbose_name="Callsign")
+    callsign = models.CharField(max_length=50, null=True, blank=True)
+    callsign_display = models.CharField(max_length=50, null=True, blank=True)  # TODO: deprecate field
     contractor_details = models.CharField(
         max_length=50,
         null=True,

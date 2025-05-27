@@ -67,7 +67,6 @@ INSTALLED_APPS = [
     "django.contrib.gis",
     "crispy_forms",
     "crispy_bootstrap5",
-    "tastypie",
     "django_extensions",
     "djgeojson",
     "tracking",
@@ -165,11 +164,6 @@ LOGGING = {
         },
     },
 }
-
-# Tastypie settings
-TASTYPIE_DEFAULT_FORMATS = ["json"]
-TASTYPIE_DATETIME_FORMATTING = "iso-8601-strict"
-
 
 # Crispy forms config
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"

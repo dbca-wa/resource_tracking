@@ -2,7 +2,6 @@ from django.contrib import admin
 from django.urls import include, path
 from django.views.generic.base import RedirectView
 
-from resource_tracking.api import v1_api
 from tracking.admin import tracking_admin_site
 from tracking.views import DeviceMetricsSource
 
@@ -14,7 +13,6 @@ admin.site.site_title = "Resource Tracking"
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("sss_admin/", tracking_admin_site.urls),
-    path("api/", include(v1_api.urls)),
     path(
         "api/devices/metrics/<str:source_device_type>/",
         DeviceMetricsSource.as_view(),

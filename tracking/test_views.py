@@ -30,8 +30,8 @@ class ViewTestCase(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
-    def test_device_download(self):
-        """Test the devices download view returns JSON"""
+    def test_device_geojson(self):
+        """Test the devices download view returns GeoJSON"""
         url = reverse("tracking:device_download")
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)

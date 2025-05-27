@@ -1,8 +1,10 @@
 import asyncio
 import re
 from datetime import datetime, timedelta
+from io import BytesIO
 
 import orjson as json
+import unicodecsv as csv
 from django.conf import settings
 from django.contrib.gis.geos import LineString, Polygon
 from django.core.serializers import serialize
@@ -12,7 +14,6 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import DetailView, ListView, TemplateView, UpdateView, View
 
-from tracking.api import CSVSerializer
 from tracking.forms import DeviceForm
 from tracking.models import SOURCE_DEVICE_TYPE_CHOICES, Device, LoggedPoint
 from tracking.utils import get_next_pages, get_previous_pages
@@ -101,9 +102,9 @@ class DeviceList(ListView):
             geojson = serialize(
                 "geojson",
                 qs,
-                geometry_field=DeviceListDownload.geometry_field,
-                srid=DeviceListDownload.srid,
-                properties=DeviceListDownload.properties,
+                geometry_field=DeviceDownload.geometry_field,
+                srid=DeviceDownload.srid,
+                properties=DeviceDownload.properties,
             )
             return HttpResponse(
                 geojson,
@@ -191,19 +192,62 @@ class SpatialDataView(View):
 
         # CSV format download.
         if self.format == "csv" or request.GET.get("format", None) == "csv":
-            data = {"objects": []}
+            out = BytesIO()
+            writer = csv.writer(out, quoting=csv.QUOTE_ALL)
+            writer.writerow(
+                [
+                    "deviceid",
+                    "registration",
+                    "rin_number",
+                    "rin_display",
+                    "district",
+                    "usual_driver",
+                    "usual_location",
+                    "current_driver",
+                    "callsign",
+                    "contractor_details",
+                    "other_details",
+                    "internal_only",
+                    "hidden",
+                    "fire_use",
+                    "seen",
+                    "point",
+                    "heading",
+                    "velocity",
+                    "altitude",
+                    "source_device_type",
+                ]
+            )
             for device in qs:
-                d = device.__dict__
-                # We don't want to include the _state key value.
-                d.pop("_state", None)
-                data["objects"].append(d)
-
-            serializer = CSVSerializer()
-            content = serializer.to_csv(data)
+                writer.writerow(
+                    [
+                        device.deviceid,
+                        device.registration,
+                        device.rin_display,
+                        device.rin_display,
+                        device.get_district_display(),
+                        device.usual_driver,
+                        device.usual_location,
+                        device.current_driver,
+                        device.callsign,
+                        device.contractor_details,
+                        device.other_details,
+                        device.internal_only,
+                        device.hidden,
+                        device.fire_use,
+                        device.seen.astimezone(settings.TZ).strftime("%d/%b/%Y %H:%M:%S") if device.seen else None,
+                        device.point.ewkt if device.point else None,
+                        device.heading,
+                        device.velocity,
+                        device.altitude,
+                        device.get_source_device_type_display(),
+                    ]
+                )
+            out.seek(0)
             timestamp = datetime.strftime(datetime.today(), "%Y-%m-%d_%H%M")
             filename = f"{filename_prefix}_{timestamp}.csv"
             response = HttpResponse(
-                content,
+                out,
                 content_type="text/csv",
                 headers={"Content-Disposition": f"attachment; filename={filename}"},
             )
@@ -228,7 +272,7 @@ class SpatialDataView(View):
         return response
 
 
-class DeviceListDownload(SpatialDataView):
+class DeviceDownload(SpatialDataView):
     """Return structured data about tracking devices."""
 
     model = Device
@@ -345,11 +389,70 @@ class DeviceHistoryDownload(SpatialDataView):
 
         return qs
 
+    def get(self, request, *args, **kwargs):
+        qs = self.get_queryset()
+        filename_prefix = self.get_filename_prefix()
+
+        # CSV format download.
+        if self.format == "csv" or request.GET.get("format", None) == "csv":
+            out = BytesIO()
+            writer = csv.writer(out, quoting=csv.QUOTE_ALL)
+            writer.writerow(["id", "heading", "velocity", "altitude", "seen", "device_id"])
+            for loggedpoint in qs:
+                writer.writerow(
+                    [
+                        loggedpoint.id,
+                        loggedpoint.heading,
+                        loggedpoint.velocity,
+                        loggedpoint.altitude,
+                        loggedpoint.seen.astimezone(settings.TZ).strftime("%d/%b/%Y %H:%M:%S"),
+                        loggedpoint.device,
+                    ]
+                )
+            out.seek(0)
+            timestamp = datetime.strftime(datetime.today(), "%Y-%m-%d_%H%M")
+            filename = f"{filename_prefix}_{timestamp}.csv"
+            response = HttpResponse(
+                out,
+                content_type="text/csv",
+                headers={"Content-Disposition": f"attachment; filename={filename}"},
+            )
+        # GeoJSON format download (default).
+        else:
+            geojson = serialize(
+                "geojson",
+                qs,
+                geometry_field=self.geometry_field,
+                srid=self.srid,
+                properties=self.properties,
+            )
+
+            timestamp = datetime.strftime(datetime.today(), "%Y-%m-%d_%H%M")
+            filename = f"{filename_prefix}_{timestamp}.json"
+            response = HttpResponse(
+                geojson,
+                content_type="application/vnd.geo+json",
+                headers={"Content-Disposition": f"attachment; filename={filename}"},
+            )
+
+        return response
+
 
 class DeviceRouteDownload(DeviceHistoryDownload):
     """Extend the DeviceHistoryDownload view to return a device's route history as a LineString geometry.
     This view only returns GeoJSON, not CSV.
     """
+
+    properties = (
+        "id",
+        "heading",
+        "velocity",
+        "altitude",
+        "seen",
+        "device_id",
+        "label",
+    )
+    geometry_field = "route"
 
     def get(self, request, *args, **kwargs):
         """Override this method to return a linestring dataset instead of points."""
@@ -381,17 +484,9 @@ class DeviceRouteDownload(DeviceHistoryDownload):
         geojson = serialize(
             "geojson",
             qs,
-            geometry_field="route",
+            geometry_field=self.geometry_field,
             srid=self.srid,
-            properties=(
-                "id",
-                "heading",
-                "velocity",
-                "altitude",
-                "seen",
-                "device_id",
-                "label",
-            ),
+            properties=self.properties,
         )
         timestamp = datetime.strftime(datetime.today(), "%Y-%m-%d_%H%M")
         filename = f"{filename_prefix}_{timestamp}.json"
