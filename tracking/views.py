@@ -155,6 +155,12 @@ class DeviceUpdate(UpdateView):
         context["page_title"] = f"Update DBCA tracking device {obj.deviceid}"
         return context
 
+    def get_initial(self):
+        initial = super().get_initial()
+        obj = self.get_object()
+        initial["last_seen"] = obj.seen.strftime("%d/%b/%Y %H:%M:%S %Z")
+        return initial
+
     def post(self, request, *args, **kwargs):
         if request.POST.get("cancel", None):
             obj = self.get_object()
