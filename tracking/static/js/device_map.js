@@ -39,8 +39,8 @@ function refreshTrackedDevicesLayer(trackedDevicesLayer) {
 }
 // Immediately run the "refresh" function to populate the layer.
 refreshTrackedDevicesLayer(trackedDevicesLayer);
-// Begin a timer to refresh the tracked devices layer every 60 seconds.
-let trackedDevicesLayerTimer = setInterval(refreshTrackedDevicesLayer, 60000, trackedDevicesLayer);
+// Begin a timer to refresh the tracked devices layer every 30 seconds.
+let trackedDevicesLayerTimer = setInterval(refreshTrackedDevicesLayer, 30000, trackedDevicesLayer);
 
 const formatDeviceListData = function (geojson) {
   // The formatData callback function needs to return an object having
