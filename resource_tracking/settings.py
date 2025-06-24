@@ -67,7 +67,6 @@ INSTALLED_APPS = [
     "django.contrib.gis",
     "crispy_forms",
     "crispy_bootstrap5",
-    "tastypie",
     "django_extensions",
     "djgeojson",
     "tracking",
@@ -123,6 +122,14 @@ DATABASES = {
     "default": dj_database_url.config(),
 }
 
+DATABASES["default"]["TIME_ZONE"] = "Australia/Perth"
+# Use PostgreSQL connection pool if using that DB engine (use ConnectionPool defaults).
+if "ENGINE" in DATABASES["default"] and any(eng in DATABASES["default"]["ENGINE"] for eng in ["postgresql", "postgis"]):
+    if "OPTIONS" in DATABASES["default"]:
+        DATABASES["default"]["OPTIONS"]["pool"] = True
+    else:
+        DATABASES["default"]["OPTIONS"] = {"pool": True}
+
 # Project authentication settings
 AUTHENTICATION_BACKENDS = ("django.contrib.auth.backends.ModelBackend",)
 
@@ -165,11 +172,6 @@ LOGGING = {
         },
     },
 }
-
-# Tastypie settings
-TASTYPIE_DEFAULT_FORMATS = ["json"]
-TASTYPIE_DATETIME_FORMATTING = "iso-8601-strict"
-
 
 # Crispy forms config
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"

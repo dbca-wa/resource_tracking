@@ -24,7 +24,7 @@ class DeviceAdmin(ModelAdmin):
         "internal_only",
     )
     list_filter = ("symbol", "district", "source_device_type", "hidden", "internal_only")
-    search_fields = ("deviceid", "registration", "callsign_display", "rin_display", "symbol", "district_display")
+    search_fields = ("deviceid", "registration", "callsign", "rin_display", "symbol", "district_display")
     readonly_fields = ("deviceid", "source_device_type", "seen", "point", "registration")
     fieldsets = (
         (

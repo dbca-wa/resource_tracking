@@ -6,7 +6,7 @@ from tracking import views
 app_name = "tracking"
 urlpatterns = [
     path("devices/", views.DeviceList.as_view(), name="device_list"),
-    path("devices/download/", views.DeviceListDownload.as_view(), name="device_download"),
+    path("devices/download/", views.DeviceDownload.as_view(), name="device_download"),
     path("devices/map/", views.DeviceMap.as_view(), name="device_map"),
     path("devices/<int:pk>/", views.DeviceDetail.as_view(), name="device_detail"),
     path("devices/<int:pk>/update/", views.DeviceUpdate.as_view(), name="device_update"),

@@ -18,7 +18,7 @@ function refreshTrackedDevicesLayer(trackedDevicesLayer) {
   const sw = bounds.getSouthWest();
   const [lat2, lng2] = [sw['lat'], sw['lng']];
   // Query the API endpoint for device data.
-  const url = `${context.device_geojson_url}?bbox=${lat1},${lng1},${lat2},${lng2}`;
+  const url = `${context.device_geojson_url}?days=14&bbox=${lat1},${lng1},${lat2},${lng2}`;
   fetch(url)
     // Parse the response as GeoJSON.
     //.then((resp) => resp.json())
