@@ -1,6 +1,6 @@
 [project]
 name = "resource_tracking"
-version = "1.4.32"
+version = "1.4.33"
 description = "DBCA internal corporate application to download and serve data from remote tracking devices."
 authors = [
   { name = "Ashley Felton", email = "ashley.felton@dbca.wa.gov.au" },
@@ -13,7 +13,7 @@ authors = [
 license = "Apache-2.0"
 requires-python = ">=3.13,<4.0"
 dependencies = [
-  "django==5.2.2",
+  "django==5.2.3",
   "psycopg[binary,pool]==3.2.9",
   "dbca-utils==2.1.3",
   "django-extensions==4.1",
@@ -22,7 +22,7 @@ dependencies = [
   "gunicorn==23.0.0",
   "unicodecsv==0.14.1",
   "whitenoise[brotli]==6.9.0",
-  "sentry-sdk[django]==2.29.1",
+  "sentry-sdk[django]==2.30.0",
   "django-geojson==4.2.0",
   "azure-storage-blob==12.25.1",
   "uvicorn[standard]==0.34.3",
@@ -31,6 +31,7 @@ dependencies = [
   "django-crispy-forms==2.4",
   "crispy-bootstrap5==2025.4",
   "h11==0.16",
+  "django-tastypie==0.15.1",
 ]
 
 [dependency-groups]
