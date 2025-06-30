@@ -25,7 +25,7 @@ dependencies = [
   "sentry-sdk[django]==2.30.0",
   "django-geojson==4.2.0",
   "azure-storage-blob==12.25.1",
-  "uvicorn[standard]==0.34.3",
+  "uvicorn[standard]==0.35.0",
   "uvicorn-worker==0.3.0",
   "orjson==3.10.18",
   "django-crispy-forms==2.4",
