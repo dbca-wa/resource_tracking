@@ -29,7 +29,7 @@ dependencies = [
   "uvicorn-worker==0.3.0",
   "orjson==3.10.18",
   "django-crispy-forms==2.4",
-  "crispy-bootstrap5==2025.4",
+  "crispy-bootstrap5==2025.6",
   "h11==0.16",
   "django-tastypie==0.15.1",
 ]
