@@ -143,10 +143,10 @@ class DeviceUpdate(UpdateView):
         obj = self.get_object()
         # Check user authorisation (user has the required group and/or is a superuser).
         if not request.user.groups.filter(name=settings.DEVICE_EDITOR_USER_GROUP).exists() and not request.user.is_superuser:
-            return HttpResponseForbidden(f"User updates to tracking device {obj.deviceid} are unauthorised.")
+            return HttpResponseForbidden(f"User updates to tracking device ID {obj.deviceid} are unauthorised.")
         # Check that the instance is user-editable (business rules on Device model).
         if not obj.user_editable():
-            return HttpResponseForbidden(f"User updates to tracking device {obj.deviceid} are unauthorised.")
+            return HttpResponseForbidden(f"User updates to tracking device ID {obj.deviceid} are unauthorised.")
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
