@@ -16,10 +16,10 @@ urlpatterns = [
     # NOTE: the DeviceMetricsSource view is also registered under the /api path in order to allow basic auth.
     path("devices/metrics/<str:source_device_type>/", views.DeviceMetricsSource.as_view(), name="device_metrics_source"),
     # Older style route patterns, now redirected.
-    path("map/", RedirectView.as_view(pattern_name="device_map", permanent=True)),
-    path("devices.csv", RedirectView.as_view(pattern_name="device_download", permanent=True)),
-    path("devices.geojson", RedirectView.as_view(pattern_name="device_download", permanent=True)),
-    path("loggedpoint/<int:pk>.csv", RedirectView.as_view(pattern_name="device_history", permanent=True)),
-    path("loggedpoint/<int:pk>.geojson", RedirectView.as_view(pattern_name="device_history", permanent=True)),
-    path("route/<int:pk>.geojson", RedirectView.as_view(pattern_name="device_route", permanent=True)),
+    path("map/", RedirectView.as_view(pattern_name="tracking:device_map", permanent=True)),
+    path("devices.csv", RedirectView.as_view(pattern_name="tracking:device_download", permanent=True)),
+    path("devices.geojson", RedirectView.as_view(pattern_name="tracking:device_download", permanent=True)),
+    path("loggedpoint/<int:pk>.csv", RedirectView.as_view(pattern_name="tracking:device_history", permanent=True)),
+    path("loggedpoint/<int:pk>.geojson", RedirectView.as_view(pattern_name="tracking:device_history", permanent=True)),
+    path("route/<int:pk>.geojson", RedirectView.as_view(pattern_name="tracking:device_route", permanent=True)),
 ]
