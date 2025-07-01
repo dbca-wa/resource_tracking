@@ -143,10 +143,10 @@ class DeviceUpdate(UpdateView):
         obj = self.get_object()
         # Check user authorisation (user has the required group and/or is a superuser).
         if not request.user.groups.filter(name=settings.DEVICE_EDITOR_USER_GROUP).exists() and not request.user.is_superuser:
-            return HttpResponseForbidden(f"User updates to tracking device {obj.deviceid} are unauthorised.")
+            return HttpResponseForbidden(f"User updates to tracking device ID {obj.deviceid} are unauthorised.")
         # Check that the instance is user-editable (business rules on Device model).
         if not obj.user_editable():
-            return HttpResponseForbidden(f"User updates to tracking device {obj.deviceid} are unauthorised.")
+            return HttpResponseForbidden(f"User updates to tracking device ID {obj.deviceid} are unauthorised.")
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -306,6 +306,11 @@ class DeviceDownload(SpatialDataView):
         # Always filter out "hidden" devices.
         qs = qs.filter(hidden=False)
 
+        # Optional filter to filter devices by deviceid (used by SSS).
+        if self.request.GET.get("deviceid__in", None):
+            deviceids = self.request.GET["deviceid__in"].split(",")
+            qs = qs.filter(deviceid__in=deviceids)
+
         # Optional filter to limit devices to those seen within the last n days.
         if self.request.GET.get("days", None):
             days = int(self.request.GET["days"])
@@ -337,6 +342,10 @@ class DeviceDownload(SpatialDataView):
             qs = qs.filter(Q(callsign__icontains=query_str) | Q(registration__icontains=query_str) | Q(deviceid__icontains=query_str))
 
         return qs
+
+
+class DeviceDownloadCsv(DeviceDownload):
+    format = "csv"
 
 
 class DeviceHistoryDownload(SpatialDataView):
