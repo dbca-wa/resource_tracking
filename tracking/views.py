@@ -10,6 +10,7 @@ from django.contrib.gis.geos import LineString, Polygon
 from django.core.serializers import serialize
 from django.db.models import Q
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse, StreamingHttpResponse
+from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import DetailView, ListView, TemplateView, UpdateView, View
@@ -161,15 +162,15 @@ class DeviceUpdate(UpdateView):
         initial["last_seen"] = obj.seen.strftime("%d/%b/%Y %H:%M:%S %Z")
         return initial
 
-    def post(self, request, *args, **kwargs):
-        if request.POST.get("cancel", None):
-            obj = self.get_object()
-            return reverse("tracking:device_detail", kwargs={"pk": obj.pk})
-        return super().post(request, *args, **kwargs)
-
     def get_success_url(self):
         obj = self.get_object()
         return reverse("tracking:device_detail", kwargs={"pk": obj.pk})
+
+    def post(self, request, *args, **kwargs):
+        if request.POST.get("cancel", None):
+            # Redirect without saving changes.
+            return redirect(self.get_success_url())
+        return super().post(request, *args, **kwargs)
 
 
 class SpatialDataView(View):
