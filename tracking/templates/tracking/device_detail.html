@@ -30,10 +30,6 @@
     <div class="container-fluid p-0 d-flex h-100 flex-column">
         <div class="row m-1">
             <div class="col">
-                <div class="position-relative d-none d-sm-block">
-                    <a class="btn btn-primary position-absolute top-0 end-0 m-3"
-                       href="{% url 'tracking:device_route' pk=object.pk %}"><i class="fa-solid fa-draw-polygon"></i> Route</a>
-                </div>
                 <div id="device-data-stream">
                     Device ID: {{ object.deviceid }}
                     <br>
@@ -42,6 +38,29 @@
                     Type: {{ object.symbol|capfirst }}
                     <br>
                     Last seen: {{ object.seen }}
+                </div>
+            </div>
+            <div class="col d-none d-sm-block">
+                <div class="vstack gap-1">
+                    <div class="d-flex justify-content-end">
+                        <a class="btn btn-primary"
+                           title="Map showing all devices"
+                           href="{% url 'tracking:device_map' %}"
+                           role="button"><i class="fa-solid fa-map"></i> Map</a>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <a class="btn btn-primary"
+                           title="Download device {{ object.deviceid }} route"
+                           href="{% url 'tracking:device_route' pk=object.pk %}"><i class="fa-solid fa-draw-polygon"></i> Route</a>
+                        <a class="btn btn-primary mx-1"
+                           title="Download device {{ object.deviceid }} history (CSV)"
+                           href="{% url 'tracking:device_history' pk=object.pk %}?format=csv"
+                           role="button"><i class="fa-solid fa-download"></i> CSV</a>
+                        <a class="btn btn-primary"
+                           title="Download device {{ object.deviceid }} history (GeoJSON)"
+                           href="{% url 'tracking:device_history' pk=object.pk %}"
+                           role="button"><i class="fa-solid fa-download"></i> GeoJSON</a>
+                    </div>
                 </div>
             </div>
         </div>
