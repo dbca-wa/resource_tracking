@@ -28,10 +28,14 @@
                            title="Download list of devices (CSV)"
                            href="{% url 'tracking:device_download' %}?format=csv"
                            role="button"><i class="fa-solid fa-download"></i> CSV</a>
-                        <a class="btn btn-primary"
+                        <a class="btn btn-primary me-1"
                            title="Download list of devices (GeoJSON)"
                            href="{% url 'tracking:device_download' %}"
                            role="button"><i class="fa-solid fa-download"></i> GeoJSON</a>
+                        <a class="btn btn-primary"
+                           title="Download list of devices (GPKG)"
+                           href="{% url 'tracking:device_download' %}?format=gpkg"
+                           role="button"><i class="fa-solid fa-download"></i> GPKG</a>
                     </div>
                 </div>
             </div>

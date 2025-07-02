@@ -13,8 +13,8 @@ urlpatterns = [
     path("devices/<int:pk>/", views.DeviceDetail.as_view(), name="device_detail"),
     path("devices/<int:pk>/update/", views.DeviceUpdate.as_view(), name="device_update"),
     path("devices/<int:pk>/stream/", views.DeviceStream.as_view(), name="device_stream"),
-    # NOTE: the DeviceHistoryDownload view returns a set of logged points for a device as GeoJSON or CSV.
-    path("devices/<int:pk>/history/", views.DeviceHistoryDownload.as_view(), name="device_history"),
+    # NOTE: the DeviceLoggedPointDownload view returns a set of logged points for a device as GeoJSON or CSV.
+    path("devices/<int:pk>/history/", views.DeviceLoggedPointDownload.as_view(), name="device_history"),
     # NOTE: the DeviceRouteDownload view returns the route linestring as GeoJSON.
     path("devices/<int:pk>/route/", views.DeviceRouteDownload.as_view(), name="device_route"),
     # NOTE: the DeviceMetricsSource view is also registered under the /api path in order to allow basic auth.
