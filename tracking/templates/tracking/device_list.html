@@ -16,15 +16,24 @@
                 </div>
             </div>
             <div class="col-4 col-sm-5">
-                <a class="btn btn-primary float-end d-none d-md-block"
-                   href="{% url 'tracking:device_download' %}"
-                   role="button"><i class="fa-solid fa-download"></i> GeoJSON</a>
-                <a class="btn btn-primary float-end d-none d-md-block mx-1"
-                   href="{% url 'tracking:device_download' %}?format=csv"
-                   role="button"><i class="fa-solid fa-download"></i> CSV</a>
-                <a class="btn btn-primary float-end"
-                   href="{% url 'tracking:device_map' %}"
-                   role="button"><i class="fa-solid fa-map"></i> Map</a>
+                <div class="vstack gap-1">
+                    <div class="d-flex justify-content-end">
+                        <a class="btn btn-primary"
+                           title="Map showing all devices"
+                           href="{% url 'tracking:device_map' %}"
+                           role="button"><i class="fa-solid fa-map"></i> Map</a>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <a class="btn btn-primary me-1"
+                           title="Download list of devices (CSV)"
+                           href="{% url 'tracking:device_download' %}?format=csv"
+                           role="button"><i class="fa-solid fa-download"></i> CSV</a>
+                        <a class="btn btn-primary"
+                           title="Download list of devices (GeoJSON)"
+                           href="{% url 'tracking:device_download' %}"
+                           role="button"><i class="fa-solid fa-download"></i> GeoJSON</a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -46,6 +55,7 @@
                         <tr>
                             <td>
                                 <a class="btn btn-primary"
+                                   title="Device {{ object.deviceid }} detail view"
                                    href="{% url 'tracking:device_detail' pk=object.pk %}">
                                     <i class="fa-solid fa-circle-info"></i>
                                 {{ object.deviceid }}</a>
@@ -56,6 +66,7 @@
                             <td class="d-none d-md-table-cell">{{ object.seen }}</td>
                             <td class="d-none d-md-table-cell">
                             <a class="btn btn-primary"
+                               title="Download device {{ object.deviceid }} route"
                                href="{% url 'tracking:device_route' pk=object.pk %}"><i class="fa-solid fa-draw-polygon"></i>
                             <span class="d-none d-lg-inline">Route</span>
                         </a>

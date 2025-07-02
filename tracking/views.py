@@ -103,9 +103,9 @@ class DeviceList(ListView):
             geojson = serialize(
                 "geojson",
                 qs,
-                geometry_field=DeviceDownload.geometry_field,
+                geometry_field="point",
                 srid=DeviceDownload.srid,
-                properties=DeviceDownload.properties,
+                properties=("id", "heading", "velocity", "altitude", "seen", "device_id"),
             )
             return HttpResponse(
                 geojson,
@@ -180,7 +180,7 @@ class SpatialDataView(View):
     http_method_names = ["get", "head", "options"]
     srid = 4326
     format = "geojson"
-    geometry_field = None
+    geometry_field = "point"
     properties = ()
     filename_prefix = None
 
@@ -283,7 +283,6 @@ class DeviceDownload(SpatialDataView):
     """Return structured data about tracking devices."""
 
     model = Device
-    geometry_field = "point"
     properties = (
         "id",
         "age_colour",
@@ -351,12 +350,10 @@ class DeviceDownloadCsv(DeviceDownload):
 
 class DeviceHistoryDownload(SpatialDataView):
     """Return structured data of the tracking points for a single device over the most-recent n days
-    (14 by default).
+    (14 by default). May return GeoJSON (default) or CSV.
     """
 
     model = LoggedPoint
-    geometry_field = "point"
-    properties = ("id", "heading", "velocity", "altitude", "seen", "device_id")
 
     def dispatch(self, *args, **kwargs):
         if "pk" not in self.kwargs:
@@ -413,19 +410,20 @@ class DeviceHistoryDownload(SpatialDataView):
         if self.format == "csv" or request.GET.get("format", None) == "csv":
             out = BytesIO()
             writer = csv.writer(out, quoting=csv.QUOTE_ALL)
-            writer.writerow(["id", "heading", "velocity", "altitude", "seen", "device_id"])
+            writer.writerow(["id", "device_id", "heading", "velocity", "altitude", "seen", "point"])
             for loggedpoint in qs:
                 writer.writerow(
                     [
                         loggedpoint.id,
+                        str(loggedpoint.device),
                         loggedpoint.heading,
                         loggedpoint.velocity,
                         loggedpoint.altitude,
                         loggedpoint.seen.astimezone(settings.TZ).strftime("%d/%b/%Y %H:%M:%S"),
-                        loggedpoint.device,
+                        loggedpoint.point.ewkt,
                     ]
                 )
-            out.seek(0)
+            out.seek(0)  # Set the file pointer back to the start or the response is empty.
             timestamp = datetime.strftime(datetime.today(), "%Y-%m-%d_%H%M")
             filename = f"{filename_prefix}_{timestamp}.csv"
             response = HttpResponse(
@@ -435,12 +433,16 @@ class DeviceHistoryDownload(SpatialDataView):
             )
         # GeoJSON format download (default).
         else:
+            # Append a `device_id` attribute to each object in the queryset, for serialization.
+            for obj in qs:
+                setattr(obj, "device_id", str(obj.device))
+
             geojson = serialize(
                 "geojson",
                 qs,
-                geometry_field=self.geometry_field,
+                geometry_field="point",
                 srid=self.srid,
-                properties=self.properties,
+                properties=("device_id", "heading", "velocity", "altitude", "seen"),
             )
 
             timestamp = datetime.strftime(datetime.today(), "%Y-%m-%d_%H%M")

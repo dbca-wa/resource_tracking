@@ -237,7 +237,7 @@ class Device(models.Model):
         symbol = self.symbol.lower().replace(" ", "_")
         return f"sss-{symbol}"
 
-    def save(self, force_insert=False, force_update=False, *args, **kwargs):
+    def save(self, *args, **kwargs):
         if self.district:
             self.district_display = self.get_district_display()
         if self.callsign:
@@ -254,7 +254,7 @@ class Device(models.Model):
             self.rin_display = f"{symbol_prefix}{self.rin_number}"
         else:
             self.rin_display = None
-        super().save(force_insert, force_update)
+        super().save(*args, **kwargs)
 
     def clean(self):
         # Clean rin_number
