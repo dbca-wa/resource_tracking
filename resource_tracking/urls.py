@@ -19,5 +19,5 @@ urlpatterns = [
         name="device_metrics_source",
     ),
     path("", include("tracking.urls")),
-    path("", RedirectView.as_view(pattern_name="admin:index"), name="home"),
+    path("", RedirectView.as_view(pattern_name="tracking:device_list"), name="home"),
 ]

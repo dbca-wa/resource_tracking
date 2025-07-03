@@ -49,17 +49,21 @@
                            role="button"><i class="fa-solid fa-map"></i> Map</a>
                     </div>
                     <div class="d-flex justify-content-end">
-                        <a class="btn btn-primary"
+                        <a class="btn btn-primary me-1"
                            title="Download device {{ object.deviceid }} route"
                            href="{% url 'tracking:device_route' pk=object.pk %}"><i class="fa-solid fa-draw-polygon"></i> Route</a>
-                        <a class="btn btn-primary mx-1"
+                        <a class="btn btn-primary me-1"
                            title="Download device {{ object.deviceid }} history (CSV)"
                            href="{% url 'tracking:device_history' pk=object.pk %}?format=csv"
                            role="button"><i class="fa-solid fa-download"></i> CSV</a>
-                        <a class="btn btn-primary"
+                        <a class="btn btn-primary me-1"
                            title="Download device {{ object.deviceid }} history (GeoJSON)"
                            href="{% url 'tracking:device_history' pk=object.pk %}"
                            role="button"><i class="fa-solid fa-download"></i> GeoJSON</a>
+                        <a class="btn btn-primary"
+                           title="Download device {{ object.deviceid }} history (GPKG)"
+                           href="{% url 'tracking:device_history' pk=object.pk %}?format=gpkg"
+                           role="button"><i class="fa-solid fa-download"></i> GPKG</a>
                     </div>
                 </div>
             </div>
