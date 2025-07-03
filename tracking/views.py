@@ -111,7 +111,7 @@ class DeviceList(ListView):
                 qs,
                 geometry_field="point",
                 srid=DeviceDownload.srid,
-                properties=("id", "heading", "velocity", "altitude", "seen", "device_id"),
+                properties=("id", "heading", "velocity", "altitude", "seen", "device_id", "registration"),
             )
             return HttpResponse(
                 geojson,
