@@ -3,7 +3,7 @@ kind: CronJob
 metadata:
   name: resourcetracking-cronjob
 spec:
-  schedule: "*/2 * * * *"
+  schedule: '*/2 * * * *'
   suspend: true
   jobTemplate:
     spec:
@@ -11,7 +11,7 @@ spec:
         spec:
           containers:
             - name: resourcetracking-cronjob
-              args: ["manage.py", "harvest_tracertrak_feed"]
+              args: ['manage.py', 'harvest_tracertrak_feed']
               env:
                 - name: DATABASE_URL
                   valueFrom:
@@ -34,4 +34,9 @@ spec:
                       name: resourcetracking-env-uat
                       key: SENTRY_DSN
                 - name: SENTRY_ENVIRONMENT
-                  value: "uat"
+                  value: 'uat'
+          tolerations:
+            - effect: NoSchedule
+              key: kubernetes.azure.com/scalesetpriority
+              operator: Equal
+              value: spot
