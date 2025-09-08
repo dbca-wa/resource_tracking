@@ -3,7 +3,7 @@ kind: CronJob
 metadata:
   name: resourcetracking-cronjob
 spec:
-  schedule: "* * * * *"
+  schedule: '* * * * *'
   jobTemplate:
     spec:
       template:
@@ -11,7 +11,7 @@ spec:
           containers:
             - name: resourcetracking-cronjob
               imagePullPolicy: IfNotPresent
-              args: ["manage.py", "harvest_dfes_feed"]
+              args: ['manage.py', 'harvest_dfes_feed']
               env:
                 - name: DATABASE_URL
                   valueFrom:
@@ -39,4 +39,4 @@ spec:
                       name: resourcetracking-env-prod
                       key: SENTRY_DSN
                 - name: SENTRY_ENVIRONMENT
-                  value: "prod"
+                  value: 'prod'
