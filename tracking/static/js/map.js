@@ -2,28 +2,37 @@
 
 // Parse additional variables from the DOM element
 const context = JSON.parse(document.getElementById('javascript_context').textContent);
-
-const geoserver_wmts_url = `${context.geoserver_url}/gwc/service/wmts?service=WMTS&request=GetTile&version=1.0.0&tilematrixset=mercator&tilematrix=mercator:{z}&tilecol={x}&tilerow={y}`;
-const geoserver_wmts_url_base = `${geoserver_wmts_url}&format=image/jpeg`;
-const geoserver_wmts_url_overlay = `${geoserver_wmts_url}&format=image/png`;
+const geoserver_wms_url = `${context.geoserver_url}/ows`;
+const geoserver_wmts_url = `${context.geoserver_url}/gwc/service/wmts?service=WMTS&request=GetTile&version=1.0.0&format=image/png&tilematrixset=mercator&tilematrix=mercator:{z}&tilecol={x}&tilerow={y}`;
 
 // Base layers
-const mapboxStreets = L.tileLayer(`${geoserver_wmts_url_base}&layer=dbca:mapbox-streets`);
-const landgateOrthomosaic = L.tileLayer(`${geoserver_wmts_url_base}&layer=landgate:virtual_mosaic`);
-const stateMapBase = L.tileLayer(`${geoserver_wmts_url_base}&layer=cddp:state_map_base`);
-const openStreetMap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png');
+const mapboxStreets = L.tileLayer(`${geoserver_wmts_url}&layer=kaartdijin-boodja-public:mapbox-streets-public`);
+const virtualMosaic = L.tileLayer(`${geoserver_wmts_url}&layer=kaartdijin-boodja-private:virtual_mosaic`);
+// TODO: enable layer when available in KB.
+// const stateMapBase = L.tileLayer(`${geoserver_wmts_url}&layer=kaartdijin-boodja-private:state_map_base`);
 
 // Overlay layers
-const dbcaBushfires = L.tileLayer(`${geoserver_wmts_url_overlay}&layer=landgate:dbca_going_bushfires_dbca-001`, {
+// Use WMS for the bushfire layers to avoid caching.
+const dbcaBushfires = L.tileLayer.wms(geoserver_wms_url, {
+  layers: 'kaartdijin-boodja-private:dbca_going_bushfires_dbca-001',
+  format: 'image/png',
   transparent: true,
   opacity: 0.75,
 });
-const dfesBushfires = L.tileLayer(`${geoserver_wmts_url_overlay}&layer=landgate:authorised_fireshape_dfes-032`, {
+const dfesBushfires = L.tileLayer.wms(geoserver_wms_url, {
+  layers: 'kaartdijin-boodja-private:authorised_fireshape_dfes-032',
+  format: 'image/png',
   transparent: true,
   opacity: 0.75,
 });
-const dbcaRegions = L.tileLayer(`${geoserver_wmts_url_overlay}&layer=cddp:kaartdijin-boodja-public_CPT_DBCA_REGIONS`, { opacity: 0.75 });
-const lgaBoundaries = L.tileLayer(`${geoserver_wmts_url_overlay}&layer=cddp:local_gov_authority`, { opacity: 0.75 });
+const dbcaRegions = L.tileLayer(`${geoserver_wmts_url}&layer=kaartdijin-boodja-public:CPT_DBCA_REGIONS`, {
+  transparent: true,
+  opacity: 0.75,
+});
+const lgaBoundaries = L.tileLayer(`${geoserver_wmts_url}&layer=kaartdijin-boodja-public:CPT_LOCAL_GOVT_AREAS`, {
+  transparent: true,
+  opacity: 0.75,
+});
 
 // Icon classes (note that URLs are injected into the base template)
 const iconCar = L.icon({
@@ -152,10 +161,9 @@ const toastError = bootstrap.Toast.getOrCreateInstance(document.getElementById('
 
 // Define layer groups
 const baseMaps = {
-  OpenStreetMap: openStreetMap,
   'Mapbox streets': mapboxStreets,
-  'Landgate orthomosaic': landgateOrthomosaic,
-  'State map base 250K': stateMapBase,
+  'Virtual mosaic': virtualMosaic,
+  // 'State map base 250K': stateMapBase,
 };
 const overlayMaps = {
   'DBCA Going Bushfires': dbcaBushfires,
@@ -170,7 +178,7 @@ const map = L.map('map', {
   zoom: 12,
   minZoom: 4,
   maxZoom: 18,
-  layers: [openStreetMap],
+  layers: [mapboxStreets],
   attributionControl: false,
 });
 // Layers control
