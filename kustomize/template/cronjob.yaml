@@ -33,3 +33,8 @@ spec:
                     - ALL
                 readOnlyRootFilesystem: false
           automountServiceAccountToken: false
+          tolerations:
+            - key: arch
+              operator: Equal
+              value: arm64
+              effect: NoSchedule
