@@ -35,8 +35,3 @@ spec:
                       key: SENTRY_DSN
                 - name: SENTRY_ENVIRONMENT
                   value: 'uat'
-          tolerations:
-            - effect: NoSchedule
-              key: kubernetes.azure.com/scalesetpriority
-              operator: Equal
-              value: spot
