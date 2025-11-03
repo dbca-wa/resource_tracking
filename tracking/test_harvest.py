@@ -122,7 +122,7 @@ class HarvestTestCase(TestCase):
 
     def test_parse_iriditrak_message(self):
         # Iriditrak timestamp is parsed from the sent email.
-        iriditrak_email = open(os.path.join(settings.BASE_DIR, "tracking", "iriditrak_test.msg"))
+        iriditrak_email = open(os.path.join(settings.BASE_DIR, "tracking", "test_data", "iriditrak_test.msg"))
         message = email.message_from_string(iriditrak_email.read())
         iriditrak_email.close()
         data = parse_iriditrak_message(message)
