@@ -28,7 +28,7 @@ dependencies = [
   "uvicorn[standard]==0.38.0",
   "uvicorn-worker==0.4.0",
   "orjson==3.11.4",
-  "django-crispy-forms==2.4",
+  "django-crispy-forms==2.5",
   "crispy-bootstrap5==2025.6",
   "h11==0.16",
   "django-tastypie==0.15.1",
@@ -36,7 +36,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["ipython>=9.6.0", "ipdb>=0.13.13", "mixer>=7.2.2", "pre-commit>=4.3.0"]
+dev = ["ipython>=9.7.0", "ipdb>=0.13.13", "mixer>=7.2.2", "pre-commit>=4.4.0"]
 
 [project.urls]
 homepage = "https://github.com/dbca-wa/resource_tracking"
