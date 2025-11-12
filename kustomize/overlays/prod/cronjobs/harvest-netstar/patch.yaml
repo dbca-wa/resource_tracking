@@ -11,31 +11,6 @@ spec:
           containers:
             - name: resourcetracking-cronjob
               args: ['manage.py', 'harvest_netstar_feed']
-              env:
-                - name: DATABASE_URL
-                  valueFrom:
-                    secretKeyRef:
-                      name: resourcetracking-env-prod
-                      key: DATABASE_URL
-                - name: NETSTAR_URL
-                  valueFrom:
-                    secretKeyRef:
-                      name: resourcetracking-env-prod
-                      key: NETSTAR_URL
-                - name: NETSTAR_USER
-                  valueFrom:
-                    secretKeyRef:
-                      name: resourcetracking-env-prod
-                      key: NETSTAR_USER
-                - name: NETSTAR_PASS
-                  valueFrom:
-                    secretKeyRef:
-                      name: resourcetracking-env-prod
-                      key: NETSTAR_PASS
-                - name: SENTRY_DSN
-                  valueFrom:
-                    secretKeyRef:
-                      name: resourcetracking-env-prod
-                      key: SENTRY_DSN
-                - name: SENTRY_ENVIRONMENT
-                  value: 'prod'
+              envFrom:
+                - secretRef:
+                    name: resourcetracking-env-prod

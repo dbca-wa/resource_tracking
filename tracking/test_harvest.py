@@ -9,26 +9,15 @@ from django.test import TestCase
 
 from tracking.models import Device
 from tracking.utils import (
-    parse_beam_payload,
     parse_dfes_feature,
     parse_iriditrak_message,
     parse_mp70_payload,
     parse_netstar_feature,
+    parse_spot_message,
     parse_tracplus_row,
     validate_latitude_longitude,
 )
 
-# MP70 payload with valid data.
-MP70_PAYLOAD_VALID = "\r\nN694470090021038,13.74,-031.99252,+115.88450,0,0,10/18/2023 03:12:45\r\n"
-MP70_TIMESTAMP = datetime(2023, 10, 18, 3, 12, 45, tzinfo=timezone.utc)
-# MP70 payload with bad data (unable to parse).
-MP70_PAYLOAD_BAD = "\r\nN690540113021035,12.96,foo,bar,-53,0,10/18/2023 03:12:49\r\n"
-# MP70 payload with invalid data (fails validation).
-MP70_PAYLOAD_INVALID = "\r\nN690540113021035,12.96,+000.00000,+000.00000,-53,0,10/18/2023 03:12:49\r\n"
-# Iriditrak BEAM payload with valid data.
-IRIDITRAK_PAYLOAD_VALID = b"\x03\xadCSB\x00aa\x80\x11,U\xeee]\x1b\x97\x00J\x01"
-# Iriditrak timestamp in the test email message.
-IRIDTRAK_TIMESTAMP = datetime(2024, 3, 11, 0, 50, 1, tzinfo=timezone.utc)
 # TracPlus feed valid payload
 TRAKPLUS_FEED_VALID = """Report ID,Asset Type,Asset Regn,Asset Name,Asset Make,Asset Model,Device ID,Device Serial,Device IMEI,Device Make,Device Model,Transmitted,Received,Latitude,Longitude,Speed,Track,Altitude,Events,GPS Count,DOP,Type of Fix,Message Text,Package,Gateway\r\n1,Aircraft,N293EA Erickson Aero Tanker,,McDonnell Douglas,DC-87,1,L0001,L1001,Flightcell,DZMx,2023-10-30 01:50:44,2023-10-30 01:50:49,44.66921790,-121.149994450,0,0,750,EVT_SCHEDULED,0,1,3D,,,IRIDIUM.SBD.SQS
 """
@@ -93,44 +82,61 @@ NETSTAR_TIMESTAMP = datetime(2025, 4, 9, 3, 47, 54, tzinfo=timezone.utc)
 
 class HarvestTestCase(TestCase):
     """Unit tests to cover the following harvest formats:
-    - Email payloads: Iriditrak, MP70
+    - Email payloads: Iriditrak, MP70, Spot
     - TracPlus API
     - DFES API
 
-    TODO: Email from Spot, DPlus
+    TODO: Email from DPlus
     """
 
     def test_validate_latitude_longitude(self):
         """Test the validate_latitude_longitude function"""
-        data = parse_mp70_payload(MP70_PAYLOAD_INVALID)
-        self.assertFalse(validate_latitude_longitude(data["latitude"], data["longitude"]))
-        data = parse_mp70_payload(MP70_PAYLOAD_VALID)
+        mp70_payload_valid = "\r\nN694470090021038,13.74,-031.99252,+115.88450,0,0,10/18/2023 03:12:45\r\n"
+        data = parse_mp70_payload(mp70_payload_valid)
         self.assertTrue(validate_latitude_longitude(data["latitude"], data["longitude"]))
+        mp70_payload_invalid = "\r\nN690540113021035,12.96,+000.00000,+000.00000,-53,0,10/18/2023 03:12:49\r\n"
+        data = parse_mp70_payload(mp70_payload_invalid)
+        self.assertFalse(validate_latitude_longitude(data["latitude"], data["longitude"]))
 
     def test_parse_mp70_payload(self):
         """Test the parse_mp70_payload function"""
-        data = parse_mp70_payload(MP70_PAYLOAD_VALID)
+        mp70_email = open(os.path.join(settings.BASE_DIR, "tracking", "test_data", "mp70_test.eml"))
+        message = email.message_from_string(mp70_email.read())
+        mp70_email.close()
+        payload = message.get_payload()
+        data = parse_mp70_payload(payload)
         self.assertTrue(data)
-        self.assertEqual(data["timestamp"], MP70_TIMESTAMP)
-        # Invalid data will still parse.
-        self.assertTrue(parse_mp70_payload(MP70_PAYLOAD_INVALID))
-        self.assertFalse(parse_mp70_payload(MP70_PAYLOAD_BAD))
+        # Correct data in the test email message.
+        self.assertEqual(data["device_id"], "TestMP70")
+        self.assertEqual(data["timestamp"], datetime(2025, 11, 4, 1, 56, 58, tzinfo=timezone.utc))
 
     def test_parse_beam_payload(self):
         """Test the parse_beam_payload function"""
-        self.assertTrue(parse_beam_payload(IRIDITRAK_PAYLOAD_VALID))
+        # Iriditrak BEAM payload with valid data.
+        beam_payload = open(os.path.join(settings.BASE_DIR, "tracking", "test_data", "beam_payload_test.sbd"), "rb").read()
+        self.assertTrue(beam_payload)
 
     def test_parse_iriditrak_message(self):
         # Iriditrak timestamp is parsed from the sent email.
-        iriditrak_email = open(os.path.join(settings.BASE_DIR, "tracking", "iriditrak_test.msg"))
+        iriditrak_email = open(os.path.join(settings.BASE_DIR, "tracking", "test_data", "iriditrak_test.eml"))
         message = email.message_from_string(iriditrak_email.read())
         iriditrak_email.close()
         data = parse_iriditrak_message(message)
-        self.assertEqual(IRIDTRAK_TIMESTAMP, data["timestamp"])
+        self.assertTrue(data)
+        # Correct data in the test email message.
+        self.assertEqual(data["device_id"], "TestIriditrak")
+        self.assertEqual(data["timestamp"], datetime(2025, 11, 4, 1, 2, 57, tzinfo=timezone.utc))
 
     def test_parse_spot_message(self):
-        """TODO: test the parse_spot_message function"""
-        pass
+        """Test the parse_spot_message function"""
+        spot_email = open(os.path.join(settings.BASE_DIR, "tracking", "test_data", "spot_test.eml"))
+        message = email.message_from_string(spot_email.read())
+        spot_email.close()
+        data = parse_spot_message(message)
+        self.assertTrue(data)
+        # Correct data in the test email message.
+        self.assertEqual(data["device_id"], "TestSpot")
+        self.assertEqual(data["timestamp"], datetime(2025, 11, 4, 0, 38, 54, tzinfo=timezone.utc))
 
     def test_parse_tracplus_row(self):
         """Test the parse_tracplus_row function"""

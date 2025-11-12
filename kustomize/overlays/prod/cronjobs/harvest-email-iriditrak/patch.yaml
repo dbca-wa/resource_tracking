@@ -12,31 +12,6 @@ spec:
             - name: resourcetracking-cronjob
               imagePullPolicy: IfNotPresent
               args: ['manage.py', 'harvest_tracking_email', '--device-type', 'iriditrak', '--purge-email']
-              env:
-                - name: DATABASE_URL
-                  valueFrom:
-                    secretKeyRef:
-                      name: resourcetracking-env-prod
-                      key: DATABASE_URL
-                - name: EMAIL_HOST
-                  valueFrom:
-                    secretKeyRef:
-                      name: resourcetracking-env-prod
-                      key: EMAIL_HOST
-                - name: EMAIL_USER
-                  valueFrom:
-                    secretKeyRef:
-                      name: resourcetracking-env-prod
-                      key: EMAIL_USER
-                - name: EMAIL_PASSWORD
-                  valueFrom:
-                    secretKeyRef:
-                      name: resourcetracking-env-prod
-                      key: EMAIL_PASSWORD
-                - name: SENTRY_DSN
-                  valueFrom:
-                    secretKeyRef:
-                      name: resourcetracking-env-prod
-                      key: SENTRY_DSN
-                - name: SENTRY_ENVIRONMENT
-                  value: 'prod'
+              envFrom:
+                - secretRef:
+                    name: resourcetracking-env-prod

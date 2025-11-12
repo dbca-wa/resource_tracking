@@ -1,0 +1,139 @@
+Return-Path: aws.trackingpoints+SRS=mGdKU=5M=mail.lan.fyi=sierrawireless_V1@dbca.wa.gov.au
+Delivered-To: tracking@mail.lan.fyi
+X-FDA: 84071261778.05.2AA40DB
+Received: from SY5PR01CU010.outbound.protection.outlook.com (mail-australiaeastazon11012036.outbound.protection.outlook.com [40.107.40.36])
+	by imf21.hostedemail.com (Postfix) with ESMTP id C98CE1C000A
+	for <tracking@mail.lan.fyi>; Tue,  4 Nov 2025 01:57:06 +0000 (UTC)
+Authentication-Results: imf21.hostedemail.com;
+	dkim=pass header.d=DPaW.onmicrosoft.com header.s=selector1-DPaW-onmicrosoft-com header.b=pJWkHZPh;
+	arc=pass ("microsoft.com:s=arcselector10001:i=1");
+	spf=pass (imf21.hostedemail.com: domain of "aws.trackingpoints+SRS=mGdKU=5M=mail.lan.fyi=sierrawireless_V1@dbca.wa.gov.au" designates 40.107.40.36 as permitted sender) smtp.mailfrom="aws.trackingpoints+SRS=mGdKU=5M=mail.lan.fyi=sierrawireless_V1@dbca.wa.gov.au";
+	dmarc=none
+ARC-Message-Signature: i=2; a=rsa-sha256; c=relaxed/relaxed; d=hostedemail.com;
+	s=arc-20220608; t=1762221427;
+	h=from:from:sender:reply-to:subject:subject:date:date:
+	 message-id:message-id:to:to:cc:mime-version:mime-version:
+	 content-type:content-type:content-transfer-encoding:resent-from:
+	 in-reply-to:references:dkim-signature;
+	bh=j0/n1+hqIQ6lENrDzXGU32k/7IpYLQb9f928qSDulbA=;
+	b=mUaxxX2of/YKIQb6jP340uXpT57QSIZbotMDA/WBhQyrinQBExT1iXg7aqX6CuyOqWsbL3
+	IPgVzWHKd7As1qihN0DwsfNRs9X8fzHddkcu3GL3O9sR7BubjoVpgkDv2cg7SnG86iSSz+
+	WxVnw0WJ5f/mQXb5ajTysD2pHLI9Eq0=
+ARC-Authentication-Results: i=2;
+	imf21.hostedemail.com;
+	dkim=pass header.d=DPaW.onmicrosoft.com header.s=selector1-DPaW-onmicrosoft-com header.b=pJWkHZPh;
+	arc=pass ("microsoft.com:s=arcselector10001:i=1");
+	spf=pass (imf21.hostedemail.com: domain of "aws.trackingpoints+SRS=mGdKU=5M=mail.lan.fyi=sierrawireless_V1@dbca.wa.gov.au" designates 40.107.40.36 as permitted sender) smtp.mailfrom="aws.trackingpoints+SRS=mGdKU=5M=mail.lan.fyi=sierrawireless_V1@dbca.wa.gov.au";
+	dmarc=none
+ARC-Seal: i=2; s=arc-20220608; d=hostedemail.com; t=1762221427; a=rsa-sha256;
+	cv=pass;
+	b=8bPjERLX30U7RkLSo8l3exCYJoEZfk59MdpRGiw7+IwKtHKbGPkv9eWDDUeqN/me617GV5
+	Yym6wuEV4cXkmTc4azHzrA5CuRXaZIDrEbdwdiFH8/W/5l4a7knwY/TEGffmwoGttj/X/M
+	bZ0LbOGTmfMGqMBLr+AcGVcvKCJ4udY=
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=PZNj+isPqStoiyZO6pyEeEqBYj2CdyQVO50fzYQJHxKSHnRFOh78ex5xDyNRtYl77EQrz21reTfQa2/0Cm2Wxzx8lrPbWOZlCWNic7wEXGZ/E2Beg5s9ah35DpHnKFExsG6+xESDhNpai2QJgIIZjuveElQEeEdN080+C+uWlIRevMlPqa3loAAJja+FhyaUPruwAx1ucY+euaYDqtXa8Pklrlnto2h9gPW4YTIBqrSGldFmjJUjMs9ssf4ygVrLuHaxKStQXGT+M3xX1J3xlH9l/HMN9wTZnt/Ot5EbHRhAsHg5s1cJhDia4tsq/1wkLzp+TPVczQsyko9YoLmIrA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=j0/n1+hqIQ6lENrDzXGU32k/7IpYLQb9f928qSDulbA=;
+ b=sZfeOzScqSEMrNOjwZZ8XSNZBAQRtgjagwu/sHBUhnmr9bd1sPVaGDBF46xk553yLQC1+7MiKGyDsb0JALneTKbfNJqhA5UUuEvelGXyGOdCvEQQqjt/BBbvwDRRDZlMhFMCNItTHpv2B741r44FUfrds6TxlW5TWyPCkgbOZW+kNmfkxCXwyyf/uSd5+/37MWmGT7U0mFCYcriP6TkLfUBKTgavdQJx9+ZT1+wOqrXKsqmi+RjfjiNzsnpW5eFKuljml+b6K4Bxrv8zC3Tt4Iqy8YeoTqmL7rFKYbhYya4bR/kmxxxWAag1QoRRqZ/CRw29m7oGwFj+KTrH65gfLA==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=none (sender ip is
+ 20.188.206.194) smtp.rcpttodomain=dbca.wa.gov.au smtp.mailfrom=mail.lan.fyi;
+ dmarc=none action=none header.from=mail.lan.fyi; dkim=none (message not
+ signed); arc=none (0)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=DPaW.onmicrosoft.com;
+ s=selector1-DPaW-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=j0/n1+hqIQ6lENrDzXGU32k/7IpYLQb9f928qSDulbA=;
+ b=pJWkHZPh5dtk0V9vwFeVc5cD6O+XmgeAmXRtCM+xBrPf0jeCCYvJqELj8kMwg3Jaj+ri7nJ11ifsdHQoWdFe2SLHSO97SN2TA+zJE5chgZL5m6B1NTu7k26XAg7SNEZZtURlyblZDBDOLOWWGUNQ3jtxuRzofmsXKctq03XU2y4=
+Resent-From: <aws.trackingpoints@dbca.wa.gov.au>
+Received: from ME2PR01CA0112.ausprd01.prod.outlook.com (2603:10c6:201:2c::28)
+ by SY7P300MB1468.AUSP300.PROD.OUTLOOK.COM (2603:10c6:10:2c8::11) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.9275.16; Tue, 4 Nov
+ 2025 01:57:01 +0000
+Received: from ML1PEPF0000F17A.ausprd01.prod.outlook.com
+ (2603:10c6:201:2c:cafe::54) by ME2PR01CA0112.outlook.office365.com
+ (2603:10c6:201:2c::28) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.9275.16 via Frontend Transport; Tue,
+ 4 Nov 2025 01:56:57 +0000
+X-MS-Exchange-Authentication-Results: spf=none (sender IP is 20.188.206.194)
+ smtp.mailfrom=mail.lan.fyi; dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=mail.lan.fyi;
+Received-SPF: None (protection.outlook.com: mail.lan.fyi does not designate
+ permitted sender hosts)
+Received: from mail-relay.lan.fyi (20.188.206.194) by
+ ML1PEPF0000F17A.mail.protection.outlook.com (10.167.241.71) with Microsoft
+ SMTP Server (version=TLS1_3, cipher=TLS_AES_256_GCM_SHA384) id 15.20.9298.6
+ via Frontend Transport; Tue, 4 Nov 2025 01:57:01 +0000
+Received: from TestMP70 (unknown [10.42.0.1])
+	by mail-relay.lan.fyi (Postfix) with ESMTP id 14636A0529A00
+	for <aws.trackingpoints@dbca.wa.gov.au>; Tue,  4 Nov 2025 09:57:00 +0800 (AWST)
+From: sierrawireless_V1@mail.lan.fyi
+To: aws.trackingpoints@dbca.wa.gov.au
+Subject: TestMP70
+Message-Id: <20251104015701.14636A0529A00@mail-relay.lan.fyi>
+Date: Tue,  4 Nov 2025 09:57:00 +0800 (AWST)
+X-EOPAttributedMessage: 0
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic: ML1PEPF0000F17A:EE_|SY7P300MB1468:EE_
+MIME-Version: 1.0
+Content-Type: text/plain
+X-MS-Office365-Filtering-Correlation-Id: 199e9ef8-9ce6-4118-b951-08de1b457250
+X-LD-Processed: 7b934664-cdcf-4e28-a3ee-1a5bcca0a1b6,ExtFwd
+X-MS-Exchange-AtpMessageProperties: SA
+X-MS-Exchange-SenderADCheck: 2
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam:
+	BCL:0;ARA:13230040|61400799027|376014|82310400026|48200799018|35950700016;
+X-Microsoft-Antispam-Message-Info:
+	=?us-ascii?Q?dcHEvR2X2vlSWdMvQdEJXLt+aEa85yMFkAvB5sKw1poL88JTFAj7qctN8PXO?=
+ =?us-ascii?Q?DZEeyofkglph8+F4f9IS9faW5kix0A9tPu+rsMjWO0NdGlSWzQnYX/clcn2e?=
+ =?us-ascii?Q?DmuNIgRvE4sPpsOjF1FTCRiYgi4Me5FVnDzVgpdS3GX6gouAZ3qC+tXnAdvi?=
+ =?us-ascii?Q?2e5Ls1kBesExW0/4P6/lGqgxm9MoesYhke9giNQzRLcCRXt1QfFhAsiSASSr?=
+ =?us-ascii?Q?RAeAdJ461gbAwfnG1GWqRJ39h6lCTwHpOAKo3Ldwxl1gd8NPzhBJrhOJxmQd?=
+ =?us-ascii?Q?8KVID8hRn0yXTLJEm2ScCamhDY7AUbP7f0skyphcs88/92yJ4mzMEPd/B4nj?=
+ =?us-ascii?Q?eSdanV0xh0iQwblkTHkyfTfO3WtF92p/QhzHHbESCZl6pGEm7r8lJJBYwVoD?=
+ =?us-ascii?Q?rNdnWhDRSyvvFRL+G69kjFirzz7eHuM5c+wpvh4g86zSfRRaeNqJcFlEZ+Ds?=
+ =?us-ascii?Q?Gpp+eSsi0ZIstZw/ZHlnsDvI4YQVJVDcgBAICNMw/IucCzvQG7yB8mHbsSIs?=
+ =?us-ascii?Q?OiSFwjZ8b6+VsDrcSBUx3pjT2TwmvaWihZGyhYuwvLCsdpfmixysrKHKN1+w?=
+ =?us-ascii?Q?DEj6VCakgz6v85vwwL7YL3bifqGsdsNxQmZFDUxjJir40vyacBdUCw7SVEcj?=
+ =?us-ascii?Q?XOrXQZkUpkd7a8UHULTiX3zE2QzR7jPrzX3jEJRv6iyupXlqiun/Pjd5PgXB?=
+ =?us-ascii?Q?o27SCDwyDiPIc6RWhuOUFDHsKbzLBN3TNmAdVyfMuFuTkoVeYrU2GPj2rxlR?=
+ =?us-ascii?Q?lLbmt60Bi4u8iqkAMntOZn4sSRrvNjf2/wZQ/H+SV1iifu/qc/+eCm0ubg7y?=
+ =?us-ascii?Q?rEdGKI3ug9Yy8ubI39CSTe153lONL6tvaB4HQZhxLV/pV1DwJ5bozzH6ga4T?=
+ =?us-ascii?Q?tt9Cs60c3XMX99ANuniEf90CrTCCpW57WjBSxj820ioEge7lCnUaHUH24ceu?=
+ =?us-ascii?Q?60QDjDDUOVToQmzTwo1YrbsG5x4kes30N/XdW5QFPElDCjuWedvH4ltEeGdL?=
+ =?us-ascii?Q?CEbd8z0XOQyH5SXdT1iDWO/hbFk7zaCk6Wkh32vghrXfJ/azGSsL4al8FEan?=
+ =?us-ascii?Q?5JDoqT9b4AvyxPsVnezqW0UGKswF47SLmA45bkjEMimyvNJsHaKWF3nL9A7z?=
+ =?us-ascii?Q?tsHpjGmi4g5P+ULuo4Ly/rxuTbQT+T9BKU6FfpgOSybrRFOINM8ee657Umv5?=
+ =?us-ascii?Q?P634SzPovJcgC9kA90OlQ4wfRIT5Da2gV1lODQpqboXgdplZNH+cgmOAoOBm?=
+ =?us-ascii?Q?mPHgsR8EEaeNkmq5nRlXw6QW14Ra68lzcOpr0Y7msDF9x5Ll8496rBW1e8Y1?=
+ =?us-ascii?Q?aUEYJfdzFgiO2+j7Y04UL05x87+4MWSELgg/qRDk8QkYLPzzSxziC/VtNsGf?=
+ =?us-ascii?Q?Ts95jzk=3D?=
+X-Forefront-Antispam-Report:
+	CIP:20.188.206.194;CTRY:AU;LANG:en;SCL:1;SRV:;IPV:CAL;SFV:NSPM;H:mail-relay.lan.fyi;PTR:InfoDomainNonexistent;CAT:NONE;SFS:(13230040)(61400799027)(376014)(82310400026)(48200799018)(35950700016);DIR:OUT;SFP:1101;
+X-MS-Exchange-ForwardingLoop:
+	aws.trackingpoints@dbca.wa.gov.au;7b934664-cdcf-4e28-a3ee-1a5bcca0a1b6
+X-OriginatorOrg: dbca.wa.gov.au
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 04 Nov 2025 01:57:01.7049
+ (UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: 199e9ef8-9ce6-4118-b951-08de1b457250
+X-MS-Exchange-CrossTenant-Id: 7b934664-cdcf-4e28-a3ee-1a5bcca0a1b6
+X-MS-Exchange-CrossTenant-OriginalAttributedTenantConnectingIp: TenantId=7b934664-cdcf-4e28-a3ee-1a5bcca0a1b6;Ip=[20.188.206.194];Helo=[mail-relay.lan.fyi]
+X-MS-Exchange-CrossTenant-AuthSource: ML1PEPF0000F17A.ausprd01.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Anonymous
+X-MS-Exchange-CrossTenant-FromEntityHeader: HybridOnPrem
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SY7P300MB1468
+X-Rspamd-Server: rspam09
+X-Rspamd-Queue-Id: C98CE1C000A
+X-Spam-Status: No, score=1.80
+X-Stat-Signature: 35nh8qkfd9wetzhkqpc9669j8u6bf5mi
+X-Rspam-User: 
+X-HE-Tag: 1762221426-659179
+X-HE-Meta: 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
+
+
+TestMP70,13.04,-032.43268,+118.90065,0,0,11/04/2025 01:56:58
