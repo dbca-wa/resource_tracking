@@ -18,15 +18,8 @@ spec:
       containers:
         - name: resourcetracking
           image: ghcr.io/dbca-wa/resource_tracking
+          imagePullPolicy: Always
           env:
-            - name: ALLOWED_HOSTS
-              value: '.dbca.wa.gov.au'
-            - name: CSRF_TRUSTED_ORIGINS
-              value: 'https://*.dbca.wa.gov.au'
-            - name: CSRF_COOKIE_SECURE
-              value: 'True'
-            - name: SESSION_COOKIE_SECURE
-              value: 'True'
             - name: TZ
               value: 'Australia/Perth'
           resources:
@@ -88,3 +81,13 @@ spec:
           operator: Equal
           value: arm64
           effect: NoSchedule
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              preference:
+                matchExpressions:
+                  - key: arch
+                    operator: In
+                    values:
+                      - arm64
