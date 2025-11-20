@@ -7,7 +7,6 @@ spec:
     spec:
       containers:
         - name: resourcetracking
-          imagePullPolicy: Always
           envFrom:
             - secretRef:
                 name: resourcetracking-env-uat
