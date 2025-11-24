@@ -186,8 +186,6 @@ class SpatialDataView(View):
     http_method_names = ["get", "head", "options"]
     srid = 4326
     format = "geojson"
-    geometry_field = "point"
-    properties = ()
     filename_prefix = None
 
     def get_filename_prefix(self):
@@ -229,6 +227,7 @@ class SpatialDataView(View):
                     "velocity",
                     "altitude",
                     "source_device_type",
+                    "symbol",
                 ]
             )
             for device in qs:
@@ -254,6 +253,7 @@ class SpatialDataView(View):
                         device.velocity,
                         device.altitude,
                         device.get_source_device_type_display(),
+                        device.symbol,
                     ]
                 )
             out.seek(0)
@@ -269,9 +269,23 @@ class SpatialDataView(View):
             geojson = serialize(
                 "geojson",
                 qs,
-                geometry_field=self.geometry_field,
+                geometry_field="point",
                 srid=self.srid,
-                properties=self.properties,
+                properties=(
+                    "id",
+                    "age_colour",
+                    "age_minutes",
+                    "age_text",
+                    "altitude",
+                    "callsign",
+                    "deviceid",
+                    "heading",
+                    "icon",
+                    "registration",
+                    "seen",
+                    "symbol",
+                    "velocity",
+                ),
             )
 
             timestamp = datetime.strftime(datetime.today(), "%Y-%m-%d_%H%M")
@@ -289,21 +303,6 @@ class DeviceDownload(SpatialDataView):
     """Return structured data about tracking devices."""
 
     model = Device
-    properties = (
-        "id",
-        "age_colour",
-        "age_minutes",
-        "age_text",
-        "altitude",
-        "callsign",
-        "deviceid",
-        "heading",
-        "icon",
-        "registration",
-        "seen",
-        "symbol",
-        "velocity",
-    )
     filename_prefix = "tracking_devices"
 
     def get_queryset(self):
@@ -369,6 +368,7 @@ class DeviceDownload(SpatialDataView):
             Field("hidden", SQLFieldTypes.boolean),
             Field("fire_use", SQLFieldTypes.boolean),
             Field("seen", SQLFieldTypes.datetime),
+            Field("symbol", SQLFieldTypes.text),
             Field("heading", SQLFieldTypes.integer),
             Field("velocity", SQLFieldTypes.integer),
             Field("altitude", SQLFieldTypes.integer),
@@ -392,6 +392,7 @@ class DeviceDownload(SpatialDataView):
             "hidden",
             "fire_use",
             "seen",
+            "symbol",
             "heading",
             "velocity",
             "altitude",
@@ -419,6 +420,7 @@ class DeviceDownload(SpatialDataView):
                     device.hidden,
                     device.fire_use,
                     device.seen,
+                    device.symbol,
                     device.heading,
                     device.velocity,
                     device.altitude,
@@ -614,17 +616,6 @@ class DeviceRouteDownload(DeviceLoggedPointDownload):
     This view only returns GeoJSON or GPKG, not CSV.
     """
 
-    properties = (
-        "id",
-        "heading",
-        "velocity",
-        "altitude",
-        "seen",
-        "device_id",
-        "label",
-    )
-    geometry_field = "route"
-
     def generate_gpkg(self, queryset):
         """Generates and returns a Geopackage file-like object."""
         tmp = NamedTemporaryFile()
@@ -709,9 +700,17 @@ class DeviceRouteDownload(DeviceLoggedPointDownload):
             geojson = serialize(
                 "geojson",
                 qs,
-                geometry_field=self.geometry_field,
+                geometry_field="route",
                 srid=self.srid,
-                properties=self.properties,
+                properties=(
+                    "id",
+                    "heading",
+                    "velocity",
+                    "altitude",
+                    "seen",
+                    "device_id",
+                    "label",
+                ),
             )
             timestamp = datetime.strftime(datetime.today(), "%Y-%m-%d_%H%M")
             filename = f"{filename_prefix}_{timestamp}.json"
