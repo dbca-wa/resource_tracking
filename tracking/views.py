@@ -1,8 +1,9 @@
 import asyncio
+import os
 import re
 from datetime import datetime, timedelta
 from io import BytesIO
-from tempfile import NamedTemporaryFile
+from tempfile import TemporaryDirectory
 
 import orjson as json
 import unicodecsv as csv
@@ -15,15 +16,15 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import DetailView, ListView, TemplateView, UpdateView, View
-from pygeopkg.conversion.to_geopkg_geom import make_gpkg_geom_header, point_to_gpkg_point, points_m_to_gpkg_line_string_m
-from pygeopkg.core.field import Field
-from pygeopkg.core.geopkg import GeoPackage
-from pygeopkg.shared.constants import SHAPE
-from pygeopkg.shared.enumeration import GeometryType, SQLFieldTypes
+from fudgeo import Field, GeoPackage
+from fudgeo.constant import SHAPE, WGS84
+from fudgeo.enumeration import GeometryType, SQLFieldType
+from fudgeo.geometry import LineString as LineStringFudgeo
+from fudgeo.geometry import Point
 
 from tracking.forms import DeviceForm
 from tracking.models import SOURCE_DEVICE_TYPE_CHOICES, Device, LoggedPoint
-from tracking.utils import get_next_pages, get_previous_pages, get_srs_epsg_4326
+from tracking.utils import get_next_pages, get_previous_pages, get_srs_wgs84
 
 # Define a dictionary of context variables to supply to JavaScript in view templates.
 # NOTE: we can't include values needing `reverse` in the dict below due to circular imports.
@@ -184,11 +185,11 @@ class SpatialDataView(View):
 
     model = None
     http_method_names = ["get", "head", "options"]
-    srid = 4326
+    srid = WGS84
     format = "geojson"
     filename_prefix = None
 
-    def get_filename_prefix(self):
+    def get_filename_prefix(self) -> str:
         if not self.filename_prefix:
             return self.model._meta.model_name
 
@@ -348,63 +349,70 @@ class DeviceDownload(SpatialDataView):
 
         return qs
 
-    def generate_gpkg(self, queryset):
-        tmp = NamedTemporaryFile()
-        gpkg = GeoPackage.create(tmp.name, flavor="EPSG")
-        srs = get_srs_epsg_4326()
-        fields = (
-            Field("deviceid", SQLFieldTypes.text),
-            Field("registration", SQLFieldTypes.text),
-            Field("rin_number", SQLFieldTypes.text),
-            Field("rin_display", SQLFieldTypes.text),
-            Field("district", SQLFieldTypes.text),
-            Field("usual_driver", SQLFieldTypes.text),
-            Field("usual_location", SQLFieldTypes.text),
-            Field("current_driver", SQLFieldTypes.text),
-            Field("callsign", SQLFieldTypes.text),
-            Field("contractor_details", SQLFieldTypes.text),
-            Field("other_details", SQLFieldTypes.text),
-            Field("internal_only", SQLFieldTypes.boolean),
-            Field("hidden", SQLFieldTypes.boolean),
-            Field("fire_use", SQLFieldTypes.boolean),
-            Field("seen", SQLFieldTypes.datetime),
-            Field("symbol", SQLFieldTypes.text),
-            Field("heading", SQLFieldTypes.integer),
-            Field("velocity", SQLFieldTypes.integer),
-            Field("altitude", SQLFieldTypes.integer),
-            Field("source_device_type", SQLFieldTypes.text),
+    def get(self, request, *args, **kwargs):
+        # Optionally return the dataset in GPKG format, otherwise fall back to the parent class formats.
+        if self.format == "gpkg" or request.GET.get("format", None) == "gpkg":
+            qs = self.get_queryset()
+            content = self.generate_gpkg(qs)
+            timestamp = datetime.strftime(datetime.today(), "%Y-%m-%d_%H%M")
+            filename = f"{self.get_filename_prefix()}_{timestamp}.gpkg"
+            resp = HttpResponse(content, content_type="application/x-sqlite3")
+            resp["Content-Disposition"] = f'attachment; filename="{filename}"'
+            return resp
+
+        return super().get(request, *args, **kwargs)
+
+    def generate_gpkg(self, queryset) -> bytes:
+        """Utility function to generate and return Geopackage content."""
+        # Create a new GeoPackage database in a temp directory.
+        tmpdir = TemporaryDirectory()
+        gpkg_path = os.path.join(tmpdir.name, "devices.gpkg")
+        gpkg = GeoPackage.create(gpkg_path, flavor="EPSG")
+
+        # Create a feature class (layer) for device records.
+        gpkg.create_feature_class(
+            name="devices",
+            srs=get_srs_wgs84(),
+            shape_type=GeometryType.point,
+            fields=[
+                Field("deviceid", SQLFieldType.text),
+                Field("registration", SQLFieldType.text),
+                Field("rin_number", SQLFieldType.text),
+                Field("rin_display", SQLFieldType.text),
+                Field("district", SQLFieldType.text),
+                Field("usual_driver", SQLFieldType.text),
+                Field("usual_location", SQLFieldType.text),
+                Field("current_driver", SQLFieldType.text),
+                Field("callsign", SQLFieldType.text),
+                Field("contractor_details", SQLFieldType.text),
+                Field("other_details", SQLFieldType.text),
+                Field("internal_only", SQLFieldType.boolean),
+                Field("hidden", SQLFieldType.boolean),
+                Field("fire_use", SQLFieldType.boolean),
+                Field("seen", SQLFieldType.datetime),
+                Field("symbol", SQLFieldType.text),
+                Field("heading", SQLFieldType.integer),
+                Field("velocity", SQLFieldType.integer),
+                Field("altitude", SQLFieldType.integer),
+                Field("source_device_type", SQLFieldType.text),
+            ],
+            geom_name=SHAPE,
+            spatial_index=True,
+            overwrite=True,
         )
-        fc = gpkg.create_feature_class("devices", srs, fields=fields, shape_type=GeometryType.point)
-        field_names = [
-            SHAPE,
-            "deviceid",
-            "registration",
-            "rin_number",
-            "rin_display",
-            "district",
-            "usual_driver",
-            "usual_location",
-            "current_driver",
-            "callsign",
-            "contractor_details",
-            "other_details",
-            "internal_only",
-            "hidden",
-            "fire_use",
-            "seen",
-            "symbol",
-            "heading",
-            "velocity",
-            "altitude",
-            "source_device_type",
-        ]
+
+        # Define the SQL statement to insert data into the GPKG database.
+        sql = """INSERT INTO devices (SHAPE, deviceid, registration, rin_number, rin_display, district, usual_driver, usual_location, current_driver, callsign,
+        contractor_details, other_details, internal_only, hidden, fire_use, seen, symbol, heading, velocity, altitude, source_device_type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
+
+        # Compile the row data to insert into the database.
         rows = []
-        hdr = make_gpkg_geom_header(self.srid)
         for device in queryset:
-            wkb = point_to_gpkg_point(hdr, device.point.x, device.point.y)
+            point = Point(x=device.point.x, y=device.point.y, srs_id=WGS84)
             rows.append(
                 (
-                    wkb,
+                    point,
                     device.deviceid,
                     device.registration,
                     device.rin_number,
@@ -427,24 +435,15 @@ class DeviceDownload(SpatialDataView):
                     device.source_device_type,
                 )
             )
-        fc.insert_rows(field_names, rows)
-        # Read the temp file content.
-        gpkg = open(tmp.name, "rb").read()
-        tmp.close()
-        return gpkg  # Return the gpkg content.
 
-    def get(self, request, *args, **kwargs):
-        # Optionally return the dataset in GPKG format, otherwise fall back to the parent class formats.
-        if self.format == "gpkg" or request.GET.get("format", None) == "gpkg":
-            qs = self.get_queryset()
-            content = self.generate_gpkg(qs)
-            timestamp = datetime.strftime(datetime.today(), "%Y-%m-%d_%H%M")
-            filename = f"{self.get_filename_prefix()}_{timestamp}.gpkg"
-            resp = HttpResponse(content, content_type="application/x-sqlite3")
-            resp["Content-Disposition"] = f'attachment; filename="{filename}"'
-            return resp
+        conn = gpkg.connection
+        conn.executemany(sql, rows)
+        conn.commit()
+        conn.close()
 
-        return super().get(request, *args, **kwargs)
+        # Return the GPKG content.
+        resp = open(gpkg_path, "rb").read()
+        return resp
 
 
 class DeviceDownloadCsv(DeviceDownload):
@@ -473,7 +472,7 @@ class DeviceLoggedPointDownload(SpatialDataView):
         return f"{device.deviceid}_loggedpoint"
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = super().get_queryset().select_related("device")
         device = self.get_device()
         qs = qs.filter(device=device)
 
@@ -505,50 +504,6 @@ class DeviceLoggedPointDownload(SpatialDataView):
 
         return qs
 
-    def generate_gpkg(self, queryset):
-        """Generates and returns a Geopackage file-like object."""
-        tmp = NamedTemporaryFile()
-        gpkg = GeoPackage.create(tmp.name, flavor="EPSG")
-        srs = get_srs_epsg_4326()
-        fields = (
-            Field("id", SQLFieldTypes.text),
-            Field("device_id", SQLFieldTypes.text),
-            Field("heading", SQLFieldTypes.integer),
-            Field("velocity", SQLFieldTypes.integer),
-            Field("altitude", SQLFieldTypes.integer),
-            Field("seen", SQLFieldTypes.datetime),
-        )
-        fc = gpkg.create_feature_class("loggedpoints", srs, fields=fields, shape_type=GeometryType.point)
-        field_names = [
-            SHAPE,
-            "id",
-            "device_id",
-            "heading",
-            "velocity",
-            "altitude",
-            "seen",
-        ]
-        rows = []
-        hdr = make_gpkg_geom_header(self.srid)
-        for lp in queryset:
-            wkb = point_to_gpkg_point(hdr, lp.point.x, lp.point.y)
-            rows.append(
-                (
-                    wkb,
-                    lp.id,
-                    str(lp.device),
-                    lp.heading,
-                    lp.velocity,
-                    lp.altitude,
-                    lp.seen,
-                )
-            )
-        fc.insert_rows(field_names, rows)
-        # Read the temp file content.
-        gpkg = open(tmp.name, "rb").read()
-        tmp.close()
-        return gpkg  # Return the gpkg content.
-
     def get(self, request, *args, **kwargs):
         qs = self.get_queryset()
         filename_prefix = self.get_filename_prefix()
@@ -565,12 +520,13 @@ class DeviceLoggedPointDownload(SpatialDataView):
         elif self.format == "csv" or request.GET.get("format", None) == "csv":
             out = BytesIO()
             writer = csv.writer(out, quoting=csv.QUOTE_ALL)
-            writer.writerow(["id", "device_id", "heading", "velocity", "altitude", "seen", "point"])
+            writer.writerow(["id", "deviceid", "registration", "heading", "velocity", "altitude", "seen", "point"])
             for loggedpoint in qs:
                 writer.writerow(
                     [
                         loggedpoint.id,
-                        str(loggedpoint.device),
+                        loggedpoint.device.deviceid,
+                        loggedpoint.device.registration,
                         loggedpoint.heading,
                         loggedpoint.velocity,
                         loggedpoint.altitude,
@@ -588,16 +544,17 @@ class DeviceLoggedPointDownload(SpatialDataView):
             )
         # GeoJSON format download (default).
         else:
-            # Append a `device_id` attribute to each object in the queryset, for serialization.
+            # Append `deviceid` and `registration` attributes to each object in the queryset, for serialization.
             for obj in qs:
-                setattr(obj, "device_id", str(obj.device))
+                setattr(obj, "deviceid", obj.device.deviceid)
+                setattr(obj, "registration", obj.device.registration)
 
             geojson = serialize(
                 "geojson",
                 qs,
                 geometry_field="point",
                 srid=self.srid,
-                properties=("device_id", "heading", "velocity", "altitude", "seen"),
+                properties=("deviceid", "registration", "heading", "velocity", "altitude", "seen"),
             )
 
             timestamp = datetime.strftime(datetime.today(), "%Y-%m-%d_%H%M")
@@ -610,57 +567,67 @@ class DeviceLoggedPointDownload(SpatialDataView):
 
         return response
 
+    def generate_gpkg(self, queryset) -> bytes:
+        """Utility function to generate and return Geopackage content."""
+        # Create a new GeoPackage database in a temp directory.
+        tmpdir = TemporaryDirectory()
+        gpkg_path = os.path.join(tmpdir.name, "route.gpkg")
+        gpkg = GeoPackage.create(gpkg_path, flavor="EPSG")
 
-class DeviceRouteDownload(DeviceLoggedPointDownload):
-    """Extend the DeviceLoggedPointDownload view to return a device's route history as a LineString geometry.
-    This view only returns GeoJSON or GPKG, not CSV.
-    """
-
-    def generate_gpkg(self, queryset):
-        """Generates and returns a Geopackage file-like object."""
-        tmp = NamedTemporaryFile()
-        gpkg = GeoPackage.create(tmp.name, flavor="EPSG")
-        srs = get_srs_epsg_4326()
-        fields = (
-            Field("id", SQLFieldTypes.text),
-            Field("device_id", SQLFieldTypes.text),
-            Field("heading", SQLFieldTypes.integer),
-            Field("velocity", SQLFieldTypes.integer),
-            Field("altitude", SQLFieldTypes.integer),
-            Field("seen", SQLFieldTypes.datetime),
-            Field("label", SQLFieldTypes.text),
+        # Create a feature class (layer) for loggedpoint records.
+        gpkg.create_feature_class(
+            name="route",
+            srs=get_srs_wgs84(),
+            shape_type=GeometryType.point,
+            fields=[
+                Field("id", SQLFieldType.text),
+                Field("deviceid", SQLFieldType.text),
+                Field("registration", SQLFieldType.text),
+                Field("heading", SQLFieldType.integer),
+                Field("velocity", SQLFieldType.integer),
+                Field("altitude", SQLFieldType.integer),
+                Field("seen", SQLFieldType.datetime),
+            ],
+            geom_name=SHAPE,
+            spatial_index=True,
+            overwrite=True,
         )
-        fc = gpkg.create_feature_class("route", srs, fields=fields, shape_type=GeometryType.linestring)
-        field_names = [
-            SHAPE,
-            "id",
-            "device_id",
-            "heading",
-            "velocity",
-            "altitude",
-            "seen",
-            "label",
-        ]
+
+        # Define the SQL statement to insert data into the GPKG database.
+        sql = """INSERT INTO route (SHAPE, id, deviceid, registration, heading, velocity, altitude, seen)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)"""
+
+        # Compile the row data to insert into the database.
         rows = []
-        hdr = make_gpkg_geom_header(self.srid)
         for lp in queryset:
-            wkb = points_m_to_gpkg_line_string_m(hdr, lp.route.coords)
+            point = Point(x=lp.point.x, y=lp.point.y, srs_id=WGS84)
             rows.append(
                 (
-                    wkb,
-                    lp.id,
-                    str(lp.device),
+                    point,
+                    lp.pk,
+                    lp.device.deviceid,
+                    lp.device.registration,
                     lp.heading,
                     lp.velocity,
                     lp.altitude,
                     lp.seen,
                 )
             )
-        fc.insert_rows(field_names, rows)
-        # Read the temp file content.
-        gpkg = open(tmp.name, "rb").read()
-        tmp.close()
-        return gpkg  # Return the gpkg content.
+
+        conn = gpkg.connection
+        conn.executemany(sql, rows)
+        conn.commit()
+        conn.close()
+
+        # Return the GPKG content.
+        resp = open(gpkg_path, "rb").read()
+        return resp
+
+
+class DeviceRouteDownload(DeviceLoggedPointDownload):
+    """Extend the DeviceLoggedPointDownload view to return a device's route history as a LineString geometry.
+    This view only returns GeoJSON or GPKG, not CSV.
+    """
 
     def get(self, request, *args, **kwargs):
         """Override this method to return a linestring dataset instead of points."""
@@ -684,7 +651,6 @@ class DeviceRouteDownload(DeviceLoggedPointDownload):
                 end_label = loggedpoint.seen.strftime("%H:%M:%S")
                 setattr(start_point, "label", f"{start_label} to {end_label}")
             start_point = loggedpoint
-
         # Exclude the last loggedpoint in the queryset because it won't have the `route` attribute.
         if qs:
             qs = qs[: len(qs) - 1]
@@ -697,6 +663,10 @@ class DeviceRouteDownload(DeviceLoggedPointDownload):
             response["Content-Disposition"] = f'attachment; filename="{filename}"'
             return response
         else:
+            # Append `deviceid` and `registration` attributes to each object in the queryset, for serialization.
+            for obj in qs:
+                setattr(obj, "deviceid", obj.device.deviceid)
+                setattr(obj, "registration", obj.device.registration)
             geojson = serialize(
                 "geojson",
                 qs,
@@ -708,7 +678,8 @@ class DeviceRouteDownload(DeviceLoggedPointDownload):
                     "velocity",
                     "altitude",
                     "seen",
-                    "device_id",
+                    "deviceid",
+                    "registration",
                     "label",
                 ),
             )
@@ -720,6 +691,63 @@ class DeviceRouteDownload(DeviceLoggedPointDownload):
                 headers={"Content-Disposition": f"attachment; filename={filename}"},
             )
             return response
+
+    def generate_gpkg(self, queryset) -> bytes:
+        """Utility function to generate and return Geopackage content."""
+        tmpdir = TemporaryDirectory()
+        # Create a new GeoPackage.
+        gpkg_path = os.path.join(tmpdir.name, "route.gpkg")
+        gpkg = GeoPackage.create(gpkg_path, flavor="EPSG")
+
+        # Create a feature class (layer) for loggedpoint records.
+        gpkg.create_feature_class(
+            name="route",
+            srs=get_srs_wgs84(),
+            shape_type=GeometryType.linestring,
+            fields=[
+                Field("id", SQLFieldType.text),
+                Field("deviceid", SQLFieldType.text),
+                Field("registration", SQLFieldType.text),
+                Field("heading", SQLFieldType.integer),
+                Field("velocity", SQLFieldType.integer),
+                Field("altitude", SQLFieldType.integer),
+                Field("seen", SQLFieldType.datetime),
+                Field("label", SQLFieldType.text),
+            ],
+            geom_name=SHAPE,
+            spatial_index=True,
+            overwrite=True,
+        )
+
+        # Define the SQL statement to insert data into the GPKG database.
+        sql = """INSERT INTO route (SHAPE, id, deviceid, registration, heading, velocity, altitude, seen, label)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"""
+
+        # Compile the row data to insert into the database.
+        rows = []
+        for lp in queryset:
+            linestring = LineStringFudgeo(coordinates=lp.route.coords, srs_id=WGS84)
+            rows.append(
+                (
+                    linestring,
+                    lp.pk,
+                    lp.device.deviceid,
+                    lp.device.registration,
+                    lp.heading,
+                    lp.velocity,
+                    lp.altitude,
+                    lp.seen,
+                    lp.label,
+                )
+            )
+
+        conn = gpkg.connection
+        conn.executemany(sql, rows)
+        conn.commit()
+        conn.close()
+
+        resp = open(gpkg_path, "rb").read()
+        return resp  # Return the gpkg content.
 
 
 class DeviceStream(View):
