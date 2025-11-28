@@ -44,6 +44,13 @@ class ViewTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["Content-Type"], "text/csv")
 
+    def test_device_gpkg_download(self):
+        """Test the devices download view returns GPKG"""
+        url = reverse("tracking:device_download")
+        response = self.client.get(url + "?format=gpkg")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["Content-Type"], "application/x-sqlite3")
+
     def test_device_map_view(self):
         """Test the device map view"""
         url = reverse("tracking:device_map")
@@ -70,12 +77,26 @@ class ViewTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["Content-Type"], "text/csv")
 
+    def test_device_history_gpkg_view(self):
+        """Test the device history GPKG view"""
+        url = reverse("tracking:device_history", kwargs={"pk": self.device.pk})
+        response = self.client.get(url + "?format=gpkg")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["Content-Type"], "application/x-sqlite3")
+
     def test_device_route_geojson_view(self):
         """Test the device route GeoJSON view"""
         url = reverse("tracking:device_route", kwargs={"pk": self.device.pk})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["Content-Type"], "application/vnd.geo+json")
+
+    def test_device_route_gpkg_view(self):
+        """Test the device route GPKG view"""
+        url = reverse("tracking:device_route", kwargs={"pk": self.device.pk})
+        response = self.client.get(url + "?format=gpkg")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["Content-Type"], "application/x-sqlite3")
 
     def test_device_metrics_source(self):
         """Test the device metrics view"""
