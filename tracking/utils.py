@@ -1,7 +1,10 @@
+import json
+import re
 import struct
 import time
 from datetime import datetime, timezone
 from email.utils import parsedate
+from typing import Any
 
 from fudgeo.constant import WGS84
 from fudgeo.geopkg import SpatialReferenceSystem
@@ -296,3 +299,35 @@ def get_next_pages(page_num, count=5):
                 next_page_numbers.append(i)
 
     return next_page_numbers
+
+
+class SanitizingJSONDecoder(json.JSONDecoder):
+    """
+    A JSONDecoder that strips ASCII control characters (0–31) from the input
+    before parsing, helping to avoid errors when upstream data contains
+    non-printable characters.
+
+    Example:
+        data = json.loads(raw_json, cls=SanitizingJSONDecoder)
+    """
+
+    _ctrl_re = re.compile(r"[\x00-\x1F]")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @classmethod
+    def _sanitize(cls, s: str) -> str:
+        # Replace all ASCII control characters 0–31 with a space.
+        # Note: This also removes \n, \r, and \t if present as literal chars.
+        return cls._ctrl_re.sub(" ", s)
+
+    def decode(self, s: Any, **kwargs) -> Any:
+        # Accept both str and bytes and sanitize prior to decoding.
+        if isinstance(s, (bytes, bytearray)):
+            s = s.decode("utf-8", errors="replace")
+        elif not isinstance(s, str):
+            s = str(s)
+
+        s = self._sanitize(s)
+        return super().decode(s, **kwargs)
