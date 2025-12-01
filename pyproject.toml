@@ -1,6 +1,6 @@
 [project]
 name = "resource_tracking"
-version = "1.4.39"
+version = "1.4.40"
 description = "DBCA internal corporate application to download and serve data from remote tracking devices."
 authors = [
   { name = "Ashley Felton", email = "ashley.felton@dbca.wa.gov.au" },
@@ -14,7 +14,7 @@ license = "Apache-2.0"
 requires-python = ">=3.13,<4.0"
 dependencies = [
   "django==5.2.8",
-  "psycopg[binary,pool]==3.2.12",
+  "psycopg[binary,pool]==3.2.13",
   "dbca-utils==2.1.5",
   "django-extensions==4.1",
   "python-dotenv==1.2.1",
@@ -22,7 +22,7 @@ dependencies = [
   "gunicorn==23.0.0",
   "unicodecsv==0.14.1",
   "whitenoise[brotli]==6.11.0",
-  "sentry-sdk[django]==2.43.0",
+  "sentry-sdk[django]==2.46.0",
   "django-geojson==4.2.0",
   "azure-storage-blob==12.27.1",
   "uvicorn[standard]==0.38.0",
@@ -32,11 +32,11 @@ dependencies = [
   "crispy-bootstrap5==2025.6",
   "h11==0.16",
   "django-tastypie==0.15.1",
-  "pygeopkg==0.1.3",
+  "fudgeo==1.3.1",
 ]
 
 [dependency-groups]
-dev = ["ipython>=9.7.0", "ipdb>=0.13.13", "mixer>=7.2.2", "pre-commit>=4.4.0"]
+dev = ["ipython>=9.7.0", "ipdb>=0.13.13", "mixer>=7.2.2", "pre-commit>=4.5.0"]
 
 [project.urls]
 homepage = "https://github.com/dbca-wa/resource_tracking"

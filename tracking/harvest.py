@@ -9,6 +9,7 @@ from django.utils import timezone
 from tracking import email_utils
 from tracking.models import Device, LoggedPoint
 from tracking.utils import (
+    SanitizingJSONDecoder,
     parse_dfes_feature,
     parse_dplus_payload,
     parse_iriditrak_message,
@@ -370,7 +371,7 @@ def save_dfes_feed():
 
     # Parse the API response.
     try:
-        features = resp.json()["features"]
+        features = resp.json(cls=SanitizingJSONDecoder)["features"]
     except requests.models.JSONDecodeError as err:
         LOGGER.warning(f"Error parsing DFES API response: {err.doc}")
         return
