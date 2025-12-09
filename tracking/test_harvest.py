@@ -85,8 +85,6 @@ class HarvestTestCase(TestCase):
     - Email payloads: Iriditrak, MP70, Spot
     - TracPlus API
     - DFES API
-
-    TODO: Email from DPlus
     """
 
     def test_validate_latitude_longitude(self):

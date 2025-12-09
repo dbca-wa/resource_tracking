@@ -3,9 +3,11 @@ import re
 import struct
 import time
 from datetime import datetime, timezone
+from email.message import Message
 from email.utils import parsedate
-from typing import Any
+from typing import Any, Dict, List, Literal
 
+from django.core.paginator import Page
 from fudgeo.constant import WGS84
 from fudgeo.geopkg import SpatialReferenceSystem
 
@@ -25,7 +27,7 @@ def get_srs_wgs84() -> SpatialReferenceSystem:
     return SpatialReferenceSystem(name="WGS 84", organization="EPSG", org_coord_sys_id=WGS84, definition=SRS_WKT)
 
 
-def validate_latitude_longitude(latitude, longitude):
+def validate_latitude_longitude(latitude: float, longitude: float) -> bool:
     """Validate passed-in latitude and longitude values."""
     # Both latitude and longitude equalling zero is considered invalid.
     if latitude == 0.0 and longitude == 0.0:
@@ -34,7 +36,7 @@ def validate_latitude_longitude(latitude, longitude):
     return latitude <= 90 and latitude >= -90 and longitude <= 180 and longitude >= -180
 
 
-def parse_mp70_payload(payload):
+def parse_mp70_payload(payload: str) -> Dict | Literal[False]:
     """Parses a passed-in MP70 email payload. Returns a dict or False.
 
     MP70 payloads consist of comma-separated data values:
@@ -67,7 +69,7 @@ def parse_mp70_payload(payload):
     return data
 
 
-def parse_spot_message(message):
+def parse_spot_message(message: Message) -> Dict | Literal[False]:
     """Parses the passed-in Spot email message. Returns a dict or False."""
     try:
         # Ref: https://docs.python.org/3.11/library/email.utils.html#email.utils.parsedate
@@ -91,7 +93,7 @@ def parse_spot_message(message):
     return data
 
 
-def parse_beam_payload(attachment):
+def parse_beam_payload(attachment: bytes) -> Dict | Literal[False]:
     """Attempt to parse the binary attachment for tracking data. Returns a dict or False.
     Reference: https://www.beamcommunications.com/document/342-beam-message-format
     """
@@ -136,7 +138,7 @@ def parse_beam_payload(attachment):
     return beam
 
 
-def parse_iriditrak_message(message):
+def parse_iriditrak_message(message: Message):
     """Parses a passed-in Iriditrak email message. Returns a dict or False."""
     try:
         # Ref: https://docs.python.org/3.11/library/email.utils.html#email.utils.parsedate
@@ -173,41 +175,54 @@ def parse_iriditrak_message(message):
     return data
 
 
-def parse_dplus_payload(payload):
-    data = {"RAW": payload.strip().split("|")}
+def parse_dplus_payload(payload: str) -> Dict | Literal[False]:
+    """DPlus data is received as an email payload consisting of bar-separated values."""
+    payload_raw = payload.strip().split("|")
+    device_id = payload_raw[0]
+    timestamp = payload_raw[1]
+    latitude = payload_raw[4]
+    longitude = payload_raw[5]
+    velocity = payload_raw[6]
+    heading = payload_raw[7]
+    altitude = payload_raw[9]
+
+    data = {"type": "dplus"}
 
     try:
-        data["device_id"] = int(data["RAW"][0])
-        data["timestamp"] = (datetime.strptime(data["RAW"][1], "%d-%m-%y %H:%M:%S").replace(tzinfo=timezone.utc),)
-        data["latitude"] = float(data["RAW"][4])
-        data["longitude"] = float(data["RAW"][5])
-        data["velocity"] = int(data["RAW"][6]) * 1000
-        data["heading"] = int(data["RAW"][7])
-        data["altitude"] = int(data["RAW"][9])
-        data["type"] = "dplus"
+        data["device_id"] = int(device_id)
+        data["timestamp"] = (datetime.strptime(timestamp, "%d-%m-%y %H:%M:%S").replace(tzinfo=timezone.utc),)
+        data["latitude"] = float(latitude)
+        data["longitude"] = float(longitude)
+        data["velocity"] = int(velocity) * 1000
+        data["heading"] = int(heading)
+        data["altitude"] = int(altitude)
+    except:
+        return False
+
+    print(data)
+    return data
+
+
+def parse_tracplus_row(row: Dict) -> Dict | Literal[False]:
+    try:
+        data = {
+            "device_id": row["Device IMEI"],
+            "timestamp": datetime.strptime(row["Transmitted"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc),
+            "latitude": float(row["Latitude"]),
+            "longitude": float(row["Longitude"]),
+            "velocity": int(row["Speed"]) * 1000,  # Convert km/h to m/h.
+            "heading": int(row["Track"]),
+            "altitude": int(row["Altitude"]),
+            "type": "tracplus",
+        }
     except:
         return False
 
     return data
 
 
-def parse_tracplus_row(row):
-    data = {
-        "device_id": row["Device IMEI"],
-        "timestamp": datetime.strptime(row["Transmitted"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc),
-        "latitude": float(row["Latitude"]),
-        "longitude": float(row["Longitude"]),
-        "velocity": int(row["Speed"]) * 1000,  # Convert km/h to m/h.
-        "heading": int(row["Track"]),
-        "altitude": int(row["Altitude"]),
-        "type": "tracplus",
-    }
-
-    return data
-
-
-def parse_dfes_feature(feature):
-    """Features will be GeoJSON"""
+def parse_dfes_feature(feature: Dict) -> Dict | Literal[False]:
+    """DFES data will be a GeoJSON feature."""
     properties = feature["properties"]
     coordinates = feature["geometry"]["coordinates"]
 
@@ -229,8 +244,8 @@ def parse_dfes_feature(feature):
     return data
 
 
-def parse_tracertrak_feature(feature):
-    """Features will be GeoJSON"""
+def parse_tracertrak_feature(feature: Dict) -> Dict | Literal[False]:
+    """TracerTrak data will be GeoJSON features."""
     properties = feature["properties"]
     coordinates = feature["geometry"]["coordinates"]
 
@@ -251,7 +266,7 @@ def parse_tracertrak_feature(feature):
     return data
 
 
-def parse_netstar_feature(feature):
+def parse_netstar_feature(feature: Dict) -> Dict | Literal[False]:
     """Features will be a JSON object."""
 
     try:
@@ -272,14 +287,14 @@ def parse_netstar_feature(feature):
     return data
 
 
-def get_previous_pages(page_num, count=5):
-    """Convenience function to take a Paginator page object and return the previous `count`
+def get_previous_pages(page_obj: Page, count: int = 5) -> List[int]:
+    """Convenience function to take a Page object and return the previous `count`
     page numbers, to a minimum of 1.
     """
     prev_page_numbers = []
 
-    if page_num and page_num.has_previous():
-        for i in range(page_num.previous_page_number(), page_num.previous_page_number() - count, -1):
+    if page_obj.has_previous():
+        for i in range(page_obj.previous_page_number(), page_obj.previous_page_number() - count, -1):
             if i >= 1:
                 prev_page_numbers.append(i)
 
@@ -287,15 +302,15 @@ def get_previous_pages(page_num, count=5):
     return prev_page_numbers
 
 
-def get_next_pages(page_num, count=5):
-    """Convenience function to take a Paginator page object and return the next `count`
+def get_next_pages(page_obj: Page, count: int = 5) -> List[int]:
+    """Convenience function to take a Page object and return the next `count`
     page numbers, to a maximum of the paginator page count.
     """
     next_page_numbers = []
 
-    if page_num and page_num.has_next():
-        for i in range(page_num.next_page_number(), page_num.next_page_number() + count):
-            if i <= page_num.paginator.num_pages:
+    if page_obj.has_next():
+        for i in range(page_obj.next_page_number(), page_obj.next_page_number() + count):
+            if i <= page_obj.paginator.num_pages:
                 next_page_numbers.append(i)
 
     return next_page_numbers

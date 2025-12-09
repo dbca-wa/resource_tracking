@@ -1,6 +1,8 @@
 import csv
 import logging
+from email.message import Message
 from imaplib import IMAP4
+from typing import Literal
 
 import requests
 from django.conf import settings
@@ -91,10 +93,10 @@ def harvest_tracking_email(device_type, purge_email=False):
             else:
                 result = None
 
-            if not result:
-                flagged += 1
-            else:
+            if result:
                 created += 1
+            elif not result and purge_email:
+                flagged += 1
 
             # Optionally mark email as read and flag it for deletion.
             if purge_email:
@@ -116,11 +118,9 @@ def harvest_tracking_email(device_type, purge_email=False):
     return True
 
 
-def save_mp70(message):
+def save_mp70(message: Message) -> LoggedPoint | Literal[None, False]:
     """For a passed-in MP70 email message, parse the payload, get/create a Device,
     set the device 'seen' value, and create a LoggedPoint.
-
-    Returns a LoggedPoint object, or None.
     """
     payload = message.get_payload()
     data = parse_mp70_payload(payload)
@@ -166,11 +166,9 @@ def save_mp70(message):
     return loggedpoint
 
 
-def save_spot(message):
+def save_spot(message: Message) -> LoggedPoint | Literal[None, False]:
     """For a passed-in Spot email message, parse the payload, get/create a Device,
     set the device 'seen' value, and create a LoggedPoint.
-
-    Returns a LoggedPoint object, or None.
     """
     data = parse_spot_message(message)
 
@@ -215,7 +213,7 @@ def save_spot(message):
     return loggedpoint
 
 
-def save_iriditrak(message):
+def save_iriditrak(message: Message) -> LoggedPoint | Literal[None, False]:
     """For a passed-in Iriditrak email message, parse the payload, get/create a Device,
     set the device 'seen' value, and create a LoggedPoint.
 
@@ -628,7 +626,7 @@ def save_tracertrak_feed():
 
 
 def save_netstar_feed():
-    """Download the Netstar API feed (returns XML) and create/update devices returned."""
+    """Download the Netstar API feed (returns JSON, not valid GeoJSON) and create/update devices returned."""
     LOGGER.info("Querying Netstar API")
     try:
         resp = requests.get(url=settings.NETSTAR_URL, auth=(settings.NETSTAR_USER, settings.NETSTAR_PASS))
