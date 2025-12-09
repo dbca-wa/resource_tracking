@@ -1,5 +1,6 @@
 import email
 import logging
+from email.policy import default
 from imaplib import IMAP4_SSL
 
 from django.conf import settings
@@ -34,28 +35,20 @@ def email_get_unread(imap, from_email_address):
     return status, response[0].split()
 
 
-def email_fetch(imap, uid):
-    """Returns (status, message) for an email by UID.
-    Email is returned as an email.Message class object.
-    """
-    message = None
+def email_fetch(imap, uid: str):
     try:
-        status, response = imap.fetch(str(uid), "(BODY.PEEK[])")
+        status, msg_data = imap.fetch(uid, "(RFC822)")
     except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to fetch email: {err}")
         return None
 
     if status != "OK":
-        return status, response
+        return False
 
-    for i in response:
-        if isinstance(i, tuple):
-            s = i[1]
-            if isinstance(s, bytes):
-                s = s.decode("utf-8")
-            message = email.message_from_string(s)
+    raw_email = msg_data[0][1]
+    msg = email.message_from_bytes(raw_email, policy=default)
 
-    return status, message
+    return status, msg
 
 
 def email_mark_read(imap, uid):
