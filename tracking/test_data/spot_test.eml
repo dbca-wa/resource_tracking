@@ -1,81 +1,22 @@
 Return-Path: noreply@findmespot.com
-Delivered-To: tracking@mail.lan.fyi
-X-FDA: 84071064798.04.8BB91A0
-Received: from lasupvzmail02.findmespot.com (lasupvzmail02.findmespot.com [206.220.219.236])
-	by imf11.hostedemail.com (Postfix) with ESMTP id 2407F40009
-	for <tracking@mail.lan.fyi>; Tue,  4 Nov 2025 00:38:56 +0000 (UTC)
-Authentication-Results: imf11.hostedemail.com;
-	dkim=pass header.d=findmespot.com header.s=key1 header.b=ZQyUZUoB;
-	dkim=pass header.d=findmespot.com header.s=key1 header.b=ZQyUZUoB;
-	spf=pass (imf11.hostedemail.com: domain of noreply@findmespot.com designates 206.220.219.236 as permitted sender) smtp.mailfrom=noreply@findmespot.com;
-	dmarc=pass (policy=reject) header.from=findmespot.com
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=hostedemail.com;
-	s=arc-20220608; t=1762216737;
-	h=from:from:sender:reply-to:reply-to:subject:subject:date:date:
-	 message-id:message-id:to:to:cc:mime-version:mime-version:
-	 content-type:content-type:content-transfer-encoding:in-reply-to:
-	 references:dkim-signature; bh=amh+xvrrIw4FRc7d6JbeoeOF1WaJw2FJ2kJPADYGjDE=;
-	b=fVX1a8RYATVj8IsDUGmYywXqVXuRua5XLHrXw7llaKbtKnnCeneI96HCo2yVNySJA78ii3
-	ddLhyG6kCR65QgMpJYB8Nl+DnJ0ZpS1KZXlkhrTgqz3SwN56HPPpBJCh5Ks73rKvouu1xG
-	Dj+HBilAJfS4Nub0LxdcHJqoCR8ww34=
-ARC-Authentication-Results: i=1;
-	imf11.hostedemail.com;
-	dkim=pass header.d=findmespot.com header.s=key1 header.b=ZQyUZUoB;
-	dkim=pass header.d=findmespot.com header.s=key1 header.b=ZQyUZUoB;
-	spf=pass (imf11.hostedemail.com: domain of noreply@findmespot.com designates 206.220.219.236 as permitted sender) smtp.mailfrom=noreply@findmespot.com;
-	dmarc=pass (policy=reject) header.from=findmespot.com
-ARC-Seal: i=1; s=arc-20220608; d=hostedemail.com; t=1762216737; a=rsa-sha256;
-	cv=none;
-	b=HKr0yPkcuvbTEzlqo4LtiIr7NfDZdQa1H4+15n0n7dhCWpi/S6OQRURyogJgTzSxt0o/Xd
-	Fp9bmDF2Ngunu5xm2SvYuK9GyAaoXkqdcB5fBS+Fc/tDLDkZ9bIl9zWcm5boo76qiXjwZ6
-	hGDBjyx/Wzw/WdcdKDXDz434MnfRUbg=
-Received: from smtpd-las.globalstar.com (covupvzftp01.globalstar.com [206.220.219.237])
-	by lasupvzmail02.findmespot.com (Postfix) with ESMTP id 65D7518725CA
-	for <tracking@mail.lan.fyi>; Tue,  4 Nov 2025 00:38:55 +0000 (UTC)
-DKIM-Filter: OpenDKIM Filter v2.11.0 lasupvzmail02.findmespot.com 65D7518725CA
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=findmespot.com;
-	s=key1; t=1762216735;
-	bh=amh+xvrrIw4FRc7d6JbeoeOF1WaJw2FJ2kJPADYGjDE=;
-	h=Date:From:Reply-To:To:Subject:From;
-	b=ZQyUZUoBa6gUuk4maLxY8uu7b4TNVl31gjdRM+FG8tr73SY831nAh8mkJ5p/43j6p
-	 fg6uWs4jIA+mOj83WnUx0hdpJtWDtW0PmoG5ewH6VdFMZ+wHRuy6imVxyzohtU+dyB
-	 2Sn8/Itz1cyNBYVLi4SQZqpeC+qdOnXQ0TtDywdQ=
-Received: from lasupvspot02.prod.aws.globalstar.com (kemp219interface.corp.globalstar.com [206.220.219.238])
-	by smtpd-las.globalstar.com (Postfix) with ESMTP id 3F5611842E08
-	for <tracking@mail.lan.fyi>; Tue,  4 Nov 2025 00:38:55 +0000 (UTC)
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtpd-las.globalstar.com 3F5611842E08
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=findmespot.com;
-	s=key1; t=1762216735;
-	bh=amh+xvrrIw4FRc7d6JbeoeOF1WaJw2FJ2kJPADYGjDE=;
-	h=Date:From:Reply-To:To:Subject:From;
-	b=ZQyUZUoBa6gUuk4maLxY8uu7b4TNVl31gjdRM+FG8tr73SY831nAh8mkJ5p/43j6p
-	 fg6uWs4jIA+mOj83WnUx0hdpJtWDtW0PmoG5ewH6VdFMZ+wHRuy6imVxyzohtU+dyB
-	 2Sn8/Itz1cyNBYVLi4SQZqpeC+qdOnXQ0TtDywdQ=
+Delivered-To: tracking@mail.email
 Received: from mlpupvspot01.corp.globalstar.com (localhost [127.0.0.1])
 	by lasupvspot02.prod.aws.globalstar.com (Postfix) with ESMTP id F40A9CAF2
-	for <tracking@mail.lan.fyi>; Tue,  4 Nov 2025 00:38:54 +0000 (UTC)
+	for <tracking@mail.email>; Tue,  4 Nov 2025 00:38:54 +0000 (UTC)
 Date: Tue, 4 Nov 2025 00:38:54 +0000 (GMT)
 From: noreply@findmespot.com
 Reply-To: noreply@findmespot.com
-To: tracking@mail.lan.fyi
+To: tracking@mail.email
 Message-ID: <2072751971.424458.1762216734998@mlpupvspot01.corp.globalstar.com>
 Subject: Help message from SPOT TestSpot
-MIME-Version: 1.0
-Content-Type: multipart/mixed; 
-	boundary="----=_Part_424457_215519076.1762216734998"
 X-SPOT-Latitude: -15.77147
 X-SPOT-Longitude: 128.72888
 X-SPOT-Messenger: TestSpot
 X-SPOT-Time: 1762216750
 X-SPOT-Type: Help
-X-Rspamd-Server: rspam05
-X-Rspamd-Queue-Id: 2407F40009
-X-Stat-Signature: 3d7ujh5xxin39x3ekgzb8mqf7x4sx85a
-X-Rspam-User: 
-X-Spam-Status: No, score=3.30
-X-HE-Tag: 1762216736-492695
-X-HE-Meta: U2FsdGVkX1/3VKdicDtvdpFKt58ZZv9eMxXlJRTjqOPmjheYa6MNalyZWidsXYgKxCS078pLmmINVAzxm4OmcTgd7CEaWUNdWewdovVztXRJZ+6DZdsRuHUUi5aNXSh831UcQkbDpU/QLXL86aHrK8dtfsg7WMXrO/df0DyXvAAGJJnlFQdsoiKT0fjY7RfCfU62w/X5kZvjPnVu6TZ4IUScLRKjSKCk1XTQHlyUJ7pdG4Fxu+wo6VHPAdImoKsY20fq0G8IH+LzeUCb/D+ozvrCsQNBY16jYk+3zlSJ0R9E3kHMefGpRDu9QHCMbfR84Dp6WjNE4PjWQ+N3hNOdMOCBaP93wGx3H2se7QW7Fr/jNx+GernmThAjPVsA6CppmlxxrE/UsE/hJrKqRHJEdVKZkgtVyqb21Z8HdAW+Q1SnXSnCeMVhKJ/BKr1v8cwHuEV8ilZJBzfltWsvoOcJ9VaIOYVShbZdFk066zcndkTRmmkpK4detoVSW9FNAkP/cX+Kyk26UWUXkRMq0YqvQNeVh4yK2bY3yQ7fWrMkNVwJIw+ZIo9vurfHBOxhwKrPLhoE5eDwPCy5JsJvn5NxfkANRDcrLLn0m4h26f6kApYhy3Y/2nTyTQLBPVkURi0c7FY+c/nu9J+KbgCGYqJpgXkV4+aC72Z0/bA4B5rfnApj2xYJnYZm5mBnDHvQM+CG73m1DszcudoJtx9MqJgExd6ffYH3CdXjjam66hGxe0ytUYJJ0H8XENaydI1M+zbh6BfbrT5rHaRF0uni1iU+FLNOjB4Ip9YO064tyfWObSYjzNAh9jE3iwm1smOILJdiv4gv3qMhLbgVe+quykjZFkcyKMOaapLu0lI7mEYL8sAxJ9jFM4HJtngjYqCLPJNoT6Ca9VzA780sUOXosJjrmFjmsHb69s99s+CkiIs3XbDjEwBx0A0ua1bjlPkvQCl41Y5Az3SdOgamyoWG7gFeJz6miD6
- VRDp8oVRtdnjsRZqOdrPDIn1osndM/8/R8ZC8dyVwDoOoTZA6256WJAQKk2EEBzacjBzZBYQ+AjHqW04eRWi7xyvxM/YlefYgrKN5kxg0x7MA7B/oroT4+onY1DEHWeBqQjdsKzbrLWxyp7LnG7OdGtdgEeaeFwiAVrJoZcv3PZh4LeFjBZF482h64QU9pB/tRINeNmUrA4z+L7CXV0I20S/8rcv24neZO94K/EjvIeTwMpDkgKWjxlekbLTDLJT8uWC0iKc7tlHgzAwPhAJFF7+Jkrk3PnsK6XT6Bybm/M1HUJX6N4allpxBy3Tr1BP+y1gyiPlDuMP0RktNLUkb3qaVaS3bQ7cOty4AOnFlYr2he08oQ+KzuFxt5YJOi0vaIL51s3c/WtOUKZ9iegsi/M/3Inm46a/90npdlNioAhWvwYsv2lremgKROnMq+Cda8cXvwV8G/u0/lE073Y9isD+ppy6PCJlWbQtV/Uog97nrqypz9JAgNmuoWN4W/cQWIC/TmHhFnQygxNxAzQSOpnOIw744nS9BVWamWaWI+eLVLZxOpdLqGs597F+9ezbOZSLg
+MIME-Version: 1.0
+Content-Type: multipart/mixed; 
+	boundary="----=_Part_424457_215519076.1762216734998"
 
 ------=_Part_424457_215519076.1762216734998
 Content-Type: text/html; charset=utf-8
