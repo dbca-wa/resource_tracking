@@ -1,6 +1,6 @@
 import csv
 import logging
-from email.message import Message
+from email.message import EmailMessage
 from imaplib import IMAP4
 from typing import Literal
 
@@ -20,6 +20,7 @@ from tracking.utils import (
     parse_spot_message,
     parse_tracertrak_feature,
     parse_tracplus_row,
+    parse_zoleo_payload,
     validate_latitude_longitude,
 )
 
@@ -28,7 +29,7 @@ LOGGER = logging.getLogger("tracking")
 
 def harvest_tracking_email(device_type, purge_email=False):
     """Download and save tracking point emails.
-    `device_type` should be one of: iriditrak, dplus, spot, mp70
+    `device_type` should be one of: iriditrak, dplus, spot, mp70, zoleo
     """
     imap = email_utils.get_imap()
     if not imap:
@@ -52,6 +53,9 @@ def harvest_tracking_email(device_type, purge_email=False):
     elif device_type == "mp70":
         LOGGER.info("Harvesting MP70 emails")
         unread_emails = email_utils.email_get_unread(imap, settings.EMAIL_MP70)
+    elif device_type == "zoleo":
+        LOGGER.info("Harvesting Zoleo emails")
+        unread_emails = email_utils.email_get_unread(imap, settings.EMAIL_ZOLEO)
 
     if not unread_emails:
         LOGGER.warning("Mail server status failure")
@@ -90,6 +94,8 @@ def harvest_tracking_email(device_type, purge_email=False):
                 result = save_spot(message)
             elif device_type == "mp70":
                 result = save_mp70(message)
+            elif device_type == "zoleo":
+                result = save_zoleo(message)
             else:
                 result = None
 
@@ -118,7 +124,7 @@ def harvest_tracking_email(device_type, purge_email=False):
     return True
 
 
-def save_mp70(message: Message) -> LoggedPoint | Literal[None, False]:
+def save_mp70(message: EmailMessage) -> LoggedPoint | Literal[None, False]:
     """For a passed-in MP70 email message, parse the payload, get/create a Device,
     set the device 'seen' value, and create a LoggedPoint.
     """
@@ -166,7 +172,7 @@ def save_mp70(message: Message) -> LoggedPoint | Literal[None, False]:
     return loggedpoint
 
 
-def save_spot(message: Message) -> LoggedPoint | Literal[None, False]:
+def save_spot(message: EmailMessage) -> LoggedPoint | Literal[None, False]:
     """For a passed-in Spot email message, parse the payload, get/create a Device,
     set the device 'seen' value, and create a LoggedPoint.
     """
@@ -190,6 +196,7 @@ def save_spot(message: Message) -> LoggedPoint | Literal[None, False]:
 
     if created:
         device.source_device_type = "spot"
+        device.symbol = "person"
 
     seen = data["timestamp"]
     point = f"POINT({data['longitude']} {data['latitude']})"
@@ -213,7 +220,7 @@ def save_spot(message: Message) -> LoggedPoint | Literal[None, False]:
     return loggedpoint
 
 
-def save_iriditrak(message: Message) -> LoggedPoint | Literal[None, False]:
+def save_iriditrak(message: EmailMessage) -> LoggedPoint | Literal[None, False]:
     """For a passed-in Iriditrak email message, parse the payload, get/create a Device,
     set the device 'seen' value, and create a LoggedPoint.
 
@@ -595,6 +602,7 @@ def save_tracertrak_feed():
 
         if created:
             created_device += 1
+            device.source_device_type = "tracertrak"
         else:
             updated_device += 1
 
@@ -619,6 +627,7 @@ def save_tracertrak_feed():
             loggedpoint.heading = data["heading"]
             loggedpoint.velocity = data["velocity"]
             loggedpoint.altitude = data["altitude"]
+            loggedpoint.source_device_type = "tracertrak"
             loggedpoint.save()
             logged_points += 1
 
@@ -699,3 +708,54 @@ def save_netstar_feed():
             logged_points += 1
 
     LOGGER.info(f"Created {created_device}, updated {updated_device}, skipped {skipped_device}, {logged_points} new logged points")
+
+
+def save_zoleo(message: EmailMessage) -> LoggedPoint | Literal[None, False]:
+    """For a passed-in Zoleo email message, parse the payload, get/create a Device,
+    set the device 'seen' value, and create a LoggedPoint.
+    """
+    data = parse_zoleo_payload(message)
+
+    if not data:
+        LOGGER.warning(f"Unable to parse Zoleo message: {message['SUBJECT']}")
+        return None
+
+    # Validate lat/lon values.
+    if not validate_latitude_longitude(data["latitude"], data["longitude"]):
+        LOGGER.warning(
+            f"Bad geometry while parsing Zoleo check-in message from device {data['device_id']}: {data['latitude']}, {data['longitude']}"
+        )
+        return False
+
+    try:
+        device, created = Device.objects.get_or_create(deviceid=data["device_id"])
+    except Exception as e:
+        LOGGER.warning(f"Exception during creation/query of Zoleo device: {data}")
+        LOGGER.error(e)
+        return False
+
+    if created:
+        device.source_device_type = "zoleo"
+        device.symbol = "person"
+
+    seen = data["timestamp"]
+    point = f"POINT({data['longitude']} {data['latitude']})"
+
+    if not device.seen or device.seen < seen:
+        device.seen = seen
+        device.point = point
+        device.heading = data["heading"]
+        device.velocity = data["velocity"]
+        device.altitude = data["altitude"]
+        device.save()
+
+    loggedpoint, created = LoggedPoint.objects.get_or_create(device=device, seen=seen, point=point)
+    if created:
+        loggedpoint.source_device_type = "zoleo"
+        loggedpoint.heading = data["heading"]
+        loggedpoint.velocity = data["velocity"]
+        loggedpoint.altitude = data["altitude"]
+        loggedpoint.raw = data["raw"]
+        loggedpoint.save()
+
+    return loggedpoint

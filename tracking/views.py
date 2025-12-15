@@ -442,8 +442,8 @@ class DeviceDownload(SpatialDataView):
         conn.close()
 
         # Return the GPKG content.
-        resp = open(gpkg_path, "rb").read()
-        return resp
+        with open(gpkg_path, "rb") as f:
+            return f.read()
 
 
 class DeviceDownloadCsv(DeviceDownload):
@@ -746,8 +746,8 @@ class DeviceRouteDownload(DeviceLoggedPointDownload):
         conn.commit()
         conn.close()
 
-        resp = open(gpkg_path, "rb").read()
-        return resp  # Return the gpkg content.
+        with open(gpkg_path, "rb") as f:
+            return f.read()  # Return the gpkg content.
 
 
 class DeviceStream(View):
