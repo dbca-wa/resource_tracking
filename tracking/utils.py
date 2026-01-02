@@ -107,7 +107,6 @@ def parse_zoleo_payload(message: EmailMessage):
             "altitude": 0,
             "timestamp": timestamp,
             "type": "zoleo",
-            "raw": "\n".join(checkin_lines),
         }
     except:
         return False
@@ -263,16 +262,17 @@ def parse_dplus_payload(payload: str) -> Dict | Literal[False]:
     heading = payload_raw[7]
     altitude = payload_raw[9]
 
-    data = {"type": "dplus"}
-
     try:
-        data["device_id"] = int(device_id)
-        data["timestamp"] = (datetime.strptime(timestamp, "%d-%m-%y %H:%M:%S").replace(tzinfo=timezone.utc),)
-        data["latitude"] = float(latitude)
-        data["longitude"] = float(longitude)
-        data["velocity"] = int(velocity) * 1000
-        data["heading"] = int(heading)
-        data["altitude"] = int(altitude)
+        data = {
+            "device_id": int(device_id),
+            "timestamp": datetime.strptime(timestamp, "%d-%m-%y %H:%M:%S").replace(tzinfo=timezone.utc),
+            "latitude": float(latitude),
+            "longitude": float(longitude),
+            "velocity": int(velocity) * 1000,
+            "heading": int(heading),
+            "altitude": int(altitude),
+            "type": "dplus",
+        }
     except:
         return False
 
