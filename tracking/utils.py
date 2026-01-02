@@ -41,6 +41,8 @@ def parse_zoleo_payload(message: EmailMessage):
     """Parse the email content of a Zoleo check-in message for a location."""
     # First, obtain just the lines of interest from the email content (the check-in).
     body = message.get_body(preferencelist=("plain",))
+    if not body:  # Null body content
+        return False
     content = body.get_content()
     content_lines = [line.strip() for line in content.splitlines()]
     checkin_lines = []
