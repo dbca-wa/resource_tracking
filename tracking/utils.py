@@ -37,8 +37,8 @@ def validate_latitude_longitude(latitude: float, longitude: float) -> bool:
     return latitude <= 90 and latitude >= -90 and longitude <= 180 and longitude >= -180
 
 
-def parse_zoleo_payload(message: EmailMessage):
-    """Parse the email content of a Zoleo check-in message for a location."""
+def parse_zoleo_message(message: EmailMessage):
+    """Parse the email body content of a Zoleo check-in message for a location."""
     # First, obtain just the lines of interest from the email content (the check-in).
     body = message.get_body(preferencelist=("plain",))
     if not body:  # Null body content

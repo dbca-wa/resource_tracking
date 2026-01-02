@@ -20,7 +20,7 @@ from tracking.utils import (
     parse_spot_message,
     parse_tracertrak_feature,
     parse_tracplus_row,
-    parse_zoleo_payload,
+    parse_zoleo_message,
     validate_latitude_longitude,
 )
 
@@ -128,7 +128,9 @@ def save_mp70(message: EmailMessage) -> LoggedPoint | Literal[None, False]:
     """For a passed-in MP70 email message, parse the payload, get/create a Device,
     set the device 'seen' value, and create a LoggedPoint.
     """
-    payload = message.get_payload()
+    payload_bytes = message.get_payload(decode=True)
+    charset = message.get_content_charset() or "utf-8"
+    payload = payload_bytes.decode(charset, errors="replace")
     data = parse_mp70_payload(payload)
 
     if not data:
@@ -279,7 +281,7 @@ def save_dplus(message):
     Returns a LoggedPoint object, or None.
     """
     payload = message.get_payload()
-    data = parse_dplus_payload(message)
+    data = parse_dplus_payload(payload)
 
     if not data:
         LOGGER.warning(f"Unable to parse DPlus message payload: {payload}")
@@ -711,10 +713,10 @@ def save_netstar_feed():
 
 
 def save_zoleo(message: EmailMessage) -> LoggedPoint | Literal[None, False]:
-    """For a passed-in Zoleo email message, parse the payload, get/create a Device,
+    """For a passed-in Zoleo email message, parse the body content, get/create a Device,
     set the device 'seen' value, and create a LoggedPoint.
     """
-    data = parse_zoleo_payload(message)
+    data = parse_zoleo_message(message)
 
     if not data:
         LOGGER.warning(f"Unable to parse Zoleo message: {message['SUBJECT']}")
@@ -755,7 +757,6 @@ def save_zoleo(message: EmailMessage) -> LoggedPoint | Literal[None, False]:
         loggedpoint.heading = data["heading"]
         loggedpoint.velocity = data["velocity"]
         loggedpoint.altitude = data["altitude"]
-        loggedpoint.raw = data["raw"]
         loggedpoint.save()
 
     return loggedpoint

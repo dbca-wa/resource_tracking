@@ -18,7 +18,7 @@ from tracking.utils import (
     parse_netstar_feature,
     parse_spot_message,
     parse_tracplus_row,
-    parse_zoleo_payload,
+    parse_zoleo_message,
     validate_latitude_longitude,
 )
 
@@ -107,7 +107,10 @@ class HarvestTestCase(TestCase):
         """Test the parse_mp70_payload function"""
         with open(os.path.join(self.test_data_path, "mp70_test.eml")) as f:
             message = message_from_file(f)
-        payload = message.get_payload()
+        # payload = message.get_payload()
+        payload_bytes = message.get_payload(decode=True)
+        charset = message.get_content_charset() or "utf-8"
+        payload = payload_bytes.decode(charset, errors="replace")
         data = parse_mp70_payload(payload)
         self.assertTrue(data)
         # Correct data in the test email message.
@@ -144,10 +147,10 @@ class HarvestTestCase(TestCase):
         self.assertEqual(data["timestamp"], datetime(2025, 11, 4, 0, 38, 54, tzinfo=timezone.utc))
 
     def test_parse_zoleo_message(self):
-        """Test the parse_zoleo_payload function"""
+        """Test the parse_zoleo_message function"""
         with open(os.path.join(self.test_data_path, "zoleo_test.eml")) as f:
             message = message_from_file(f, _class=EmailMessage, policy=default)
-        data = parse_zoleo_payload(message)
+        data = parse_zoleo_message(message)
         self.assertTrue(data)
         # Correct data in the test email message.
         self.assertEqual(data["device_id"], "GLD - Zoleo 9")
