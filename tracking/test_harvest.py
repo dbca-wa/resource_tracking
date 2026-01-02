@@ -1,7 +1,9 @@
 import csv
-import email
 import os
 from datetime import datetime, timezone
+from email import message_from_file
+from email.message import EmailMessage
+from email.policy import default
 
 import orjson as json
 from django.conf import settings
@@ -9,12 +11,14 @@ from django.test import TestCase
 
 from tracking.models import Device
 from tracking.utils import (
+    parse_beam_payload,
     parse_dfes_feature,
     parse_iriditrak_message,
     parse_mp70_payload,
     parse_netstar_feature,
     parse_spot_message,
     parse_tracplus_row,
+    parse_zoleo_message,
     validate_latitude_longitude,
 )
 
@@ -85,9 +89,10 @@ class HarvestTestCase(TestCase):
     - Email payloads: Iriditrak, MP70, Spot
     - TracPlus API
     - DFES API
-
-    TODO: Email from DPlus
     """
+
+    def setUp(self):
+        self.test_data_path = os.path.join(settings.BASE_DIR, "tracking", "test_data")
 
     def test_validate_latitude_longitude(self):
         """Test the validate_latitude_longitude function"""
@@ -100,10 +105,12 @@ class HarvestTestCase(TestCase):
 
     def test_parse_mp70_payload(self):
         """Test the parse_mp70_payload function"""
-        mp70_email = open(os.path.join(settings.BASE_DIR, "tracking", "test_data", "mp70_test.eml"))
-        message = email.message_from_string(mp70_email.read())
-        mp70_email.close()
-        payload = message.get_payload()
+        with open(os.path.join(self.test_data_path, "mp70_test.eml")) as f:
+            message = message_from_file(f)
+        # payload = message.get_payload()
+        payload_bytes = message.get_payload(decode=True)
+        charset = message.get_content_charset() or "utf-8"
+        payload = payload_bytes.decode(charset, errors="replace")
         data = parse_mp70_payload(payload)
         self.assertTrue(data)
         # Correct data in the test email message.
@@ -112,15 +119,17 @@ class HarvestTestCase(TestCase):
 
     def test_parse_beam_payload(self):
         """Test the parse_beam_payload function"""
-        # Iriditrak BEAM payload with valid data.
-        beam_payload = open(os.path.join(settings.BASE_DIR, "tracking", "test_data", "beam_payload_test.sbd"), "rb").read()
-        self.assertTrue(beam_payload)
+        with open(os.path.join(self.test_data_path, "beam_payload_test.sbd"), "rb") as f:
+            beam_payload = f.read()
+        data = parse_beam_payload(beam_payload)
+        self.assertTrue(data)
+        self.assertTrue(data["latitude"])
+        self.assertTrue(data["longitude"])
 
     def test_parse_iriditrak_message(self):
         # Iriditrak timestamp is parsed from the sent email.
-        iriditrak_email = open(os.path.join(settings.BASE_DIR, "tracking", "test_data", "iriditrak_test.eml"))
-        message = email.message_from_string(iriditrak_email.read())
-        iriditrak_email.close()
+        with open(os.path.join(self.test_data_path, "iriditrak_test.eml")) as f:
+            message = message_from_file(f)
         data = parse_iriditrak_message(message)
         self.assertTrue(data)
         # Correct data in the test email message.
@@ -129,14 +138,23 @@ class HarvestTestCase(TestCase):
 
     def test_parse_spot_message(self):
         """Test the parse_spot_message function"""
-        spot_email = open(os.path.join(settings.BASE_DIR, "tracking", "test_data", "spot_test.eml"))
-        message = email.message_from_string(spot_email.read())
-        spot_email.close()
+        with open(os.path.join(self.test_data_path, "spot_test.eml")) as f:
+            message = message_from_file(f)
         data = parse_spot_message(message)
         self.assertTrue(data)
         # Correct data in the test email message.
         self.assertEqual(data["device_id"], "TestSpot")
         self.assertEqual(data["timestamp"], datetime(2025, 11, 4, 0, 38, 54, tzinfo=timezone.utc))
+
+    def test_parse_zoleo_message(self):
+        """Test the parse_zoleo_message function"""
+        with open(os.path.join(self.test_data_path, "zoleo_test.eml")) as f:
+            message = message_from_file(f, _class=EmailMessage, policy=default)
+        data = parse_zoleo_message(message)
+        self.assertTrue(data)
+        # Correct data in the test email message.
+        self.assertEqual(data["device_id"], "GLD - Zoleo 9")
+        self.assertEqual(data["timestamp"], datetime(2025, 12, 10, 4, 54, 2, tzinfo=timezone.utc))
 
     def test_parse_tracplus_row(self):
         """Test the parse_tracplus_row function"""
