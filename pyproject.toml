@@ -27,7 +27,7 @@ dependencies = [
   "azure-storage-blob==12.28.0",
   "uvicorn[standard]==0.40.0",
   "uvicorn-worker==0.4.0",
-  "orjson==3.11.5",
+  "orjson==3.11.6",
   "django-crispy-forms==2.5",
   "crispy-bootstrap5==2025.6",
   "h11==0.16",
