@@ -1,6 +1,6 @@
 [project]
 name = "resource_tracking"
-version = "1.4.41"
+version = "1.4.42"
 description = "DBCA internal corporate application to download and serve data from remote tracking devices."
 authors = [
   { name = "Ashley Felton", email = "ashley.felton@dbca.wa.gov.au" },
@@ -19,10 +19,10 @@ dependencies = [
   "django-extensions==4.1",
   "python-dotenv==1.2.1",
   "dj-database-url==3.1.0",
-  "gunicorn==25.0.1",
+  "gunicorn==25.0.3",
   "unicodecsv==0.14.1",
   "whitenoise[brotli]==6.11.0",
-  "sentry-sdk[django]==2.51.0",
+  "sentry-sdk[django]==2.52.0",
   "django-geojson==4.2.0",
   "azure-storage-blob==12.28.0",
   "uvicorn[standard]==0.40.0",
@@ -32,7 +32,7 @@ dependencies = [
   "crispy-bootstrap5==2025.6",
   "h11==0.16",
   "django-tastypie==0.15.1",
-  "fudgeo==1.5.1",
+  "fudgeo==1.5.2",
 ]
 
 [dependency-groups]

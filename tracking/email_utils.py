@@ -49,6 +49,12 @@ def email_fetch(imap, uid: str) -> Tuple[str, EmailMessage] | Literal[False]:
         return False
 
     raw_email = msg_data[0][1]
+
+    # Sometimes, we don't have a raw email body (bytes) at this point.
+    # In this situation, abort and return False.
+    if not hasattr(raw_email, "decode"):
+        return False
+
     msg = message_from_bytes(raw_email, policy=default)
 
     return status, msg
