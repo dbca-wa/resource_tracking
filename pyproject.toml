@@ -1,6 +1,6 @@
 [project]
 name = "resource_tracking"
-version = "1.4.42"
+version = "1.4.43"
 description = "DBCA internal corporate application to download and serve data from remote tracking devices."
 authors = [
   { name = "Ashley Felton", email = "ashley.felton@dbca.wa.gov.au" },
