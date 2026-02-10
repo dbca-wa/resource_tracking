@@ -496,7 +496,7 @@ class DeviceLoggedPointDownload(SpatialDataView):
         if end is not None:
             try:
                 # Parse the end date as ISO8601 date format
-                end = datetime.fromisoformat(start)
+                end = datetime.fromisoformat(end)
             except:
                 return HttpResponseBadRequest("Bad end format, use ISO 8601 format end parameter")
 
