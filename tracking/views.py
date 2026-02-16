@@ -208,15 +208,16 @@ class SpatialDataView(View):
             writer = csv.writer(out, quoting=csv.QUOTE_ALL)
             writer.writerow(
                 [
+                    "devicekey",
                     "deviceid",
                     "registration",
+                    "callsign",
                     "rin_number",
                     "rin_display",
                     "district",
                     "usual_driver",
                     "usual_location",
                     "current_driver",
-                    "callsign",
                     "contractor_details",
                     "other_details",
                     "internal_only",
@@ -234,15 +235,16 @@ class SpatialDataView(View):
             for device in qs:
                 writer.writerow(
                     [
+                        device.pk,
                         device.deviceid,
                         device.registration,
+                        device.callsign,
                         device.rin_display,
                         device.rin_display,
                         device.get_district_display(),
                         device.usual_driver,
                         device.usual_location,
                         device.current_driver,
-                        device.callsign,
                         device.contractor_details,
                         device.other_details,
                         device.internal_only,

@@ -46,7 +46,9 @@
             <table class="table table-sm table-striped table-bordered">
                 <thead>
                     <tr>
+                        <th>Device Key</th>
                         <th>Device ID</th>
+                        <th>Callsign</th>
                         <th>Registration</th>
                         <th>Type</th>
                         <th>Region/District</th>
@@ -57,6 +59,7 @@
                 <tbody>
                     {% for object in object_list %}
                         <tr>
+                            <td>{{ object.pk }}</td>
                             <td>
                                 <a class="btn btn-primary"
                                    title="Device {{ object.deviceid }} detail view"
@@ -64,6 +67,7 @@
                                     <i class="fa-solid fa-circle-info"></i>
                                 {{ object.deviceid }}</a>
                             </td>
+                            <td>{{ object.callsign }}</td>
                             <td>{{ object.registration }}</td>
                             <td>{{ object.symbol|capfirst }}</td>
                             <td>{{ object.get_district_display }}</td>
