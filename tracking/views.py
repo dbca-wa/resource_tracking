@@ -762,7 +762,7 @@ class DeviceStream(View):
     view_is_async = True
 
     async def stream(self, *args, **kwargs):
-        """Returns an iterator that queries and then yields tracking device data every n seconds."""
+        """Returns an iterator that runs forever, queries and then yields tracking device data every n seconds."""
         last_location = None
         device = None
 
@@ -803,7 +803,7 @@ class DeviceStream(View):
     async def get(self, request, *args, **kwargs):
         # Returns a streaming HTTP response that is consumed by the EventSource instance on the client.
         return StreamingHttpResponse(
-            self.stream(*args, **kwargs),
+            streaming_content=self.stream(*args, **kwargs),
             content_type="text/event-stream",
             headers={
                 # The Cache-Control header need to be set thus to work behind Fastly caching.

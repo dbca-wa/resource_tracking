@@ -1,16 +1,19 @@
 # Gunicorn configuration settings.
-import multiprocessing
 
 bind = ":8080"
-# Don't start too many workers:
-workers = min(multiprocessing.cpu_count(), 4)
-# Give workers an expiry:
+workers = 4
+worker_connections = 1000  # Max connections per worker
 max_requests = 2048
 max_requests_jitter = 256
 preload_app = True
-# Set longer timeout for workers
-timeout = 180
+keepalive = 5  # Keepalive timeout
+timeout = 180  # Worker timeout
+graceful_timeout = 30  # Graceful shutdown timeout
 # Disable access logging.
 accesslog = None
-# Use UvicornWorker as the worker class.
-worker_class = "resource_tracking.workers.UvicornWorker"
+
+# asgi configuration
+worker_class = "asgi"
+asgi_loop = "auto"  # Uses uvloop if available
+asgi_lifespan = "auto"  # Auto-detect lifespan support
+control_socket = "/tmp/gunicorn.ctl"
