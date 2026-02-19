@@ -99,17 +99,18 @@ def harvest_tracking_email(device_type, purge_email=False):
             else:
                 result = None
 
-            if result:
+            if result:  # Processing the message may or may not create a new LoggedPoint.
                 created += 1
-            elif not result and purge_email:
-                flagged += 1
 
-            # Optionally mark email as read and flag it for deletion.
+            # Mark the email as "read".
+            email_utils.email_mark_read(imap, uid)
+
+            # Optionally flag email for deletion.
             if purge_email:
-                email_utils.email_mark_read(imap, uid)
+                flagged += 1
                 email_utils.email_delete(imap, uid)
 
-    LOGGER.info(f"Created {created} tracking points, flagged {flagged} emails")
+    LOGGER.info(f"Created {created} tracking points, flagged {flagged} emails for deletion")
 
     try:
         imap.close()
@@ -149,13 +150,11 @@ def save_mp70(message: EmailMessage) -> LoggedPoint | Literal[None, False]:
         LOGGER.error(e)
         return False
 
-    if created:
-        device.source_device_type = "mp70"
-
     seen = data["timestamp"]
     point = f"POINT({data['longitude']} {data['latitude']})"
 
     if not device.seen or device.seen < seen:
+        device.source_device_type = "mp70"
         device.seen = seen
         device.point = point
         device.heading = data["heading"]
@@ -196,14 +195,12 @@ def save_spot(message: EmailMessage) -> LoggedPoint | Literal[None, False]:
         LOGGER.error(e)
         return False
 
-    if created:
-        device.source_device_type = "spot"
-        device.symbol = "person"
-
     seen = data["timestamp"]
     point = f"POINT({data['longitude']} {data['latitude']})"
 
     if not device.seen or device.seen < seen:
+        device.source_device_type = "spot"
+        device.symbol = "person"
         device.seen = seen
         device.point = point
         device.heading = data["heading"]
@@ -248,13 +245,11 @@ def save_iriditrak(message: EmailMessage) -> LoggedPoint | Literal[None, False]:
         LOGGER.error(e)
         return False
 
-    if created:
-        device.source_device_type = "iriditrak"
-
     seen = data["timestamp"]
     point = f"POINT({data['longitude']} {data['latitude']})"
 
     if not device.seen or device.seen < seen:
+        device.source_device_type = "iriditrak"
         device.seen = seen
         device.point = point
         device.heading = data["heading"]
@@ -299,13 +294,11 @@ def save_dplus(message):
         LOGGER.error(e)
         return False
 
-    if created:
-        device.source_device_type = "dplus"
-
     seen = data["timestamp"]
     point = f"POINT({data['longitude']} {data['latitude']})"
 
     if not device.seen or device.seen < seen:
+        device.source_device_type = "dplus"
         device.seen = seen
         device.point = point
         device.heading = data["heading"]
@@ -420,7 +413,6 @@ def save_dfes_feed():
 
         if created:
             created_device += 1
-            device.source_device_type = "dfes"
         else:
             updated_device += 1
 
@@ -435,6 +427,7 @@ def save_dfes_feed():
         point = f"POINT({data['longitude']} {data['latitude']})"
 
         if not device.seen or device.seen < seen:
+            device.source_device_type = "dfes"
             device.seen = seen
             device.point = point
             device.heading = data["heading"]
@@ -515,7 +508,6 @@ def save_tracplus_feed():
 
         if created:
             created_device += 1
-            device.source_device_type = "tracplus"
         else:
             updated_device += 1
 
@@ -527,6 +519,7 @@ def save_tracplus_feed():
         point = f"POINT({data['longitude']} {data['latitude']})"
 
         if not device.seen or device.seen < seen:
+            device.source_device_type = "tracplus"
             device.seen = seen
             device.point = point
             device.heading = data["heading"]
@@ -604,7 +597,6 @@ def save_tracertrak_feed():
 
         if created:
             created_device += 1
-            device.source_device_type = "tracertrak"
         else:
             updated_device += 1
 
@@ -616,6 +608,7 @@ def save_tracertrak_feed():
         point = f"POINT({data['longitude']} {data['latitude']})"
 
         if not device.seen or device.seen < seen:
+            device.source_device_type = "tracertrak"
             device.seen = seen
             device.point = point
             device.heading = data["heading"]
@@ -689,7 +682,6 @@ def save_netstar_feed():
 
         if created:
             created_device += 1
-            device.source_device_type = "netstar"
         else:
             updated_device += 1
 
@@ -698,6 +690,7 @@ def save_netstar_feed():
         point = f"POINT({data['longitude']} {data['latitude']})"
 
         if not device.seen or device.seen < seen:
+            device.source_device_type = "netstar"
             device.seen = seen
             device.point = point
 
@@ -736,14 +729,12 @@ def save_zoleo(message: EmailMessage) -> LoggedPoint | Literal[None, False]:
         LOGGER.error(e)
         return False
 
-    if created:
-        device.source_device_type = "zoleo"
-        device.symbol = "person"
-
     seen = data["timestamp"]
     point = f"POINT({data['longitude']} {data['latitude']})"
 
     if not device.seen or device.seen < seen:
+        device.source_device_type = "zoleo"
+        device.symbol = "person"
         device.seen = seen
         device.point = point
         device.heading = data["heading"]
