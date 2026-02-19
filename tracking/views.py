@@ -239,7 +239,7 @@ class SpatialDataView(View):
                         device.deviceid,
                         device.registration,
                         device.callsign,
-                        device.rin_display,
+                        device.rin_number,
                         device.rin_display,
                         device.get_district_display(),
                         device.usual_driver,
