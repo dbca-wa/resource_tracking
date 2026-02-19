@@ -25,14 +25,13 @@ dependencies = [
   "sentry-sdk[django]==2.53.0",
   "django-geojson==4.2.0",
   "azure-storage-blob==12.28.0",
-  "uvicorn[standard]==0.41.0",
-  "uvicorn-worker==0.4.0",
   "orjson==3.11.7",
   "django-crispy-forms==2.5",
   "crispy-bootstrap5==2025.6",
   "h11==0.16",
   "django-tastypie==0.15.1",
   "fudgeo==1.5.4",
+  "uvloop==0.22.1",
 ]
 
 [dependency-groups]
