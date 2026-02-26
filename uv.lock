@@ -429,14 +429,14 @@ wheels = [
 
 [[package]]
 name = "fudgeo"
-version = "1.5.4"
+version = "1.5.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bottleneck" },
     { name = "numpy" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/73/8bd6f203430fd6a737654ae78a505eded198479acac1c08d77b940c7c2cf/fudgeo-1.5.4-py3-none-any.whl", hash = "sha256:d24650271cc60bb6912cecfa9e6b86ff958206e99244335120b150b5f710e864", size = 59858, upload-time = "2026-02-15T16:35:44.545Z" },
+    { url = "https://files.pythonhosted.org/packages/42/e8/9fefbe52810fd6d42bb06f3d0c8768b22d9c96e6e5e2cb565fb15bbbd7c0/fudgeo-1.5.5-py3-none-any.whl", hash = "sha256:e0e32d8bcf58d161f0ed530823e083baca1e1d25b062bb79bb0f83d35fb64bee", size = 59931, upload-time = "2026-02-23T19:54:33.231Z" },
 ]
 
 [[package]]
@@ -1008,7 +1008,7 @@ requires-dist = [
     { name = "django-extensions", specifier = "==4.1" },
     { name = "django-geojson", specifier = "==4.2.0" },
     { name = "django-tastypie", specifier = "==0.15.1" },
-    { name = "fudgeo", specifier = "==1.5.4" },
+    { name = "fudgeo", specifier = "==1.5.5" },
     { name = "gunicorn", specifier = "==25.1.0" },
     { name = "h11", specifier = "==0.16" },
     { name = "orjson", specifier = "==3.11.7" },
