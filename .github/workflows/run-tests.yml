@@ -41,7 +41,7 @@ jobs:
         id: install-gdal
         run: |
           sudo apt-get update
-          sudo apt-get install gdal-bin libgdal-dev
+          sudo apt-get install --no-install-recommends --yes gdal-bin libgdal-dev
       #----------------------------------------------
       # Checkout repo
       #----------------------------------------------
