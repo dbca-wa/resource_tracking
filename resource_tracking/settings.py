@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sys
 import tomllib
@@ -7,6 +8,7 @@ from zoneinfo import ZoneInfo
 import dj_database_url
 from dbca_utils.utils import env
 from django.core.exceptions import DisallowedHost
+from django.core.handlers.asgi import RequestAborted
 from django.db.utils import OperationalError
 
 # Project paths
@@ -194,13 +196,18 @@ def sentry_excluded_exceptions(event, hint):
     and they are not errors that we want to capture.
     https://docs.sentry.io/platforms/python/configuration/filtering/#filtering-error-events
     """
-    if "exc_info" in hint and hint["exc_info"]:
-        # Exclude database-related errors (connection error, timeout, DNS failure, etc.)
-        if hint["exc_info"][0] is OperationalError:
-            return None
-        # Exclude exceptions related to host requests not in ALLOWED_HOSTS.
-        elif hint["exc_info"][0] is DisallowedHost:
-            return None
+    exc_info = hint.get("exc_info")
+    if not exc_info:
+        return event
+
+    exc_type, _, _ = exc_info
+
+    # Ignored exception classes:
+    # Ignore normal client disconnects
+    # Exclude exceptions related to host requests not in ALLOWED_HOSTS.
+    # Exclude database-related errors (connection error, timeout, DNS failure, etc.)
+    if issubclass(exc_type, (RequestAborted, asyncio.CancelledError, DisallowedHost, OperationalError)):
+        return None
 
     return event
 
