@@ -1,9 +1,34 @@
+import asyncio
 import logging
 
+from django.core.handlers.asgi import RequestAborted
 from django.db import connections
 from django.http import HttpResponse, HttpResponseServerError
 
 LOGGER = logging.getLogger("django")
+
+
+class IgnoreClientDisconnectsMiddleware:
+    """
+    Silences normal client disconnects in ASGI (browser navigation away,
+    proxy timeout, mobile network drop).
+
+    Prevents RequestAborted / CancelledError from being logged as errors.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        try:
+            return await self.app(scope, receive, send)
+        except RequestAborted:
+            # Client disconnected — expected behavior
+            return
+        except asyncio.CancelledError:
+            # Propagate task cancellation so lifespan/startup/shutdown and other
+            # non-disconnect cancellation paths continue to behave correctly.
+            raise
 
 
 class HealthCheckMiddleware(object):

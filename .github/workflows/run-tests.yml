@@ -31,7 +31,7 @@ jobs:
       # Make use of the Step Security Harden Runner workflow to monitor the build process.
       #----------------------------------------------
       - name: Harden the GitHub runner
-        uses: step-security/harden-runner@v2.19.0
+        uses: step-security/harden-runner@v2.19.1
         with:
           egress-policy: audit
       #----------------------------------------------
@@ -40,9 +40,8 @@ jobs:
       - name: Install GDAL
         id: install-gdal
         run: |
-          sudo apt-add-repository ppa:ubuntugis/ubuntugis-unstable
           sudo apt-get update
-          sudo apt-get install gdal-bin libgdal-dev
+          sudo apt-get install --no-install-recommends --yes gdal-bin libgdal-dev
       #----------------------------------------------
       # Checkout repo
       #----------------------------------------------
