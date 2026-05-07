@@ -26,8 +26,9 @@ class IgnoreClientDisconnectsMiddleware:
             # Client disconnected — expected behavior
             return
         except asyncio.CancelledError:
-            # ASGI task cancelled on disconnect
-            return
+            # Propagate task cancellation so lifespan/startup/shutdown and other
+            # non-disconnect cancellation paths continue to behave correctly.
+            raise
 
 
 class HealthCheckMiddleware(object):
