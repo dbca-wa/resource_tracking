@@ -130,7 +130,7 @@ DATABASES["default"]["TIME_ZONE"] = "Australia/Perth"
 if "ENGINE" in DATABASES["default"] and any(eng in DATABASES["default"]["ENGINE"] for eng in ["postgresql", "postgis"]):
     # Override ConnectionPool defaults:
     #  - Increase the maximum size of the pool, as StreamingHttpResponse views may tie up connections.
-    #  - Decrease the timeout for a client waiting to receive a conneciton (default 30s).
+    #  - Decrease the timeout for a client waiting to receive a connection (default 30s).
     #  - Decrease the maximum lifetime of a connection (default 3600s).
     #  - Decrease the maximum idle time for a connection (default 600s).
     # Reference: https://www.psycopg.org/psycopg3/docs/api/pool.html#psycopg_pool.ConnectionPool
