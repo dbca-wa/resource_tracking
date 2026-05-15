@@ -126,12 +126,22 @@ DATABASES = {
 }
 
 DATABASES["default"]["TIME_ZONE"] = "Australia/Perth"
-# Use PostgreSQL connection pool if using that DB engine (use ConnectionPool defaults).
+# Use PostgreSQL connection pooling if available.
 if "ENGINE" in DATABASES["default"] and any(eng in DATABASES["default"]["ENGINE"] for eng in ["postgresql", "postgis"]):
-    if "OPTIONS" in DATABASES["default"]:
-        DATABASES["default"]["OPTIONS"]["pool"] = True
-    else:
-        DATABASES["default"]["OPTIONS"] = {"pool": True}
+    # Override ConnectionPool defaults:
+    #  - Increase the maximum size of the pool, as StreamingHttpResponse views may tie up connections.
+    #  - Decrease the timeout for a client waiting to receive a connection (default 30s).
+    #  - Decrease the maximum lifetime of a connection (default 3600s).
+    #  - Decrease the maximum idle time for a connection (default 600s).
+    # Reference: https://www.psycopg.org/psycopg3/docs/api/pool.html#psycopg_pool.ConnectionPool
+    DATABASES["default"]["OPTIONS"] = {
+        "pool": {
+            "max_size": 16,
+            "timeout": 10.0,
+            "max_lifetime": 900.0,
+            "max_idle": 300.0,
+        }
+    }
 
 # Project authentication settings
 AUTHENTICATION_BACKENDS = ("django.contrib.auth.backends.ModelBackend",)
