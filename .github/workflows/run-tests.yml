@@ -31,7 +31,7 @@ jobs:
       # Make use of the Step Security Harden Runner workflow to monitor the build process.
       #----------------------------------------------
       - name: Harden the GitHub runner
-        uses: step-security/harden-runner@v2.19.2
+        uses: step-security/harden-runner@9ca718d3bf646d6534007c269a635b3e54cadf99 # v2
         with:
           egress-policy: audit
       #----------------------------------------------
@@ -46,14 +46,14 @@ jobs:
       # Checkout repo
       #----------------------------------------------
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
       #----------------------------------------------
       # Install & configure uv
       #----------------------------------------------
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           python-version: '3.13'
           enable-cache: true
