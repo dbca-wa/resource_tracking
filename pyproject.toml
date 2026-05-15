@@ -25,7 +25,7 @@ dependencies = [
   "sentry-sdk[django]==2.59.0",
   "django-geojson==4.2.0",
   "azure-storage-blob==12.28.0",
-  "orjson==3.11.8",
+  "orjson==3.11.9",
   "django-crispy-forms==2.6",
   "crispy-bootstrap5==2026.3",
   "h11==0.16",
