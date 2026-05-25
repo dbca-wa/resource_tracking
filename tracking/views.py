@@ -8,6 +8,8 @@ from tempfile import TemporaryDirectory
 import orjson as json
 import unicodecsv as csv
 from django.conf import settings
+from django.contrib.admin.models import CHANGE, LogEntry
+from django.contrib.admin.utils import construct_change_message
 from django.contrib.gis.geos import LineString, Polygon
 from django.core.serializers import serialize
 from django.db.models import Q
@@ -178,6 +180,18 @@ class DeviceUpdate(UpdateView):
             # Redirect without saving changes.
             return redirect(self.get_success_url())
         return super().post(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        self.object = form.save()
+        # Create a LogEntry for the change.
+        LogEntry.objects.log_actions(
+            user_id=self.request.user.pk,
+            queryset=Device.objects.filter(pk=self.object.pk),
+            action_flag=CHANGE,
+            change_message=construct_change_message(form, [], False),
+            single_object=True,
+        )
+        return super().form_valid(form)
 
 
 class SpatialDataView(View):
