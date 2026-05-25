@@ -125,23 +125,12 @@ DATABASES = {
     "default": dj_database_url.config(),
 }
 
+# Set database timezone.
 DATABASES["default"]["TIME_ZONE"] = "Australia/Perth"
-# Use PostgreSQL connection pooling if available.
-if "ENGINE" in DATABASES["default"] and any(eng in DATABASES["default"]["ENGINE"] for eng in ["postgresql", "postgis"]):
-    # Override ConnectionPool defaults:
-    #  - Increase the maximum size of the pool, as StreamingHttpResponse views may tie up connections.
-    #  - Decrease the timeout for a client waiting to receive a connection (default 30s).
-    #  - Decrease the maximum lifetime of a connection (default 3600s).
-    #  - Decrease the maximum idle time for a connection (default 600s).
-    # Reference: https://www.psycopg.org/psycopg3/docs/api/pool.html#psycopg_pool.ConnectionPool
-    DATABASES["default"]["OPTIONS"] = {
-        "pool": {
-            "max_size": 16,
-            "timeout": 10.0,
-            "max_lifetime": 900.0,
-            "max_idle": 300.0,
-        }
-    }
+# We're using ASGI, so explicitly disable persistent connections.
+# Reference: https://docs.djangoproject.com/en/6.0/ref/databases/#persistent-connections
+DATABASES["default"]["CONN_MAX_AGE"] = 0
+# Don't use Django native pooling, instead rely on service-side pooling (PgBouncer).
 
 # Project authentication settings
 AUTHENTICATION_BACKENDS = ("django.contrib.auth.backends.ModelBackend",)

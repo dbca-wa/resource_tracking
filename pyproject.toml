@@ -14,7 +14,6 @@ license = "Apache-2.0"
 requires-python = ">=3.13,<4.0"
 dependencies = [
   "django==5.2.14",
-  "psycopg[binary,pool]==3.3.3",
   "dbca-utils==2.2.0",
   "django-extensions==4.1",
   "python-dotenv==1.2.2",
@@ -32,6 +31,7 @@ dependencies = [
   "django-tastypie==0.15.1",
   "fudgeo==1.5.9",
   "uvloop==0.22.1",
+  "psycopg[binary]==3.3.3",
 ]
 
 [dependency-groups]
