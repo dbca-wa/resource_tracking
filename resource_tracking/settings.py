@@ -128,9 +128,13 @@ DATABASES = {
 # Set database timezone.
 DATABASES["default"]["TIME_ZONE"] = "Australia/Perth"
 # We're using ASGI, so explicitly disable persistent connections.
-# Reference: https://docs.djangoproject.com/en/6.0/ref/databases/#persistent-connections
+# Reference: https://docs.djangoproject.com/en/dev/ref/databases/#persistent-connections
 DATABASES["default"]["CONN_MAX_AGE"] = 0
 # Don't use Django native pooling, instead rely on service-side pooling (PgBouncer).
+DATABASES["default"]["OPTIONS"] = {"pool": False}
+# PgBouncer uses trancsaction pooling, so disable server side cursors.
+# Reference: https://docs.djangoproject.com/en/dev/ref/databases/#server-side-cursors
+DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
 
 # Project authentication settings
 AUTHENTICATION_BACKENDS = ("django.contrib.auth.backends.ModelBackend",)
