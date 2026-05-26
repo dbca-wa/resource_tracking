@@ -31,7 +31,7 @@ dependencies = [
   "django-tastypie==0.15.1",
   "fudgeo==1.5.9",
   "uvloop==0.22.1",
-  "psycopg[binary]==3.3.3",
+  "psycopg[binary]==3.3.4",
 ]
 
 [dependency-groups]
