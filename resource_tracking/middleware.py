@@ -3,7 +3,8 @@ import logging
 
 from django.core.handlers.asgi import RequestAborted
 from django.db import connections
-from django.http import HttpResponse, HttpResponseServerError
+from django.db.utils import OperationalError
+from django.http import JsonResponse
 
 LOGGER = logging.getLogger("django")
 
@@ -38,29 +39,34 @@ class HealthCheckMiddleware(object):
     def __call__(self, request):
         if request.method == "GET":
             if request.path == "/readyz":
-                return self.readiness(request)
+                return self.readiness()
             elif request.path == "/livez":
-                return self.liveness(request)
+                return self.liveness()
         return self.get_response(request)
 
-    def liveness(self, request):
+    def liveness(self):
         """Returns that the server is alive."""
-        return HttpResponse("OK")
+        return JsonResponse({"status": "ok"}, status=200)
 
-    def readiness(self, request):
+    def readiness(self):
         """Connect to each database and do a generic standard SQL query
         that doesn't write any data and doesn't depend on any tables
         being present.
         """
         try:
-            cursor = connections["default"].cursor()
-            cursor.execute("SELECT 1;")
-            row = cursor.fetchone()
-            cursor.close()
-            if row is None:
-                return HttpResponseServerError("Database: invalid response")
-        except Exception as e:
-            LOGGER.exception(e)
-            return HttpResponseServerError("Database: unable to connect")
+            # Iterate through all configured databases
+            for db_name in connections:
+                connection = connections[db_name]
 
-        return HttpResponse("OK")
+                # Ensure connection is established
+                connection.ensure_connection()
+
+                # Perform a lightweight query
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT 1;")
+                    cursor.fetchone()
+
+            return JsonResponse({"status": "ok"}, status=200)
+
+        except OperationalError as e:
+            return JsonResponse({"status": "error", "detail": str(e)}, status=503)
