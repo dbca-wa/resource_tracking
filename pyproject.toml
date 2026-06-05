@@ -21,7 +21,7 @@ dependencies = [
   "gunicorn[fast]==26.0.0",
   "unicodecsv==0.14.1",
   "whitenoise[brotli]==6.12.0",
-  "sentry-sdk[django]==2.60.0",
+  "sentry-sdk[django]==2.61.1",
   "django-geojson==4.2.0",
   "azure-storage-blob==12.29.0",
   "orjson==3.11.9",
@@ -31,11 +31,11 @@ dependencies = [
   "django-tastypie==0.15.1",
   "fudgeo==1.5.9",
   "uvloop==0.22.1",
-  "psycopg[binary]==3.3.3",
+  "psycopg[binary]==3.3.4",
 ]
 
 [dependency-groups]
-dev = ["ipython>=9.13.0", "ipdb>=0.13.13", "mixer>=7.2.2", "pre-commit>=4.6.0"]
+dev = ["ipython>=9.14.0", "ipdb>=0.13.13", "mixer>=7.2.2", "pre-commit>=4.6.0"]
 
 [project.urls]
 homepage = "https://github.com/dbca-wa/resource_tracking"
