@@ -21,9 +21,9 @@ dependencies = [
   "gunicorn[fast]==26.0.0",
   "unicodecsv==0.14.1",
   "whitenoise[brotli]==6.12.0",
-  "sentry-sdk[django]==2.61.1",
+  "sentry-sdk[django]==2.63.0",
   "django-geojson==4.2.0",
-  "azure-storage-blob==12.29.0",
+  "azure-storage-blob==12.30.0",
   "orjson==3.11.9",
   "django-crispy-forms==2.6",
   "crispy-bootstrap5==2026.3",
@@ -36,11 +36,11 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "ipython>=9.14.0",
-    "ipdb>=0.13.13",
-    "mixer>=7.2.2",
-    "pre-commit>=4.6.0",
-    "django-stubs>=6.0.5",
+  "ipython>=9.14.1",
+  "ipdb>=0.13.13",
+  "mixer>=7.2.2",
+  "pre-commit>=4.6.0",
+  "django-stubs>=6.0.5",
 ]
 
 [project.urls]
