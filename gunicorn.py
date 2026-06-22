@@ -10,7 +10,8 @@ keepalive = 5  # Max seconds to wait for requests on a Keep-Alive connection
 timeout = 60  # Worker timeout
 # Disable access logging.
 accesslog = None
-control_socket = "/tmp/gunicorn.ctl"
+control_socket_disable = True
+worker_tmp_dir = "/dev/shm"
 
 # asgi configuration
 worker_class = "asgi"
