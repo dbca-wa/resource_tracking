@@ -29,9 +29,9 @@ LABEL org.opencontainers.image.authors=asi@dbca.wa.gov.au
 LABEL org.opencontainers.image.source=https://github.com/dbca-wa/resource_tracking
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  gdal-bin=3.10.* \
-  proj-bin=9.6.* \
-  libgdal36=3.10.* \
+  gdal-bin \
+  proj-bin \
+  libgdal36 \
   # Run shared library linker after installing spatial packages
   && ldconfig \
   && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
