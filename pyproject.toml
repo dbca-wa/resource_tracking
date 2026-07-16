@@ -21,7 +21,7 @@ dependencies = [
   "gunicorn[fast]==26.0.0",
   "unicodecsv==0.14.1",
   "whitenoise[brotli]==6.12.0",
-  "sentry-sdk[django]==2.64.0",
+  "sentry-sdk[django]==2.65.0",
   "django-geojson==4.2.0",
   "orjson==3.11.9",
   "django-crispy-forms==2.6",
