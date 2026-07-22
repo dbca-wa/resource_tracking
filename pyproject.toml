@@ -13,22 +13,22 @@ authors = [
 license = "Apache-2.0"
 requires-python = ">=3.13,<4.0"
 dependencies = [
-  "django==5.2.14",
-  "dbca-utils==3.0.3",
+  "django==5.2.16",
+  "dbca-utils==3.0.7",
   "django-extensions==4.1",
   "python-dotenv==1.2.2",
   "dj-database-url==3.1.2",
   "gunicorn[fast]==26.0.0",
   "unicodecsv==0.14.1",
   "whitenoise[brotli]==6.12.0",
-  "sentry-sdk[django]==2.64.0",
+  "sentry-sdk[django]==2.66.0",
   "django-geojson==4.2.0",
   "orjson==3.11.9",
   "django-crispy-forms==2.6",
   "crispy-bootstrap5==2026.3",
   "h11==0.16",
   "django-tastypie==0.15.1",
-  "fudgeo==1.5.9",
+  "fudgeo==1.5.10",
   "uvloop==0.22.1",
   "psycopg[binary]==3.3.4",
   "requests==2.34.2",
@@ -40,7 +40,7 @@ dev = [
   "ipdb>=0.13.13",
   "mixer>=7.2.2",
   "pre-commit>=4.6.0",
-  "django-stubs>=6.0.6",
+  "django-stubs>=6.0.7",
   "deptry>=0.25.1",
 ]
 
@@ -76,3 +76,8 @@ DEP002 = [
   "django-geojson",
   "crispy-bootstrap5",
 ]
+
+[tool.pyright]
+venvPath = ".venv"
+include = ["resource_tracking", "tracking"]
+exclude = ["**/migrations", "kustomize"]
