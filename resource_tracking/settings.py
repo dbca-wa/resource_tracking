@@ -72,7 +72,6 @@ INSTALLED_APPS = [
     "tastypie",
     "django_extensions",
     "djgeojson",
-    "dbca_utils",
     "tracking",
 ]
 MIDDLEWARE = [
