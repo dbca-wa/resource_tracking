@@ -3,6 +3,7 @@ from email import message_from_bytes
 from email.message import EmailMessage
 from email.policy import default
 from imaplib import IMAP4_SSL
+from ssl import SSLEOFError
 from typing import Any, List, Literal, Optional, Tuple
 
 from django.conf import settings
@@ -17,7 +18,7 @@ def get_imap(mailbox: str = "INBOX") -> IMAP4_SSL | Literal[False]:
         imap.login(settings.EMAIL_USER, settings.EMAIL_PASSWORD)
         imap.select(mailbox)
         return imap
-    except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
+    except (IMAP4_SSL.abort, IMAP4_SSL.error, SSLEOFError) as err:
         LOGGER.warning(f"Unable to log into mailbox: {err}")
         return False
 
