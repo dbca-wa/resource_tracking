@@ -23,8 +23,10 @@ APPLICATION_VERSION_NO = project["project"]["version"]
 DEBUG = env("DEBUG", False)
 SECRET_KEY = env("SECRET_KEY", "PlaceholderSecretKey")
 CSRF_COOKIE_SECURE = env("CSRF_COOKIE_SECURE", False)
+CSRF_COOKIE_NAME = env("CSRF_COOKIE_NAME", "resource_tracking_csrftoken")
 CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS", "http://127.0.0.1").split(",")
 SESSION_COOKIE_SECURE = env("SESSION_COOKIE_SECURE", False)
+SESSION_COOKIE_NAME = env("SESSION_COOKIE_NAME", "resource_tracking_sessionid")
 if not DEBUG:
     ALLOWED_HOSTS = env("ALLOWED_HOSTS", "localhost").split(",")
 else:
