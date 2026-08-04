@@ -110,6 +110,7 @@ def harvest_tracking_email(device_type, purge_email=False):
             if purge_email:
                 flagged += 1
                 email_utils.email_delete(imap, uid)
+                LOGGER.info(f"Marking email UID {uid} for deletion")
 
     LOGGER.info(f"Created {created} tracking points, flagged {flagged} emails for deletion")
 

@@ -24,7 +24,7 @@ RUN uv sync \
   && rm -rf /bin/uv uv.lock
 
 # ---- Runtime stage ----
-FROM dhi.io/python:3.13-debian13-dev
+FROM dhi.io/python:3.13-debian13-dev AS runtime
 LABEL org.opencontainers.image.authors=asi@dbca.wa.gov.au
 LABEL org.opencontainers.image.source=https://github.com/dbca-wa/resource_tracking
 
@@ -50,6 +50,7 @@ COPY --from=builder /app /app
 COPY --chown=nonroot:nonroot gunicorn.py manage.py pyproject.toml ./
 COPY --chown=nonroot:nonroot resource_tracking ./resource_tracking
 COPY --chown=nonroot:nonroot tracking ./tracking
+
 # Compile scripts and collect static files
 RUN python -m compileall manage.py resource_tracking tracking \
   && python manage.py collectstatic --noinput

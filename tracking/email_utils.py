@@ -23,14 +23,14 @@ def get_imap(mailbox: str = "INBOX") -> IMAP4_SSL | Literal[False]:
         return False
 
 
-def email_get_unread(imap: IMAP4_SSL, from_email_address: str) -> Tuple[str, List] | Literal[False]:
+def email_get_unread(imap: IMAP4_SSL, from_email_address: str) -> Tuple[str, List] | Tuple[Literal[False], Literal[False]]:
     """Returns (status, [list of UIDs]) of unread emails from a sending email address."""
-    search = '(UNSEEN UNFLAGGED FROM "{}")'.format(from_email_address)
+    search = f'(UNSEEN UNFLAGGED FROM "{from_email_address}")'
     try:
         status, response = imap.search(None, search)
     except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to search unread emails: {err}")
-        return False
+        return False, False
 
     if status != "OK":
         return status, response
@@ -38,69 +38,69 @@ def email_get_unread(imap: IMAP4_SSL, from_email_address: str) -> Tuple[str, Lis
     return status, response[0].split()
 
 
-def email_fetch(imap: IMAP4_SSL, uid: str) -> Tuple[Literal["OK"], EmailMessage] | Literal[False]:
+def email_fetch(imap: IMAP4_SSL, uid: str) -> Tuple[str, EmailMessage] | Tuple[Literal[False], Literal[False]]:
     """Fetch a single email and return a tuple of status, EmailMessage"""
     msg_data = [None]
     try:
         status, msg_data = imap.fetch(uid, "(RFC822)")
     except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to fetch email: {err}")
-        return False
+        return False, False
 
     if status != "OK":
-        return False
+        return False, False
     elif msg_data[0] is None:
-        return False
+        return False, False
 
     raw_email = msg_data[0][1]
     # Sometimes, we don't have a raw email body (bytes) at this point.
     # In this situation, abort and return False.
     if not isinstance(raw_email, bytes):
-        return False
+        return False, False
 
     email_msg = message_from_bytes(s=raw_email, policy=default)
 
     return status, email_msg
 
 
-def email_mark_read(imap: IMAP4_SSL, uid: str) -> Tuple[str, list[Any]] | Literal[False]:
+def email_mark_read(imap: IMAP4_SSL, uid: str) -> Tuple[str, list[Any]] | Tuple[Literal[False], Literal[False]]:
     """Flag an email as 'Seen' based on passed-in UID."""
     try:
-        status, response = imap.store(uid, "+FLAGS", r"\Seen")
+        status, response = imap.store(uid, "+FLAGS", r"(\Seen)")
         return status, response
     except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to mark email read: {err}")
-        return False
+        return False, False
 
 
-def email_mark_unread(imap, uid) -> Tuple[Optional[str], Optional[str]] | Literal[False]:
+def email_mark_unread(imap, uid) -> Tuple[Optional[str], Optional[str]] | Tuple[Literal[False], Literal[False]]:
     """Remove the 'Seen' flag from an email based on passed-in UID."""
     try:
-        status, response = imap.store(str(uid), "-FLAGS", r"\Seen")
+        status, response = imap.store(str(uid), "-FLAGS", r"(\Seen)")
         return status, response
     except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to mark email unread: {err}")
-        return False
+        return False, False
 
 
-def email_delete(imap, uid) -> Tuple[Optional[str], Optional[str]] | Literal[False]:
+def email_delete(imap, uid) -> Tuple[Optional[str], Optional[str]] | Tuple[Literal[False], Literal[False]]:
     """Flag an email for deletion."""
     try:
-        status, response = imap.store(str(uid), "+FLAGS", r"\Deleted")
+        status, response = imap.store(str(uid), "+FLAGS", r"(\Deleted)")
         return status, response
     except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to delete email: {err}")
-        return False
+        return False, False
 
 
-def email_flag(imap, uid) -> Tuple[Optional[str], Optional[str]] | Literal[False]:
+def email_flag(imap, uid) -> Tuple[Optional[str], Optional[str]] | Tuple[Literal[False], Literal[False]]:
     """Flag an email as unprocessable."""
     try:
-        status, response = imap.store(str(uid), "+FLAGS", r"\Flagged")
+        status, response = imap.store(str(uid), "+FLAGS", r"(\Flagged)")
         return status, response
     except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to flag email: {err}")
-        return False
+        return False, False
 
 
 def email_get_body(msg: EmailMessage) -> Tuple[Optional[str], Optional[str]]:
