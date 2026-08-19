@@ -7,5 +7,5 @@ from django.dispatch import receiver
 def user_post_save(sender, instance, created, **kwargs):
     # Add users to the 'Edit Resource Tracking Device' group so users can edit Device details
     if created:
-        g, created = Group.objects.get_or_create(name="Edit Resource Tracking Device")
+        g, _ = Group.objects.get_or_create(name="Edit Resource Tracking Device")
         instance.groups.add(g)

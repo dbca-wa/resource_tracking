@@ -299,6 +299,7 @@ class Device(models.Model):
             "spot",
             "mp70",
             "fleetcare",
+            "netstar",
             "other",
         ]:
             return True
