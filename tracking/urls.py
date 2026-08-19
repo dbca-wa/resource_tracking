@@ -26,6 +26,4 @@ urlpatterns = [
     path("loggedpoint/<int:pk>.csv", RedirectView.as_view(pattern_name="tracking:device_history", permanent=True, query_string=True)),
     path("loggedpoint/<int:pk>.geojson", RedirectView.as_view(pattern_name="tracking:device_history", permanent=True, query_string=True)),
     path("route/<int:pk>.geojson", RedirectView.as_view(pattern_name="tracking:device_route", permanent=True, query_string=True)),
-    # FIXME: remove this redirect view after SSS is updated.
-    path("sss_admin/tracking/device/<int:pk>/change/", RedirectView.as_view(pattern_name="tracking:device_update", permanent=True)),
 ]
