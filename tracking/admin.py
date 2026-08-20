@@ -1,7 +1,4 @@
-from django.conf import settings
-from django.contrib.admin import AdminSite, ModelAdmin, register
-from django.http import HttpResponseRedirect
-from django.urls import reverse
+from django.contrib.admin import ModelAdmin, register
 
 from .models import Device
 
@@ -30,12 +27,6 @@ class DeviceAdmin(ModelAdmin):
         (
             "Vehicle/Device details",
             {
-                "description": """<p class="errornote">This is the live tracking database;
-            changes made to these fields will apply to the Device Tracking map in all
-            variants of the Spatial Support System.</p>
-            """
-                if settings.PROD_SCARY_WARNING
-                else "",
                 "fields": (
                     "deviceid",
                     "source_device_type",
@@ -65,18 +56,4 @@ class DeviceAdmin(ModelAdmin):
         if obj is not None and obj.source_device_type in ["tracplus", "dfes"]:
             return False
         else:
-            return super(DeviceAdmin, self).has_change_permission(request, obj=obj)
-
-
-class DeviceSSSAdmin(DeviceAdmin):
-    def add_view(self, request, obj=None):
-        return HttpResponseRedirect(reverse("sss_admin:tracking_device_changelist"))
-
-
-class TrackingAdminSite(AdminSite):
-    site_header = "SSS administration"
-    site_url = None
-
-
-tracking_admin_site = TrackingAdminSite(name="sss_admin")
-tracking_admin_site.register(Device, DeviceSSSAdmin)
+            return super().has_change_permission(request, obj=obj)
