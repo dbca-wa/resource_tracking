@@ -7,10 +7,24 @@ Declarative management of Kubernetes objects using Kustomize.
 Within an overlay directory, create a `.env` file to contain required secret
 values in the format KEY=value (i.e. `overlays/uat/.env`). Example:
 
-    DATABASE_URL=value
-    SECRET_KEY=value
+```bash
+DATABASE_URL=value
+SECRET_KEY=value
+```
 
 See the main project `README` for all required values.
+
+In addition, generate a `dhi-registry-config.json` file in the format:
+
+```json
+{
+  "auths": {
+    "<https://dhi.io>": {
+      "auth": "<AUTH_TOKEN_VALUE>"
+    }
+  }
+}
+```
 
 Run `kubectl` with the `-k` flag to generate resources for a given overlay.
 For example, to manage the UAT overlay:
