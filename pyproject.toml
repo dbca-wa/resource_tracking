@@ -32,6 +32,7 @@ dependencies = [
   "uvloop==0.22.1",
   "psycopg[binary]==3.3.4",
   "requests==2.34.2",
+  "django-valkey[libvalkey]==0.4.1",
 ]
 
 [dependency-groups]
