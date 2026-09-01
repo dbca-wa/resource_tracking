@@ -424,3 +424,47 @@ class SanitizingJSONDecoder(json.JSONDecoder):
 
         s = self._sanitize(s)
         return super().decode(s, **kwargs)
+
+
+def prtg_delay_channel(name: str, value_min, max_delay: int | None = None) -> dict[str, Any]:
+    """A channel having a time value that represent a delay/last-seen occurrence, with optional maximum that signals an error."""
+    ch: dict[str, Any] = {
+        "channel": name,
+        "value": value_min if value_min is not None else 0,
+        "unit": "Custom",
+        "customunit": "minutes",
+        "float": 1,
+    }
+    if value_min is None or max_delay is not None and value_min > max_delay:
+        ch["error"] = 1
+    return ch
+
+
+def prtg_rate_channel(name: str, value, min_val: int | None = None) -> dict[str, Any]:
+    """A channel having a rate/frequency of units (optional minimum)."""
+    ch: dict[str, Any] = {
+        "channel": name,
+        "value": value if value is not None else 0,
+        "unit": "Custom",
+        "customunit": "points/minute",
+    }
+    if value is None or min_val is not None and value < min_val:
+        ch["error"] = 1
+    return ch
+
+
+def prtg_count_channel(name: str, value, min_val: int | None = None) -> dict[str, Any]:
+    """A channel having an integer count (optional minimum)."""
+    ch: dict[str, Any] = {"channel": name, "value": value if value is not None else 0, "unit": "Count"}
+    if value is None or min_val is not None and value < min_val:
+        ch["error"] = 1
+    return ch
+
+
+def prtg_status_channel(name: str, value) -> dict[str, Any]:
+    """A channel having a boolean status."""
+    ok = bool(value)
+    ch: dict[str, Any] = {"channel": name, "value": 1 if ok else 0, "unit": "Custom", "customunit": "status"}
+    if not ok:
+        ch["error"] = 1
+    return ch
