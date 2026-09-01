@@ -3,7 +3,7 @@ from django.urls import include, path
 from django.views.generic.base import RedirectView
 
 from resource_tracking.api import v1_api
-from tracking.views import DeviceMetricsSource
+from tracking.views import DeviceMetricsSource, PrtgMetricsJSON
 
 admin.site.site_header = "Resource Tracking System administration"
 admin.site.index_title = "Resource Tracking System"
@@ -18,6 +18,7 @@ urlpatterns = [
         DeviceMetricsSource.as_view(),
         name="device_metrics_source",
     ),
+    path("api/prtg/", PrtgMetricsJSON.as_view(), name="prtg_metrics_json"),
     path("", include("tracking.urls")),
     path("", RedirectView.as_view(pattern_name="tracking:device_list"), name="home"),
 ]

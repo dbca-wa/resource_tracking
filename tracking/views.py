@@ -10,6 +10,7 @@ import unicodecsv as csv
 from django.conf import settings
 from django.contrib.admin.models import CHANGE, LogEntry
 from django.contrib.admin.utils import construct_change_message
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.gis.geos import LineString, Polygon
 from django.core.serializers import serialize
 from django.db.models import Q
@@ -26,7 +27,7 @@ from fudgeo.geometry import Point
 
 from tracking.forms import DeviceForm
 from tracking.models import SOURCE_DEVICE_TYPE_CHOICES, Device, LoggedPoint
-from tracking.utils import get_next_pages, get_previous_pages, get_srs_wgs84
+from tracking.utils import get_next_pages, get_previous_pages, get_srs_wgs84, prtg_delay_channel, prtg_rate_channel
 
 # Define a dictionary of context variables to supply to JavaScript in view templates.
 # NOTE: we can't include values needing `reverse` in the dict below due to circular imports.
@@ -49,7 +50,7 @@ JAVASCRIPT_CONTEXT = {
 }
 
 
-class DeviceMap(TemplateView):
+class DeviceMap(LoginRequiredMixin, TemplateView):
     """A map view displaying all device locations."""
 
     template_name = "tracking/device_map.html"
@@ -65,7 +66,7 @@ class DeviceMap(TemplateView):
         return context
 
 
-class DeviceList(ListView):
+class DeviceList(LoginRequiredMixin, ListView):
     """A list view to display a list of tracking devices, and/or download them as structured data."""
 
     model = Device
@@ -127,7 +128,7 @@ class DeviceList(ListView):
         return super().get(request, *args, **kwargs)
 
 
-class DeviceDetail(DetailView):
+class DeviceDetail(LoginRequiredMixin, DetailView):
     """A detail view to show single device's details and location."""
 
     model = Device
@@ -146,7 +147,7 @@ class DeviceDetail(DetailView):
         return context
 
 
-class DeviceUpdate(UpdateView):
+class DeviceUpdate(LoginRequiredMixin, UpdateView):
     form_class = DeviceForm
     model = Device
     http_method_names = ["get", "post", "put", "patch", "head", "options"]
@@ -194,7 +195,7 @@ class DeviceUpdate(UpdateView):
         return super().form_valid(form)
 
 
-class SpatialDataView(View):
+class SpatialDataView(LoginRequiredMixin, View):
     """Base view to return a queryset of spatial data as GeoJSON or CSV."""
 
     model = None
@@ -566,8 +567,8 @@ class DeviceLoggedPointDownload(SpatialDataView):
         else:
             # Append `deviceid` and `registration` attributes to each object in the queryset, for serialization.
             for obj in qs:
-                setattr(obj, "deviceid", obj.device.deviceid)
-                setattr(obj, "registration", obj.device.registration)
+                obj.deviceid = obj.device.deviceid
+                obj.registration = obj.device.registration
 
             geojson = serialize(
                 "geojson",
@@ -665,14 +666,10 @@ class DeviceRouteDownload(DeviceLoggedPointDownload):
         # Also add a `label` attribute that captures the timestamps of each.
         for loggedpoint in qs:
             if start_point is not None:
-                setattr(
-                    start_point,
-                    "route",
-                    LineString(start_point.point, loggedpoint.point),
-                )
+                start_point.route = LineString(start_point.point, loggedpoint.point)
                 start_label = start_point.seen.strftime("%H:%M:%S")
                 end_label = loggedpoint.seen.strftime("%H:%M:%S")
-                setattr(start_point, "label", f"{start_label} to {end_label}")
+                start_point.label = f"{start_label} to {end_label}"
             start_point = loggedpoint
         # Exclude the last loggedpoint in the queryset because it won't have the `route` attribute.
         if qs:
@@ -688,8 +685,8 @@ class DeviceRouteDownload(DeviceLoggedPointDownload):
         else:
             # Append `deviceid` and `registration` attributes to each object in the queryset, for serialization.
             for obj in qs:
-                setattr(obj, "deviceid", obj.device.deviceid)
-                setattr(obj, "registration", obj.device.registration)
+                obj.deviceid = obj.device.deviceid
+                obj.registration = obj.device.registration
             geojson = serialize(
                 "geojson",
                 qs,
@@ -773,7 +770,7 @@ class DeviceRouteDownload(DeviceLoggedPointDownload):
             return f.read()  # Return the gpkg content.
 
 
-class DeviceStream(View):
+class DeviceStream(LoginRequiredMixin, View):
     """An asynchronous view that returns Server-Sent Events (SSE) consisting of
     a tracking device's location, forever. This is a one-way communication channel,
     where the client browser is responsible for maintaining the connection.
@@ -835,7 +832,7 @@ class DeviceStream(View):
         )
 
 
-class DeviceMetricsSource(View):
+class DeviceMetricsSource(LoginRequiredMixin, View):
     """A basic metrics view that returns the count of logged points for a given source device type
     over the previous n minutes."""
 
@@ -875,3 +872,66 @@ class DeviceMetricsSource(View):
                 "logged_point_count": logged_point_count,
             }
         )
+
+
+class PrtgMetricsJSON(LoginRequiredMixin, View):
+    http_method_names = ["get"]
+
+    def get(self, request, *args, **kwargs):
+
+        prtg_channels = []
+        error_messages = []
+        error = False
+        now = timezone.now()
+        since = now - timedelta(minutes=15)
+
+        # Newest / latest tracking point (all-device tracking delay)
+        # Get the most-recent LoggedPoint objects with `seen` <= the current time
+        # (bad data is sometimes logged where `seen` is a future timestamp).
+        newest_point = LoggedPoint.objects.filter(seen__lte=now).first()
+        delta = now - newest_point.seen
+        minutes = int(delta.total_seconds() / 60)
+        if settings.TRACKING_POINTS_MAX_DELAY_MINUTES:
+            prtg_channels.append(prtg_delay_channel("All tracking devices delay", minutes, settings.TRACKING_POINTS_MAX_DELAY_MINUTES))
+            if minutes > settings.TRACKING_POINTS_MAX_DELAY_MINUTES:
+                error_messages.append(
+                    f"All tracking devices delay {minutes} minutes exceeds maximum {settings.TRACKING_POINTS_MAX_DELAY_MINUTES} minutes"
+                )
+                error = True
+        else:
+            prtg_channels.append(prtg_delay_channel("All tracking devices delay", minutes))
+
+        # All-device tracking rate estimate: total number of logged points over the previous
+        if LoggedPoint.objects.filter(seen__lte=now, seen__gte=since).exists():
+            logged_point_count = LoggedPoint.objects.filter(seen__lte=now, seen__gte=since).count()
+        else:
+            logged_point_count = 0
+        prtg_channels.append(prtg_rate_channel("All tracking devices logging rate", logged_point_count))
+
+        # Individual source tracking device type metrics.
+        for device_type, desc in {
+            "fleetcare": "Fleetcare",
+            "dfes": "DFES",
+            "iriditrak": "IridiTrak (email)",
+            "mp70": "MP70 (email)",
+            "tracplus": "TracPlus",
+            "netstar": "Netstar",
+            "spot": "Spot",
+        }.items():
+            if LoggedPoint.objects.filter(source_device_type=device_type, seen__lte=now).exists():
+                newest_point = LoggedPoint.objects.filter(source_device_type=device_type, seen__lte=now).first()
+                delta = now - newest_point.seen
+                minutes = int(delta.total_seconds() / 60)
+                prtg_channels.append(prtg_delay_channel(f"{desc} tracking devices delay", minutes))
+                logged_point_count = LoggedPoint.objects.filter(seen__gte=since, source_device_type=device_type).count()
+                prtg_channels.append(prtg_rate_channel(f"{desc} logging rate", logged_point_count))
+
+        prtg_response = {
+            "prtg": {
+                "result": prtg_channels,
+                "text": "; ".join(error_messages) if error_messages else "All checks passed",
+                "error": 1 if error else 0,
+            }
+        }
+
+        return JsonResponse(prtg_response)
