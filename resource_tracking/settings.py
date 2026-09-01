@@ -242,3 +242,23 @@ NETSTAR_PASS = env("NETSTAR_PASS", "")
 
 # Maximum allowable delay (minutes) for tracking device types.
 TRACKING_POINTS_MAX_DELAY_MINUTES = env("TRACKING_POINTS_MAX_DELAY_MINUTES", None)  # All device types.
+
+# Caching configuration.
+VALKEY_CACHE_HOST = env("VALKEY_CACHE_HOST", None)
+if VALKEY_CACHE_HOST:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_valkey.cache.ValkeyCache",
+            "LOCATION": VALKEY_CACHE_HOST,
+            "OPTIONS": {
+                "SOCKET_CONNECT_TIMEOUT": 5,  # seconds
+                "SOCKET_TIMEOUT": 5,  # seconds
+            },
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
+    }
