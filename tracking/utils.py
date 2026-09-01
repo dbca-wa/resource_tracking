@@ -2,11 +2,11 @@ import json
 import re
 import struct
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from email.message import EmailMessage
 from email.utils import parsedate
 from html import unescape
-from typing import Any, Dict, List, Literal
+from typing import Any, Literal
 
 from django.core.paginator import Page
 from fudgeo.constant import WGS84
@@ -98,7 +98,7 @@ def parse_zoleo_message(message: EmailMessage):
         timetuple = parsedate(timestamp)
         timestamp = time.mktime(timetuple)  # Timestamp integer.
         # Assume timestamp is UTC, cast timestamp as a datetime object.
-        timestamp = datetime.fromtimestamp(timestamp).replace(tzinfo=timezone.utc)
+        timestamp = datetime.fromtimestamp(timestamp).replace(tzinfo=UTC)
 
         return {
             "device_id": device_id,
@@ -114,7 +114,7 @@ def parse_zoleo_message(message: EmailMessage):
         return False
 
 
-def parse_mp70_payload(payload: str) -> Dict | Literal[False]:
+def parse_mp70_payload(payload: str) -> dict | Literal[False]:
     """Parses a passed-in MP70 email payload. Returns a dict or False.
 
     MP70 payloads consist of comma-separated data values:
@@ -138,7 +138,7 @@ def parse_mp70_payload(payload: str) -> Dict | Literal[False]:
             "velocity": int(payload[4]),
             "heading": int(payload[5]),
             "altitude": 0,
-            "timestamp": datetime.strptime(payload[6], "%m/%d/%Y %H:%M:%S").replace(tzinfo=timezone.utc),
+            "timestamp": datetime.strptime(payload[6], "%m/%d/%Y %H:%M:%S").replace(tzinfo=UTC),
             "type": "mp70",
         }
     except:
@@ -147,14 +147,14 @@ def parse_mp70_payload(payload: str) -> Dict | Literal[False]:
     return data
 
 
-def parse_spot_message(message: EmailMessage) -> Dict | Literal[False]:
+def parse_spot_message(message: EmailMessage) -> dict | Literal[False]:
     """Parses the passed-in Spot email message. Returns a dict or False."""
     try:
         # Ref: https://docs.python.org/3.11/library/email.utils.html#email.utils.parsedate
         timetuple = parsedate(message["DATE"])
         timestamp = time.mktime(timetuple)  # Timestamp integer.
         # Assume timestamp is UTC, cast timestamp as a datetime object.
-        timestamp = datetime.fromtimestamp(timestamp).replace(tzinfo=timezone.utc)
+        timestamp = datetime.fromtimestamp(timestamp).replace(tzinfo=UTC)
         data = {
             "device_id": message["X-SPOT-Messenger"],
             "latitude": float(message["X-SPOT-Latitude"]),
@@ -171,7 +171,7 @@ def parse_spot_message(message: EmailMessage) -> Dict | Literal[False]:
     return data
 
 
-def parse_beam_payload(attachment: bytes) -> Dict | Literal[False]:
+def parse_beam_payload(attachment: bytes) -> dict | Literal[False]:
     """Attempt to parse the binary attachment for tracking data. Returns a dict or False.
     Reference: https://www.beamcommunications.com/document/342-beam-message-format
     """
@@ -223,7 +223,7 @@ def parse_iriditrak_message(message: EmailMessage):
         timetuple = parsedate(message["DATE"])
         timestamp = time.mktime(timetuple)  # Timestamp integer.
         # Assume timestamp is UTC, cast timestamp as a datetime object.
-        timestamp = datetime.fromtimestamp(timestamp).replace(tzinfo=timezone.utc)
+        timestamp = datetime.fromtimestamp(timestamp).replace(tzinfo=UTC)
 
         data = {
             "device_id": message["SUBJECT"].replace("SBD Msg From Unit: ", ""),
@@ -253,7 +253,7 @@ def parse_iriditrak_message(message: EmailMessage):
     return data
 
 
-def parse_dplus_payload(payload: str) -> Dict | Literal[False]:
+def parse_dplus_payload(payload: str) -> dict | Literal[False]:
     """DPlus data is received as an email payload consisting of bar-separated values."""
     payload_raw = payload.strip().split("|")
     device_id = payload_raw[0]
@@ -267,7 +267,7 @@ def parse_dplus_payload(payload: str) -> Dict | Literal[False]:
     try:
         data = {
             "device_id": int(device_id),
-            "timestamp": datetime.strptime(timestamp, "%d-%m-%y %H:%M:%S").replace(tzinfo=timezone.utc),
+            "timestamp": datetime.strptime(timestamp, "%d-%m-%y %H:%M:%S").replace(tzinfo=UTC),
             "latitude": float(latitude),
             "longitude": float(longitude),
             "velocity": int(velocity) * 1000,
@@ -281,11 +281,11 @@ def parse_dplus_payload(payload: str) -> Dict | Literal[False]:
     return data
 
 
-def parse_tracplus_row(row: Dict) -> Dict | Literal[False]:
+def parse_tracplus_row(row: dict) -> dict | Literal[False]:
     try:
         data = {
             "device_id": row["Device IMEI"],
-            "timestamp": datetime.strptime(row["Transmitted"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc),
+            "timestamp": datetime.strptime(row["Transmitted"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=UTC),
             "latitude": float(row["Latitude"]),
             "longitude": float(row["Longitude"]),
             "velocity": int(row["Speed"]) * 1000,  # Convert km/h to m/h.
@@ -299,7 +299,7 @@ def parse_tracplus_row(row: Dict) -> Dict | Literal[False]:
     return data
 
 
-def parse_dfes_feature(feature: Dict) -> Dict | Literal[False]:
+def parse_dfes_feature(feature: dict) -> dict | Literal[False]:
     """DFES data will be a GeoJSON feature."""
     properties = feature["properties"]
     coordinates = feature["geometry"]["coordinates"]
@@ -307,7 +307,7 @@ def parse_dfes_feature(feature: Dict) -> Dict | Literal[False]:
     try:
         data = {
             "device_id": str(properties["TrackerID"]).strip(),
-            "timestamp": datetime.strptime(properties["Time"], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc),
+            "timestamp": datetime.strptime(properties["Time"], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC),
             "longitude": coordinates[0],
             "latitude": coordinates[1],
             "velocity": properties["Speed"] * 1000,  # Convert km/h to m/h
@@ -322,7 +322,7 @@ def parse_dfes_feature(feature: Dict) -> Dict | Literal[False]:
     return data
 
 
-def parse_tracertrak_feature(feature: Dict) -> Dict | Literal[False]:
+def parse_tracertrak_feature(feature: dict) -> dict | Literal[False]:
     """TracerTrak data will be GeoJSON features."""
     properties = feature["properties"]
     coordinates = feature["geometry"]["coordinates"]
@@ -330,7 +330,7 @@ def parse_tracertrak_feature(feature: Dict) -> Dict | Literal[False]:
     try:
         data = {
             "device_id": properties["deviceID"],
-            "timestamp": datetime.strptime(properties["logTimestamp"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc),
+            "timestamp": datetime.strptime(properties["logTimestamp"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC),
             "longitude": coordinates[0],
             "latitude": coordinates[1],
             "velocity": 0,
@@ -344,13 +344,13 @@ def parse_tracertrak_feature(feature: Dict) -> Dict | Literal[False]:
     return data
 
 
-def parse_netstar_feature(feature: Dict) -> Dict | Literal[False]:
+def parse_netstar_feature(feature: dict) -> dict | Literal[False]:
     """Features will be a JSON object."""
 
     try:
         data = {
             "device_id": f"{feature['TrackerID']}",
-            "timestamp": datetime.fromisoformat(feature["Time"]).replace(tzinfo=timezone.utc),
+            "timestamp": datetime.fromisoformat(feature["Time"]).replace(tzinfo=UTC),
             "longitude": feature["Longitude"],
             "latitude": feature["Latitude"],
             "velocity": feature["Speed"] * 1000,  # Convert km/h to m/h
@@ -365,7 +365,7 @@ def parse_netstar_feature(feature: Dict) -> Dict | Literal[False]:
     return data
 
 
-def get_previous_pages(page_obj: Page, count: int = 5) -> List[int]:
+def get_previous_pages(page_obj: Page, count: int = 5) -> list[int]:
     """Convenience function to take a Page object and return the previous `count`
     page numbers, to a minimum of 1.
     """
@@ -380,7 +380,7 @@ def get_previous_pages(page_obj: Page, count: int = 5) -> List[int]:
     return prev_page_numbers
 
 
-def get_next_pages(page_obj: Page, count: int = 5) -> List[int]:
+def get_next_pages(page_obj: Page, count: int = 5) -> list[int]:
     """Convenience function to take a Page object and return the next `count`
     page numbers, to a maximum of the paginator page count.
     """
@@ -424,3 +424,47 @@ class SanitizingJSONDecoder(json.JSONDecoder):
 
         s = self._sanitize(s)
         return super().decode(s, **kwargs)
+
+
+def prtg_delay_channel(name: str, value_min, max_delay: int | None = None) -> dict[str, Any]:
+    """A channel having a time value that represent a delay/last-seen occurrence, with optional maximum that signals an error."""
+    ch: dict[str, Any] = {
+        "channel": name,
+        "value": value_min if value_min is not None else 0,
+        "unit": "Custom",
+        "customunit": "minutes",
+        "float": 1,
+    }
+    if value_min is None or max_delay is not None and value_min > max_delay:
+        ch["error"] = 1
+    return ch
+
+
+def prtg_rate_channel(name: str, value, min_val: int | None = None) -> dict[str, Any]:
+    """A channel having a rate/frequency of units (optional minimum)."""
+    ch: dict[str, Any] = {
+        "channel": name,
+        "value": value if value is not None else 0,
+        "unit": "Custom",
+        "customunit": "points/minute",
+    }
+    if value is None or min_val is not None and value < min_val:
+        ch["error"] = 1
+    return ch
+
+
+def prtg_count_channel(name: str, value, min_val: int | None = None) -> dict[str, Any]:
+    """A channel having an integer count (optional minimum)."""
+    ch: dict[str, Any] = {"channel": name, "value": value if value is not None else 0, "unit": "Count"}
+    if value is None or min_val is not None and value < min_val:
+        ch["error"] = 1
+    return ch
+
+
+def prtg_status_channel(name: str, value) -> dict[str, Any]:
+    """A channel having a boolean status."""
+    ok = bool(value)
+    ch: dict[str, Any] = {"channel": name, "value": 1 if ok else 0, "unit": "Custom", "customunit": "status"}
+    if not ok:
+        ch["error"] = 1
+    return ch

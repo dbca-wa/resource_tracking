@@ -16,12 +16,12 @@ dependencies = [
   "django==5.2.17",
   "dbca-utils==3.0.13",
   "django-extensions==4.1",
-  "python-dotenv==1.2.2",
+  "python-dotenv==1.2.3",
   "dj-database-url==3.1.2",
-  "gunicorn[fast]==26.0.0",
+  "gunicorn[fast]==26.2.0",
   "unicodecsv==0.14.1",
   "whitenoise[brotli]==6.12.0",
-  "sentry-sdk[django]==2.68.0",
+  "sentry-sdk[django]==2.68.1",
   "django-geojson==4.2.0",
   "orjson==3.12.0",
   "django-crispy-forms==2.7",
@@ -32,11 +32,12 @@ dependencies = [
   "uvloop==0.22.1",
   "psycopg[binary]==3.3.4",
   "requests==2.34.2",
+  "django-valkey[libvalkey]==0.4.1",
 ]
 
 [dependency-groups]
 dev = [
-  "ipython>=9.16.1",
+  "ipython>=9.17.0",
   "ipdb>=0.13.13",
   "mixer>=7.2.2",
   "pre-commit>=4.6.2",

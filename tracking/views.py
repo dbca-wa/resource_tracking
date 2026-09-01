@@ -10,13 +10,16 @@ import unicodecsv as csv
 from django.conf import settings
 from django.contrib.admin.models import CHANGE, LogEntry
 from django.contrib.admin.utils import construct_change_message
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.gis.geos import LineString, Polygon
 from django.core.serializers import serialize
-from django.db.models import Q
+from django.db.models import Count, Max, Q
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 from django.views.generic import DetailView, ListView, TemplateView, UpdateView, View
 from fudgeo import Field, GeoPackage
 from fudgeo.constant import SHAPE, WGS84
@@ -26,7 +29,7 @@ from fudgeo.geometry import Point
 
 from tracking.forms import DeviceForm
 from tracking.models import SOURCE_DEVICE_TYPE_CHOICES, Device, LoggedPoint
-from tracking.utils import get_next_pages, get_previous_pages, get_srs_wgs84
+from tracking.utils import get_next_pages, get_previous_pages, get_srs_wgs84, prtg_delay_channel, prtg_rate_channel
 
 # Define a dictionary of context variables to supply to JavaScript in view templates.
 # NOTE: we can't include values needing `reverse` in the dict below due to circular imports.
@@ -49,7 +52,7 @@ JAVASCRIPT_CONTEXT = {
 }
 
 
-class DeviceMap(TemplateView):
+class DeviceMap(LoginRequiredMixin, TemplateView):
     """A map view displaying all device locations."""
 
     template_name = "tracking/device_map.html"
@@ -65,7 +68,7 @@ class DeviceMap(TemplateView):
         return context
 
 
-class DeviceList(ListView):
+class DeviceList(LoginRequiredMixin, ListView):
     """A list view to display a list of tracking devices, and/or download them as structured data."""
 
     model = Device
@@ -127,7 +130,7 @@ class DeviceList(ListView):
         return super().get(request, *args, **kwargs)
 
 
-class DeviceDetail(DetailView):
+class DeviceDetail(LoginRequiredMixin, DetailView):
     """A detail view to show single device's details and location."""
 
     model = Device
@@ -146,7 +149,7 @@ class DeviceDetail(DetailView):
         return context
 
 
-class DeviceUpdate(UpdateView):
+class DeviceUpdate(LoginRequiredMixin, UpdateView):
     form_class = DeviceForm
     model = Device
     http_method_names = ["get", "post", "put", "patch", "head", "options"]
@@ -194,7 +197,7 @@ class DeviceUpdate(UpdateView):
         return super().form_valid(form)
 
 
-class SpatialDataView(View):
+class SpatialDataView(LoginRequiredMixin, View):
     """Base view to return a queryset of spatial data as GeoJSON or CSV."""
 
     model = None
@@ -566,8 +569,8 @@ class DeviceLoggedPointDownload(SpatialDataView):
         else:
             # Append `deviceid` and `registration` attributes to each object in the queryset, for serialization.
             for obj in qs:
-                setattr(obj, "deviceid", obj.device.deviceid)
-                setattr(obj, "registration", obj.device.registration)
+                obj.deviceid = obj.device.deviceid
+                obj.registration = obj.device.registration
 
             geojson = serialize(
                 "geojson",
@@ -665,14 +668,10 @@ class DeviceRouteDownload(DeviceLoggedPointDownload):
         # Also add a `label` attribute that captures the timestamps of each.
         for loggedpoint in qs:
             if start_point is not None:
-                setattr(
-                    start_point,
-                    "route",
-                    LineString(start_point.point, loggedpoint.point),
-                )
+                start_point.route = LineString(start_point.point, loggedpoint.point)
                 start_label = start_point.seen.strftime("%H:%M:%S")
                 end_label = loggedpoint.seen.strftime("%H:%M:%S")
-                setattr(start_point, "label", f"{start_label} to {end_label}")
+                start_point.label = f"{start_label} to {end_label}"
             start_point = loggedpoint
         # Exclude the last loggedpoint in the queryset because it won't have the `route` attribute.
         if qs:
@@ -688,8 +687,8 @@ class DeviceRouteDownload(DeviceLoggedPointDownload):
         else:
             # Append `deviceid` and `registration` attributes to each object in the queryset, for serialization.
             for obj in qs:
-                setattr(obj, "deviceid", obj.device.deviceid)
-                setattr(obj, "registration", obj.device.registration)
+                obj.deviceid = obj.device.deviceid
+                obj.registration = obj.device.registration
             geojson = serialize(
                 "geojson",
                 qs,
@@ -773,7 +772,7 @@ class DeviceRouteDownload(DeviceLoggedPointDownload):
             return f.read()  # Return the gpkg content.
 
 
-class DeviceStream(View):
+class DeviceStream(LoginRequiredMixin, View):
     """An asynchronous view that returns Server-Sent Events (SSE) consisting of
     a tracking device's location, forever. This is a one-way communication channel,
     where the client browser is responsible for maintaining the connection.
@@ -835,7 +834,7 @@ class DeviceStream(View):
         )
 
 
-class DeviceMetricsSource(View):
+class DeviceMetricsSource(LoginRequiredMixin, View):
     """A basic metrics view that returns the count of logged points for a given source device type
     over the previous n minutes."""
 
@@ -875,3 +874,80 @@ class DeviceMetricsSource(View):
                 "logged_point_count": logged_point_count,
             }
         )
+
+
+class PrtgMetricsJSON(LoginRequiredMixin, View):
+    http_method_names = ["get", "head", "options"]
+
+    @method_decorator(cache_page(60))
+    def get(self, request, *args, **kwargs):
+
+        minutes = 15  # Hard-coded constant: metrics cover the previous 15 minutes.
+        prtg_channels = []
+        error_messages = []
+        error = False
+        now = timezone.now()
+        since = now - timedelta(minutes=minutes)
+
+        # Aggregate views to generate dicts for the newest loggedpoint for each source device type, plus a count of points per type.
+        per_type_newest = dict(LoggedPoint.objects.filter(seen__lte=now).values_list("source_device_type").annotate(newest=Max("seen")))
+        per_type_counts = dict(
+            LoggedPoint.objects.filter(seen__gte=since, seen__lte=now).values_list("source_device_type").annotate(c=Count("pk"))
+        )
+        newest_seen = max(per_type_newest.values(), default=None)
+
+        # Newest / latest tracking point (all-device tracking delay)
+        # Get the most-recent LoggedPoint objects with `seen` <= the current time
+        # (bad data is sometimes logged where `seen` is a future timestamp).
+        if newest_seen is not None:
+            delay_minutes = int((now - newest_seen).total_seconds() / 60)
+            if settings.TRACKING_POINTS_MAX_DELAY_MINUTES:
+                prtg_channels.append(
+                    prtg_delay_channel("All tracking devices delay", delay_minutes, settings.TRACKING_POINTS_MAX_DELAY_MINUTES)
+                )
+                if delay_minutes > settings.TRACKING_POINTS_MAX_DELAY_MINUTES:
+                    error_messages.append(
+                        f"All tracking devices delay {delay_minutes} minutes exceeds maximum {settings.TRACKING_POINTS_MAX_DELAY_MINUTES} minutes"
+                    )
+                    error = True
+            else:
+                prtg_channels.append(prtg_delay_channel("All tracking devices delay", delay_minutes))
+        else:
+            prtg_channels.append(prtg_delay_channel("All tracking devices delay", None))
+
+        # All-device tracking rate estimate: total number of logged points over the period.
+        logging_rate = int(LoggedPoint.objects.filter(seen__gte=since, seen__lte=now).count() / minutes)
+        prtg_channels.append(prtg_rate_channel("All tracking devices logging rate", logging_rate))
+
+        # Individual source tracking device type metrics.
+        # NOTE: we only track metrics for a subset of source device types.
+        for device_type, desc in {
+            "fleetcare": "Fleetcare",
+            "dfes": "DFES",
+            "iriditrak": "IridiTrak (email)",
+            "mp70": "MP70 (email)",
+            "tracplus": "TracPlus",
+            "netstar": "Netstar",
+            "spot": "Spot",
+        }.items():
+            device_type_seen = per_type_newest.get(device_type, None)
+            if device_type_seen:
+                delta = now - device_type_seen
+                delay_minutes = int(delta.total_seconds() / 60)
+            else:
+                delay_minutes = None
+            prtg_channels.append(prtg_delay_channel(f"{desc} tracking devices delay", delay_minutes))
+
+            device_type_count = per_type_counts.get(device_type, 0)
+            logging_rate = int(device_type_count / minutes)
+            prtg_channels.append(prtg_rate_channel(f"{desc} logging rate", logging_rate))
+
+        prtg_response = {
+            "prtg": {
+                "result": prtg_channels,
+                "text": "; ".join(error_messages) if error_messages else "All checks passed",
+                "error": 1 if error else 0,
+            }
+        }
+
+        return JsonResponse(prtg_response)
