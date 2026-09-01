@@ -11,10 +11,10 @@ __pycache__/
 *$py.class
 
 
-# dotenv
+# dotenv / secrets
 .env
-.env.port
-.env*
+.env.*
+dhi-registry-config.json
 
 # virtualenv
 venv/

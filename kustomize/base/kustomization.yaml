@@ -4,3 +4,4 @@ resources:
   - deployment.yaml
   - deployment_hpa.yaml
   - service.yaml
+  - valkey.yaml
