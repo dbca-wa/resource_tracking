@@ -10,6 +10,7 @@ from dbca_utils.utils import env
 from django.core.exceptions import DisallowedHost
 from django.core.handlers.asgi import RequestAborted
 from django.db.utils import OperationalError
+from django.urls import reverse_lazy
 
 # Project paths
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -43,21 +44,10 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
-# User group allowed to edit device metadata.
-DEVICE_EDITOR_USER_GROUP = env("DEVICE_EDITOR_USER_GROUP", "Edit Resource Tracking Device")
-
-# Tracking data source configuration.
-TRACPLUS_URL = env("TRACPLUS_URL", "")
-DFES_URL = env("DFES_URL", "")
-DFES_USER = env("DFES_USER", "")
-DFES_PASS = env("DFES_PASS", "")
-TRACERTRAK_URL = env("TRACERTRAK_URL", "")
-TRACERTRAK_AUTH_TOKEN = env("TRACERTRAK_AUTH_TOKEN", "")
-NETSTAR_URL = env("NETSTAR_URL", "")
-NETSTAR_USER = env("NETSTAR_USER", "")
-NETSTAR_PASS = env("NETSTAR_PASS", "")
 DEVICE_HTTP_CACHE_TIMEOUT = env("DEVICE_HTTP_CACHE_TIMEOUT", 60)
 GEOSERVER_URL = env("GEOSERVER_URL", "")
+LOGIN_URL = reverse_lazy("admin:login")
+LOGIN_REDIRECT_URL = reverse_lazy("admin:index")
 INSTALLED_APPS = [
     "whitenoise.runserver_nostatic",
     "django.contrib.admin",
@@ -235,3 +225,20 @@ if SENTRY_DSN and SENTRY_ENVIRONMENT:
         before_send=sentry_excluded_exceptions,
         integrations=[DjangoIntegration(cache_spans=True)],
     )
+
+# User group allowed to edit device metadata.
+DEVICE_EDITOR_USER_GROUP = env("DEVICE_EDITOR_USER_GROUP", "Edit Resource Tracking Device")
+
+# Tracking data source configuration.
+TRACPLUS_URL = env("TRACPLUS_URL", "")
+DFES_URL = env("DFES_URL", "")
+DFES_USER = env("DFES_USER", "")
+DFES_PASS = env("DFES_PASS", "")
+TRACERTRAK_URL = env("TRACERTRAK_URL", "")
+TRACERTRAK_AUTH_TOKEN = env("TRACERTRAK_AUTH_TOKEN", "")
+NETSTAR_URL = env("NETSTAR_URL", "")
+NETSTAR_USER = env("NETSTAR_USER", "")
+NETSTAR_PASS = env("NETSTAR_PASS", "")
+
+# Maximum allowable delay (minutes) for tracking device types.
+TRACKING_POINTS_MAX_DELAY_MINUTES = env("TRACKING_POINTS_MAX_DELAY_MINUTES", None)  # All device types.
