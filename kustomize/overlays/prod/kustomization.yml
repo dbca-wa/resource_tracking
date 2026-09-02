@@ -39,4 +39,4 @@ patches:
   - path: webserver_patch.yml
 images:
   - name: ghcr.io/dbca-wa/resource_tracking
-    newTag: 1.4.52
+    newTag: 1.4.53
