@@ -882,15 +882,23 @@ class PrtgMetricsJSON(LoginRequiredMixin, View):
     @method_decorator(cache_page(60))
     def get(self, request, *args, **kwargs):
 
-        minutes = 15  # Hard-coded constant: metrics cover the previous 15 minutes.
+        # Metrics will be calculated on a recent subset of logging point data.
+        days = 28  # Constant: metrics use logging data as far back as 28 days.
+        minutes = 15  # Constant: metrics calculations (logging rate) cover the previous 15 minutes.
         prtg_channels = []
         error_messages = []
         error = False
         now = timezone.now()
         since = now - timedelta(minutes=minutes)
+        earliest = now - timedelta(days=days)
 
-        # Aggregate views to generate dicts for the newest loggedpoint for each source device type, plus a count of points per type.
-        per_type_newest = dict(LoggedPoint.objects.filter(seen__lte=now).values_list("source_device_type").annotate(newest=Max("seen")))
+        # Aggregate views to generate dicts for the newest loggedpoint for each source device type.
+        # Where device types have not logged data for the period, they will return null values.
+        # Per-device type "most recent" logging point timestamp is queried, as far back as 28 days.
+        per_type_newest = dict(
+            LoggedPoint.objects.filter(seen__lte=now, seen__gte=earliest).values_list("source_device_type").annotate(newest=Max("seen"))
+        )
+        # Per-device type count for the previous 15 minutes is used to calculate the rate of logging (points/minute).
         per_type_counts = dict(
             LoggedPoint.objects.filter(seen__gte=since, seen__lte=now).values_list("source_device_type").annotate(c=Count("pk"))
         )
@@ -920,7 +928,7 @@ class PrtgMetricsJSON(LoginRequiredMixin, View):
         prtg_channels.append(prtg_rate_channel("All tracking devices logging rate", logging_rate))
 
         # Individual source tracking device type metrics.
-        # NOTE: we only track metrics for a subset of source device types.
+        # NOTE: we only track metrics for a subset of source device types (some are no longer used).
         for device_type, desc in {
             "fleetcare": "Fleetcare",
             "dfes": "DFES",

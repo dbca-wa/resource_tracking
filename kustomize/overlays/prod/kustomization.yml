@@ -1,0 +1,42 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+nameSuffix: -prod
+resources:
+  - ../../base
+  - cronjobs/harvest-dfes
+  - cronjobs/harvest-email-dplus
+  - cronjobs/harvest-email-iriditrak
+  - cronjobs/harvest-email-mp70
+  - cronjobs/harvest-email-spot
+  - cronjobs/harvest-netstar
+  - cronjobs/harvest-tracertrak
+  - cronjobs/harvest-tracplus
+  - ingress.yml
+  - pdb.yml
+secretGenerator:
+  - name: resourcetracking-env
+    type: Opaque
+    envs:
+      - .env
+  - name: dhi-registry-secret
+    type: kubernetes.io/dockerconfigjson
+    files:
+      - .dockerconfigjson=dhi-registry-config.json
+configMapGenerator:
+  - name: valkey-configmap
+    files:
+      - valkey.conf
+generatorOptions:
+  disableNameSuffixHash: true
+labels:
+  - includeSelectors: true
+    pairs:
+      variant: prod
+patches:
+  - path: service_patch.yml
+  - path: valkey_patch.yml
+  - path: webserver_hpa_patch.yml
+  - path: webserver_patch.yml
+images:
+  - name: ghcr.io/dbca-wa/resource_tracking
+    newTag: 1.4.53
