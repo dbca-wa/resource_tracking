@@ -1,0 +1,7 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: resourcetracking-webserver-hpa
+spec:
+  scaleTargetRef:
+    name: resourcetracking-webserver-prod

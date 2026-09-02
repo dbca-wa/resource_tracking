@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resourcetracking-webserver
+  labels:
+    app: resourcetracking-webserver
+spec:
+  selector:
+    matchLabels:
+      app: resourcetracking-webserver
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: resourcetracking-webserver
+    spec:
+      containers:
+        - name: resourcetracking
+          image: ghcr.io/dbca-wa/resource_tracking
+          imagePullPolicy: Always
+          env:
+            - name: TZ
+              value: 'Australia/Perth'
+          resources:
+            requests:
+              memory: '100Mi'
+              cpu: '10m'
+            limits:
+              memory: '2Gi'
+              cpu: '1000m'
+          startupProbe:
+            httpGet:
+              path: /livez
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 3
+            periodSeconds: 3
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: 8080
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+            timeoutSeconds: 5
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+            runAsUser: 65532
+            privileged: false
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmpfs-ram
+      volumes:
+        - name: tmpfs-ram
+          emptyDir:
+            medium: 'Memory'
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 180
+      automountServiceAccountToken: false
+      tolerations:
+        - key: arch
+          operator: Equal
+          value: arm64
+          effect: NoSchedule
+      affinity:
+        # Set a node affinity to favour ARM64-based nodes (preference only).
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              preference:
+                matchExpressions:
+                  - key: arch
+                    operator: In
+                    values:
+                      - arm64
+          # Pointless/no-op selector to deal with Rancher GUI issue.
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: Exists
+        # Set a pod anti-affinity to spread workload pods between nodes (preference only).
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: resourcetracking-webserver
+                topologyKey: kubernetes.io/hostname

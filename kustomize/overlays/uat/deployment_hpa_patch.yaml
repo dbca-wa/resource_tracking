@@ -1,7 +1,0 @@
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: resourcetracking-deployment-hpa
-spec:
-  scaleTargetRef:
-    name: resourcetracking-deployment-uat
