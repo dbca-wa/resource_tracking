@@ -7,3 +7,12 @@ spec:
   selector:
     app: resourcetracking-deployment
     variant: prod
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: resourcetracking-valkey
+spec:
+  selector:
+    app: resourcetracking-valkey
+    variant: prod
