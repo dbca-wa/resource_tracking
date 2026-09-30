@@ -1,40 +1,44 @@
 # syntax=docker/dockerfile:1
+# Args to centralise versions.
+ARG PYTHON_VERSION=3.13-debian13-dev
 
 # ---- Builder stage ----
-FROM dhi.io/python:3.13-debian13-dev AS builder
+FROM dhi.io/python:${PYTHON_VERSION} AS builder
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN <<EOF
+set -euxo pipefail
+apt-get update
+apt-get install -y --no-install-recommends \
   gdal-bin \
   proj-bin \
   libgdal36 \
   gcc \
-  g++ \
-  && rm -rf /var/lib/apt/lists/*
+  g++
+EOF
 
-COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /bin/
 WORKDIR /app
+COPY --from=ghcr.io/astral-sh/uv:0.12 /uv /bin/
 COPY pyproject.toml uv.lock ./
-
-RUN uv sync \
-  --no-group dev \
-  --link-mode=copy \
-  --compile-bytecode \
-  --no-python-downloads \
-  --frozen \
-  && rm -rf /bin/uv uv.lock
+RUN uv sync --no-group dev --link-mode=copy --compile-bytecode --no-python-downloads --frozen
 
 # ---- Runtime stage ----
-FROM dhi.io/python:3.13-debian13-dev AS runtime
-LABEL org.opencontainers.image.authors=asi@dbca.wa.gov.au
-LABEL org.opencontainers.image.source=https://github.com/dbca-wa/resource_tracking
+FROM dhi.io/python:${PYTHON_VERSION} AS runtime
+LABEL org.opencontainers.image.title="resource_tracking" \
+  org.opencontainers.image.description="DBCA Resource Tracking System" \
+  org.opencontainers.image.source="https://github.com/dbca-wa/resource_tracking" \
+  org.opencontainers.image.vendor="DBCA" \
+  org.opencontainers.image.authors="asi@dbca.wa.gov.au"
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN <<EOF
+set -euxo pipefail
+apt-get update
+apt-get install -y --no-install-recommends \
   gdal-bin \
   proj-bin \
-  libgdal36 \
-  # Run shared library linker after installing spatial packages
-  && ldconfig \
-  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+  libgdal36
+ldconfig
+rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+EOF
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -52,8 +56,10 @@ COPY --chown=nonroot:nonroot resource_tracking ./resource_tracking
 COPY --chown=nonroot:nonroot tracking ./tracking
 
 # Compile scripts and collect static files
-RUN python -m compileall manage.py resource_tracking tracking \
-  && python manage.py collectstatic --noinput
+RUN <<EOF
+python -m compileall manage.py resource_tracking tracking
+python manage.py collectstatic --noinput
+EOF
 
 # Run the project as the nonroot user
 USER nonroot

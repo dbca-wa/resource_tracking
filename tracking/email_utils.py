@@ -4,7 +4,7 @@ from email.message import EmailMessage
 from email.policy import default
 from imaplib import IMAP4_SSL
 from ssl import SSLEOFError
-from typing import Any, List, Literal, Optional, Tuple
+from typing import Any, Literal
 
 from django.conf import settings
 
@@ -23,7 +23,7 @@ def get_imap(mailbox: str = "INBOX") -> IMAP4_SSL | Literal[False]:
         return False
 
 
-def email_get_unread(imap: IMAP4_SSL, from_email_address: str) -> Tuple[str, List] | Tuple[Literal[False], Literal[False]]:
+def email_get_unread(imap: IMAP4_SSL, from_email_address: str) -> tuple[str, list] | tuple[Literal[False], Literal[False]]:
     """Returns (status, [list of UIDs]) of unread emails from a sending email address."""
     search = f'(UNSEEN UNFLAGGED FROM "{from_email_address}")'
     try:
@@ -38,7 +38,7 @@ def email_get_unread(imap: IMAP4_SSL, from_email_address: str) -> Tuple[str, Lis
     return status, response[0].split()
 
 
-def email_fetch(imap: IMAP4_SSL, uid: str) -> Tuple[str, EmailMessage] | Tuple[Literal[False], Literal[False]]:
+def email_fetch(imap: IMAP4_SSL, uid: str) -> tuple[str, EmailMessage] | tuple[Literal[False], Literal[False]]:
     """Fetch a single email and return a tuple of status, EmailMessage"""
     msg_data = [None]
     try:
@@ -47,9 +47,7 @@ def email_fetch(imap: IMAP4_SSL, uid: str) -> Tuple[str, EmailMessage] | Tuple[L
         LOGGER.warning(f"Unable to fetch email: {err}")
         return False, False
 
-    if status != "OK":
-        return False, False
-    elif msg_data[0] is None:
+    if status != "OK" or msg_data[0] is None:
         return False, False
 
     raw_email = msg_data[0][1]
@@ -63,7 +61,7 @@ def email_fetch(imap: IMAP4_SSL, uid: str) -> Tuple[str, EmailMessage] | Tuple[L
     return status, email_msg
 
 
-def email_mark_read(imap: IMAP4_SSL, uid: str) -> Tuple[str, list[Any]] | Tuple[Literal[False], Literal[False]]:
+def email_mark_read(imap: IMAP4_SSL, uid: str) -> tuple[str, list[Any]] | tuple[Literal[False], Literal[False]]:
     """Flag an email as 'Seen' based on passed-in UID."""
     try:
         status, response = imap.store(uid, "+FLAGS", r"(\Seen)")
@@ -73,7 +71,7 @@ def email_mark_read(imap: IMAP4_SSL, uid: str) -> Tuple[str, list[Any]] | Tuple[
         return False, False
 
 
-def email_mark_unread(imap, uid) -> Tuple[Optional[str], Optional[str]] | Tuple[Literal[False], Literal[False]]:
+def email_mark_unread(imap, uid) -> tuple[str | None, str | None] | tuple[Literal[False], Literal[False]]:
     """Remove the 'Seen' flag from an email based on passed-in UID."""
     try:
         status, response = imap.store(str(uid), "-FLAGS", r"(\Seen)")
@@ -83,7 +81,7 @@ def email_mark_unread(imap, uid) -> Tuple[Optional[str], Optional[str]] | Tuple[
         return False, False
 
 
-def email_delete(imap, uid) -> Tuple[Optional[str], Optional[str]] | Tuple[Literal[False], Literal[False]]:
+def email_mark_deleted(imap, uid) -> tuple[str | None, str | None] | tuple[Literal[False], Literal[False]]:
     """Flag an email for deletion."""
     try:
         status, response = imap.store(str(uid), "+FLAGS", r"(\Deleted)")
@@ -93,7 +91,7 @@ def email_delete(imap, uid) -> Tuple[Optional[str], Optional[str]] | Tuple[Liter
         return False, False
 
 
-def email_flag(imap, uid) -> Tuple[Optional[str], Optional[str]] | Tuple[Literal[False], Literal[False]]:
+def email_flag(imap, uid) -> tuple[str | None, str | None] | tuple[Literal[False], Literal[False]]:
     """Flag an email as unprocessable."""
     try:
         status, response = imap.store(str(uid), "+FLAGS", r"(\Flagged)")
@@ -103,7 +101,7 @@ def email_flag(imap, uid) -> Tuple[Optional[str], Optional[str]] | Tuple[Literal
         return False, False
 
 
-def email_get_body(msg: EmailMessage) -> Tuple[Optional[str], Optional[str]]:
+def email_get_body(msg: EmailMessage) -> tuple[str | None, str | None]:
     """
     Return the body of the message, prefer 'text/plain', fall back to 'text/html'.
     Returns (content, content_type). Content is a string if found, else None.
