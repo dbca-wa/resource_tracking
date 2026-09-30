@@ -76,12 +76,11 @@ def harvest_tracking_email(device_type, purge_email=False):
                 uid = uid.decode("utf-8")
 
             # Fetch the email message.
-            email_message = email_utils.email_fetch(imap, uid)
-            if not email_message:
+            status, message = email_utils.email_fetch(imap, uid)
+            if not status:
                 LOGGER.warning(f"Mail server status failure on fetching email UID {uid}")
                 continue
 
-            status, message = email_message
             if status != "OK" or not message:
                 LOGGER.warning(f"Mail server status failure on fetching email UID {uid}: {status}")
                 continue
@@ -119,7 +118,6 @@ def harvest_tracking_email(device_type, purge_email=False):
         imap.logout()
     except IMAP4.abort:
         LOGGER.warning("IMAP abort")
-        pass
 
     delta = timezone.now() - start
     start = start.astimezone(settings.TZ)
@@ -127,7 +125,7 @@ def harvest_tracking_email(device_type, purge_email=False):
     return True
 
 
-def save_mp70(message: EmailMessage) -> LoggedPoint | Literal[None, False]:
+def save_mp70(message: EmailMessage) -> LoggedPoint | Literal[False] | None:
     """For a passed-in MP70 email message, parse the payload, get/create a Device,
     set the device 'seen' value, and create a LoggedPoint.
     """
@@ -146,7 +144,7 @@ def save_mp70(message: EmailMessage) -> LoggedPoint | Literal[None, False]:
         return False
 
     try:
-        device, created = Device.objects.get_or_create(deviceid=data["device_id"])
+        device, _ = Device.objects.get_or_create(deviceid=data["device_id"])
     except Exception as e:
         LOGGER.warning(f"Exception during creation/query of MP70 device: {data}")
         LOGGER.error(e)
@@ -175,7 +173,7 @@ def save_mp70(message: EmailMessage) -> LoggedPoint | Literal[None, False]:
     return loggedpoint
 
 
-def save_spot(message: EmailMessage) -> LoggedPoint | Literal[None, False]:
+def save_spot(message: EmailMessage) -> LoggedPoint | Literal[False] | None:
     """For a passed-in Spot email message, parse the payload, get/create a Device,
     set the device 'seen' value, and create a LoggedPoint.
     """
@@ -191,7 +189,7 @@ def save_spot(message: EmailMessage) -> LoggedPoint | Literal[None, False]:
         return False
 
     try:
-        device, created = Device.objects.get_or_create(deviceid=data["device_id"])
+        device, _ = Device.objects.get_or_create(deviceid=data["device_id"])
     except Exception as e:
         LOGGER.warning(f"Exception during creation/query of Spot device: {data}")
         LOGGER.error(e)
@@ -221,7 +219,7 @@ def save_spot(message: EmailMessage) -> LoggedPoint | Literal[None, False]:
     return loggedpoint
 
 
-def save_iriditrak(message: EmailMessage) -> LoggedPoint | Literal[None, False]:
+def save_iriditrak(message: EmailMessage) -> LoggedPoint | Literal[False] | None:
     """For a passed-in Iriditrak email message, parse the payload, get/create a Device,
     set the device 'seen' value, and create a LoggedPoint.
 
@@ -241,7 +239,7 @@ def save_iriditrak(message: EmailMessage) -> LoggedPoint | Literal[None, False]:
         return False
 
     try:
-        device, created = Device.objects.get_or_create(deviceid=data["device_id"])
+        device, _ = Device.objects.get_or_create(deviceid=data["device_id"])
     except Exception as e:
         LOGGER.warning(f"Exception during creation/query of Iriditrak device: {data}")
         LOGGER.error(e)
@@ -290,7 +288,7 @@ def save_dplus(message):
         return False
 
     try:
-        device, created = Device.objects.get_or_create(deviceid=data["device_id"])
+        device, _ = Device.objects.get_or_create(deviceid=data["device_id"])
     except Exception as e:
         LOGGER.warning(f"Exception during creation/query of DPlus device: {data}")
         LOGGER.error(e)
@@ -367,7 +365,7 @@ def save_dfes_feed():
         return
 
     # Don't raise an exception on non-200 response.
-    if not resp.status_code == 200:
+    if resp.status_code != 200:
         LOGGER.warning("DFES API response returned non-200 status")
         return
 
@@ -505,7 +503,7 @@ def save_tracplus_feed():
             continue
 
         rego = row["Asset Regn"][:32].strip()
-        symbol = tracplus_symbol_map[row["Asset Type"]] if row["Asset Type"] in tracplus_symbol_map else None
+        symbol = tracplus_symbol_map.get(row["Asset Type"], None)
 
         if created:
             created_device += 1
@@ -553,7 +551,7 @@ def save_tracertrak_feed():
         return
 
     # Don't raise an exception on non-200 response.
-    if not resp.status_code == 200:
+    if resp.status_code != 200:
         LOGGER.warning("TracerTrak API response returned non-200 status")
         return
 
@@ -640,7 +638,7 @@ def save_netstar_feed():
         return
 
     # Don't raise an exception on non-200 response.
-    if not resp.status_code == 200:
+    if resp.status_code != 200:
         LOGGER.warning(f"Netstar API response returned non-200 status: {resp.status_code}")
         return
 
@@ -706,7 +704,7 @@ def save_netstar_feed():
     LOGGER.info(f"Created {created_device}, updated {updated_device}, skipped {skipped_device}, {logged_points} new logged points")
 
 
-def save_zoleo(message: EmailMessage) -> LoggedPoint | Literal[None, False]:
+def save_zoleo(message: EmailMessage) -> LoggedPoint | Literal[False] | None:
     """For a passed-in Zoleo email message, parse the body content, get/create a Device,
     set the device 'seen' value, and create a LoggedPoint.
     """
@@ -724,7 +722,7 @@ def save_zoleo(message: EmailMessage) -> LoggedPoint | Literal[None, False]:
         return False
 
     try:
-        device, created = Device.objects.get_or_create(deviceid=data["device_id"])
+        device, _ = Device.objects.get_or_create(deviceid=data["device_id"])
     except Exception as e:
         LOGGER.warning(f"Exception during creation/query of Zoleo device: {data}")
         LOGGER.error(e)
