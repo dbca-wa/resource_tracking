@@ -78,6 +78,7 @@ def harvest_tracking_email(device_type, purge_email=False):
 
             # Fetch the email message.
             status, message = email_utils.email_fetch(imap, uid)
+
             if not status:
                 LOGGER.warning(f"Mail server status failure on fetching email UID {uid}")
                 continue
@@ -134,6 +135,11 @@ def save_mp70(message: EmailMessage) -> LoggedPoint | Literal[False] | None:
     """
     payload_bytes = message.get_payload(decode=True)
     charset = message.get_content_charset() or "utf-8"
+
+    if not payload_bytes:
+        LOGGER.warning("No message payload")
+        return None
+
     payload = payload_bytes.decode(charset, errors="replace")
     data = parse_mp70_payload(payload)
 
@@ -280,6 +286,10 @@ def save_dplus(message):
     """
     payload = message.get_payload()
     data = parse_dplus_payload(payload)
+
+    if not payload_bytes:
+        LOGGER.warning("No message payload")
+        return None
 
     if not data:
         LOGGER.warning(f"Unable to parse DPlus message payload: {payload}")
