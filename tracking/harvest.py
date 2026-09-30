@@ -60,6 +60,7 @@ def harvest_tracking_email(device_type, purge_email=False):
 
     if not unread_emails:
         LOGGER.warning("Mail server status failure")
+        imap.close()
         return
 
     status, uids = unread_emails
@@ -108,11 +109,13 @@ def harvest_tracking_email(device_type, purge_email=False):
             # Optionally flag email for deletion.
             if purge_email:
                 flagged += 1
-                email_utils.email_delete(imap, uid)
+                email_utils.email_mark_deleted(imap, uid)
+                imap.expunge()
                 LOGGER.info(f"Marking email UID {uid} for deletion")
 
     LOGGER.info(f"Created {created} tracking points, flagged {flagged} emails for deletion")
 
+    # After iterating over the unflagged emails, expunge deleted items and close the IMAP connection.
     try:
         imap.close()
         imap.logout()
