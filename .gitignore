@@ -37,3 +37,6 @@ local_settings.py
 
 #start server shell script
 start_server
+
+# Agent artifacts
+.omo/
