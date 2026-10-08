@@ -29,7 +29,7 @@ dependencies = [
   "h11==0.16",
   "django-tastypie==0.15.1",
   "fudgeo==1.5.10",
-  "uvloop==0.22.1",
+  "uvloop==0.23.0",
   "psycopg[binary,pool]==3.3.6",
   "requests==2.34.2",
   "django-valkey[libvalkey]==0.4.1",
