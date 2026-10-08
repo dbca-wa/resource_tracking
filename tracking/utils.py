@@ -115,7 +115,7 @@ def parse_zoleo_message(message: EmailMessage):
 
 
 def parse_mp70_payload(payload: str) -> dict | Literal[False]:
-    """Parses a passed-in MP70 email payload. Returns a dict or False.
+    """Parses a passed-in MP70 email payload (string). Returns a dict or False.
 
     MP70 payloads consist of comma-separated data values:
     Device_ID, Battery_Voltage, Latitude, Longitude, Speed_km/h, Heading, Time_UTC
@@ -143,6 +143,9 @@ def parse_mp70_payload(payload: str) -> dict | Literal[False]:
         }
     except:
         return False
+
+    # Velocity cannot be less than 0.
+    data["velocity"] = max(data["velocity"], 0)
 
     return data
 
@@ -278,6 +281,9 @@ def parse_dplus_payload(payload: str) -> dict | Literal[False]:
     except:
         return False
 
+    # Velocity cannot be less than 0.
+    data["velocity"] = max(data["velocity"], 0)
+
     return data
 
 
@@ -295,6 +301,9 @@ def parse_tracplus_row(row: dict) -> dict | Literal[False]:
         }
     except:
         return False
+
+    # Velocity cannot be less than 0.
+    data["velocity"] = max(data["velocity"], 0)
 
     return data
 
@@ -318,6 +327,9 @@ def parse_dfes_feature(feature: dict) -> dict | Literal[False]:
         }
     except:
         return False
+
+    # Velocity cannot be less than 0.
+    data["velocity"] = max(data["velocity"], 0)
 
     return data
 
@@ -361,6 +373,9 @@ def parse_netstar_feature(feature: dict) -> dict | Literal[False]:
         }
     except:
         return False
+
+    # Velocity cannot be less than 0.
+    data["velocity"] = max(data["velocity"], 0)
 
     return data
 

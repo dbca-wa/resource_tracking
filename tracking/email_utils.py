@@ -71,45 +71,44 @@ def email_mark_read(imap: IMAP4_SSL, uid: str) -> tuple[str, list[Any]] | tuple[
         return False, False
 
 
-def email_mark_unread(imap, uid) -> tuple[str | None, str | None] | tuple[Literal[False], Literal[False]]:
+def email_mark_unread(imap: IMAP4_SSL, uid: str) -> tuple[str, list[Any]] | tuple[Literal[False], Literal[False]]:
     """Remove the 'Seen' flag from an email based on passed-in UID."""
     try:
-        status, response = imap.store(str(uid), "-FLAGS", r"(\Seen)")
+        status, response = imap.store(uid, "-FLAGS", r"(\Seen)")
         return status, response
     except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to mark email unread: {err}")
         return False, False
 
 
-def email_mark_deleted(imap, uid) -> tuple[str | None, str | None] | tuple[Literal[False], Literal[False]]:
+def email_mark_deleted(imap: IMAP4_SSL, uid: str) -> tuple[str, list[Any]] | tuple[Literal[False], Literal[False]]:
     """Flag an email for deletion."""
     try:
-        status, response = imap.store(str(uid), "+FLAGS", r"(\Deleted)")
+        status, response = imap.store(uid, "+FLAGS", r"(\Deleted)")
         return status, response
     except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to delete email: {err}")
         return False, False
 
 
-def email_flag(imap, uid) -> tuple[str | None, str | None] | tuple[Literal[False], Literal[False]]:
+def email_flag(imap: IMAP4_SSL, uid: str) -> tuple[str, list[Any]] | tuple[Literal[False], Literal[False]]:
     """Flag an email as unprocessable."""
     try:
-        status, response = imap.store(str(uid), "+FLAGS", r"(\Flagged)")
+        status, response = imap.store(uid, "+FLAGS", r"(\Flagged)")
         return status, response
     except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to flag email: {err}")
         return False, False
 
 
-def email_get_body(msg: EmailMessage) -> tuple[str | None, str | None]:
+def get_message_text(msg: EmailMessage) -> str | None:
     """
     Return the body of the message, prefer 'text/plain', fall back to 'text/html'.
-    Returns (content, content_type). Content is a string if found, else None.
+    Content is a string if found, else None.
     """
-    body = msg.get_body(preferencelist=("plain", "html"))
-    if body is None:
-        return None, None
+    if msg.is_multipart():
+        body = msg.get_body(preferencelist=("plain", "html"))
+        return body.get_content() if body else None
 
-    content = body.get_content()
-    ctype = body.get_content_type()
-    return content, ctype
+    content = msg.get_content()
+    return content if isinstance(content, str) else None

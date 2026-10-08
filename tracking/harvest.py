@@ -68,7 +68,8 @@ def harvest_tracking_email(device_type, purge_email=False):
         LOGGER.warning(f"Mail server status failure: {status}")
         return
 
-    LOGGER.info(f"Server lists {len(uids)} unread emails")
+    if uids:
+        LOGGER.info(f"Server lists {len(uids)} unread emails")
 
     if uids:
         for uid in uids:
@@ -133,14 +134,12 @@ def save_mp70(message: EmailMessage) -> LoggedPoint | Literal[False] | None:
     """For a passed-in MP70 email message, parse the payload, get/create a Device,
     set the device 'seen' value, and create a LoggedPoint.
     """
-    payload_bytes = message.get_payload(decode=True)
-    charset = message.get_content_charset() or "utf-8"
+    payload = email_utils.get_message_text(message)
 
-    if not payload_bytes:
+    if not payload:
         LOGGER.warning("No message payload")
         return None
 
-    payload = payload_bytes.decode(charset, errors="replace")
     data = parse_mp70_payload(payload)
 
     if not data:
@@ -284,12 +283,13 @@ def save_dplus(message):
 
     Returns a LoggedPoint object, or None.
     """
-    payload = message.get_payload()
-    data = parse_dplus_payload(payload)
+    payload = email_utils.get_message_text(message)
 
-    if not payload_bytes:
+    if not payload:
         LOGGER.warning("No message payload")
         return None
+
+    data = parse_dplus_payload(payload)
 
     if not data:
         LOGGER.warning(f"Unable to parse DPlus message payload: {payload}")
