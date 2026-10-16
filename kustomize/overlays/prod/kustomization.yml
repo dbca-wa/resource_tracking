@@ -4,7 +4,6 @@ nameSuffix: -prod
 resources:
   - ../../base
   - cronjobs/harvest-dfes
-  - cronjobs/harvest-email-dplus
   - cronjobs/harvest-email-iriditrak
   - cronjobs/harvest-email-mp70
   - cronjobs/harvest-email-spot
