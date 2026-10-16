@@ -2,6 +2,7 @@ import logging
 from email import message_from_bytes
 from email.message import EmailMessage
 from email.policy import default
+from email.utils import parseaddr
 from imaplib import IMAP4_SSL
 from ssl import SSLEOFError
 from typing import Any, Literal
@@ -23,9 +24,9 @@ def get_imap(mailbox: str = "INBOX") -> IMAP4_SSL | Literal[False]:
         return False
 
 
-def email_get_unread(imap: IMAP4_SSL, from_email_address: str) -> tuple[str, list] | tuple[Literal[False], Literal[False]]:
-    """Returns (status, [list of UIDs]) of unread emails from a sending email address."""
-    search = f'(UNSEEN UNFLAGGED FROM "{from_email_address}")'
+def email_get_unread(imap: IMAP4_SSL) -> tuple[str, list] | tuple[Literal[False], Literal[False]]:
+    """Returns (status, [list of UIDs]) of unread emails"""
+    search = "(UNSEEN UNFLAGGED)"
     try:
         status, response = imap.search(None, search)
     except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
@@ -112,3 +113,16 @@ def get_message_text(msg: EmailMessage) -> str | None:
 
     content = msg.get_content()
     return content if isinstance(content, str) else None
+
+
+def get_sender_email(message: EmailMessage) -> str | None:
+    """Return the sender email from an email message, or None."""
+    from_header = message.get("From")
+    if not from_header:
+        return None
+
+    _, address = parseaddr(from_header)
+    if not address:
+        return None
+
+    return address.lower()
