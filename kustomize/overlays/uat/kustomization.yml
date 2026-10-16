@@ -4,8 +4,7 @@ nameSuffix: -uat
 resources:
   - ../../base
   - cronjobs/harvest-dfes
-  - cronjobs/harvest-email-iriditrak
-  - cronjobs/harvest-email-mp70
+  - cronjobs/harvest-email
   - cronjobs/harvest-netstar
   - cronjobs/harvest-tracertrak
   - cronjobs/harvest-tracplus

@@ -4,14 +4,14 @@ metadata:
   name: resourcetracking-cronjob
 spec:
   schedule: '* * * * *'
-  suspend: true
   jobTemplate:
     spec:
       template:
         spec:
           containers:
             - name: resourcetracking-cronjob
-              args: ['manage.py', 'harvest_tracking_email', '--device-type', 'iriditrak']
+              imagePullPolicy: IfNotPresent
+              args: ['manage.py', 'harvest_tracking_email', '--purge-email']
               envFrom:
                 - secretRef:
-                    name: resourcetracking-env-uat
+                    name: resourcetracking-env-prod
