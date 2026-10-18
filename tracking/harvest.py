@@ -28,10 +28,8 @@ from tracking.utils import (
 LOGGER = logging.getLogger("tracking")
 
 
-def harvest_tracking_email(device_type, purge_email=False):
-    """Download and save tracking point emails.
-    `device_type` should be one of: iriditrak, dplus, spot, mp70, zoleo
-    """
+def harvest_tracking_email(purge_email=False):
+    """Download and save tracking point emails."""
     imap = email_utils.get_imap()
     if not imap:
         LOGGER.warning("Mailbox not available")
@@ -40,38 +38,14 @@ def harvest_tracking_email(device_type, purge_email=False):
     start = timezone.now()
     created = 0
     flagged = 0
-    unread_emails = None
+    status, uids = email_utils.email_get_unread(imap)
 
-    if device_type == "iriditrak":
-        LOGGER.info("Harvesting IridiTRAK emails")
-        unread_emails = email_utils.email_get_unread(imap, settings.EMAIL_IRIDITRAK)
-    elif device_type == "dplus":
-        LOGGER.info("Harvesting DPlus emails")
-        unread_emails = email_utils.email_get_unread(imap, settings.EMAIL_DPLUS)
-    elif device_type == "spot":
-        LOGGER.info("Harvesting Spot emails")
-        unread_emails = email_utils.email_get_unread(imap, settings.EMAIL_SPOT)
-    elif device_type == "mp70":
-        LOGGER.info("Harvesting MP70 emails")
-        unread_emails = email_utils.email_get_unread(imap, settings.EMAIL_MP70)
-    elif device_type == "zoleo":
-        LOGGER.info("Harvesting Zoleo emails")
-        unread_emails = email_utils.email_get_unread(imap, settings.EMAIL_ZOLEO)
-
-    if not unread_emails:
-        LOGGER.warning("Mail server status failure")
-        imap.close()
-        return
-
-    status, uids = unread_emails
     if status != "OK":
         LOGGER.warning(f"Mail server status failure: {status}")
         return
 
     if uids:
         LOGGER.info(f"Server lists {len(uids)} unread emails")
-
-    if uids:
         for uid in uids:
             # Decode uid to a string if required.
             if isinstance(uid, bytes):
@@ -88,17 +62,26 @@ def harvest_tracking_email(device_type, purge_email=False):
                 LOGGER.warning(f"Mail server status failure on fetching email UID {uid}: {status}")
                 continue
 
+            # Determine what category of tracking message this is by the sending email address.
+            sender_email = email_utils.get_sender_email(message)
+
+            if sender_email:
+                device_type = {
+                    settings.EMAIL_IRIDITRAK: "iriditrak",
+                    settings.EMAIL_SPOT: "spot",
+                    settings.EMAIL_MP70: "mp70",
+                }.get(sender_email, None)
+
+            if device_type:
+                LOGGER.info(f"Parsing {device_type} email message")
+
             # `result` will be a LoggedPoint, or None
             if device_type == "iriditrak":
                 result = save_iriditrak(message)
-            elif device_type == "dplus":
-                result = save_dplus(message)
             elif device_type == "spot":
                 result = save_spot(message)
             elif device_type == "mp70":
                 result = save_mp70(message)
-            elif device_type == "zoleo":
-                result = save_zoleo(message)
             else:
                 result = None
 
@@ -117,7 +100,7 @@ def harvest_tracking_email(device_type, purge_email=False):
 
     LOGGER.info(f"Created {created} tracking points, flagged {flagged} emails for deletion")
 
-    # After iterating over the unflagged emails, expunge deleted items and close the IMAP connection.
+    # After iterating over the unflagged emails, close the IMAP connection.
     try:
         imap.close()
         imap.logout()

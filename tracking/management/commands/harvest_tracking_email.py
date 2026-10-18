@@ -8,14 +8,6 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--device-type",
-            action="store",
-            dest="device_type",
-            required=True,
-            default=None,
-            help="Tracking device type, one of: iriditrak, dplus, spot, mp70, zoleo",
-        )
-        parser.add_argument(
             "--purge-email",
             action="store_true",
             dest="purge_email",
@@ -24,12 +16,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        # Specify the device type to harvest from the mailbox.
-        device_type = None
-        if options["device_type"] and options["device_type"] in ("iriditrak", "dplus", "spot", "mp70", "zoleo"):
-            device_type = options["device_type"]
-
-        if "purge_email" in options and options["purge_email"]:
-            harvest_tracking_email(device_type, purge_email=True)
+        if options.get("purge_email"):
+            harvest_tracking_email(purge_email=True)
         else:
-            harvest_tracking_email(device_type)
+            harvest_tracking_email()
