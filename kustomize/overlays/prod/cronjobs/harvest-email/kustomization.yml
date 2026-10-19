@@ -2,7 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../../../../template
-nameSuffix: -harvest
+nameSuffix: -harvest-email
 patches:
   - target:
       kind: CronJob
