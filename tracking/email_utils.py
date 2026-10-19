@@ -12,6 +12,28 @@ from django.conf import settings
 LOGGER = logging.getLogger("tracking")
 
 
+def normalise_imap_uid(value: str | bytes | int | None) -> str | None:
+    """Return a valid IMAP UID string, or None when the value is unusable."""
+    if value is None:
+        return None
+
+    if isinstance(value, bytes):
+        value = value.decode("ascii", errors="ignore")
+    elif isinstance(value, int):
+        value = str(value)
+
+    value = str(value).strip()
+    if not value or value == "0":
+        return None
+
+    try:
+        int(value)
+    except ValueError:
+        return None
+
+    return value
+
+
 def get_imap(mailbox: str = "INBOX") -> IMAP4_SSL | Literal[False]:
     """Instantiate a new IMAP object, login, and connect to a mailbox."""
     try:
@@ -25,35 +47,36 @@ def get_imap(mailbox: str = "INBOX") -> IMAP4_SSL | Literal[False]:
 
 
 def email_get_unread(imap: IMAP4_SSL) -> tuple[str, list] | tuple[Literal[False], Literal[False]]:
-    """Returns (status, [list of UIDs]) of unread emails"""
-    search = "(UNSEEN UNFLAGGED)"
+    """Returns (status, [list of UIDs]) of unread emails."""
     try:
-        status, response = imap.search(None, search)
+        status, response = imap.uid("SEARCH", "UNSEEN", "UNFLAGGED")
     except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to search unread emails: {err}")
         return False, False
 
     if status != "OK":
         return status, response
-    # Return status and list of unread email UIDs.
-    return status, response[0].split()
+
+    return status, response[0].split() if response and response[0] else []
 
 
 def email_fetch(imap: IMAP4_SSL, uid: str) -> tuple[str, EmailMessage] | tuple[Literal[False], Literal[False]]:
-    """Fetch a single email and return a tuple of status, EmailMessage"""
-    msg_data = [None]
+    """Fetch a single email and return a tuple of status, EmailMessage."""
+    uid_value = normalise_imap_uid(uid)
+    if not uid_value:
+        LOGGER.warning(f"Unable to fetch email: invalid message UID {uid!r}")
+        return False, False
+
     try:
-        status, msg_data = imap.fetch(uid, "(RFC822)")
+        status, msg_data = imap.uid("FETCH", uid_value, "(RFC822)")
     except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to fetch email: {err}")
         return False, False
 
-    if status != "OK" or msg_data[0] is None:
+    if status != "OK" or not msg_data or msg_data[0] is None:
         return False, False
 
     raw_email = msg_data[0][1]
-    # Sometimes, we don't have a raw email body (bytes) at this point.
-    # In this situation, abort and return False.
     if not isinstance(raw_email, bytes):
         return False, False
 
@@ -64,8 +87,12 @@ def email_fetch(imap: IMAP4_SSL, uid: str) -> tuple[str, EmailMessage] | tuple[L
 
 def email_mark_read(imap: IMAP4_SSL, uid: str) -> tuple[str, list[Any]] | tuple[Literal[False], Literal[False]]:
     """Flag an email as 'Seen' based on passed-in UID."""
+    uid_value = normalise_imap_uid(uid)
+    if not uid_value:
+        return False, False
+
     try:
-        status, response = imap.store(uid, "+FLAGS", r"(\Seen)")
+        status, response = imap.uid("STORE", uid_value, "+FLAGS", r"(\Seen)")
         return status, response
     except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to mark email read: {err}")
@@ -74,8 +101,12 @@ def email_mark_read(imap: IMAP4_SSL, uid: str) -> tuple[str, list[Any]] | tuple[
 
 def email_mark_unread(imap: IMAP4_SSL, uid: str) -> tuple[str, list[Any]] | tuple[Literal[False], Literal[False]]:
     """Remove the 'Seen' flag from an email based on passed-in UID."""
+    uid_value = normalise_imap_uid(uid)
+    if not uid_value:
+        return False, False
+
     try:
-        status, response = imap.store(uid, "-FLAGS", r"(\Seen)")
+        status, response = imap.uid("STORE", uid_value, "-FLAGS", r"(\Seen)")
         return status, response
     except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to mark email unread: {err}")
@@ -84,8 +115,12 @@ def email_mark_unread(imap: IMAP4_SSL, uid: str) -> tuple[str, list[Any]] | tupl
 
 def email_mark_deleted(imap: IMAP4_SSL, uid: str) -> tuple[str, list[Any]] | tuple[Literal[False], Literal[False]]:
     """Flag an email for deletion."""
+    uid_value = normalise_imap_uid(uid)
+    if not uid_value:
+        return False, False
+
     try:
-        status, response = imap.store(uid, "+FLAGS", r"(\Deleted)")
+        status, response = imap.uid("STORE", uid_value, "+FLAGS", r"(\Deleted)")
         return status, response
     except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to delete email: {err}")
@@ -94,8 +129,12 @@ def email_mark_deleted(imap: IMAP4_SSL, uid: str) -> tuple[str, list[Any]] | tup
 
 def email_flag(imap: IMAP4_SSL, uid: str) -> tuple[str, list[Any]] | tuple[Literal[False], Literal[False]]:
     """Flag an email as unprocessable."""
+    uid_value = normalise_imap_uid(uid)
+    if not uid_value:
+        return False, False
+
     try:
-        status, response = imap.store(uid, "+FLAGS", r"(\Flagged)")
+        status, response = imap.uid("STORE", uid_value, "+FLAGS", r"(\Flagged)")
         return status, response
     except (IMAP4_SSL.abort, IMAP4_SSL.error) as err:
         LOGGER.warning(f"Unable to flag email: {err}")

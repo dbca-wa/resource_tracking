@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from email import message_from_file
 from email.message import EmailMessage
 from email.policy import default
+from unittest.mock import Mock
 
 import orjson as json
 from django.conf import settings
@@ -93,6 +94,30 @@ class HarvestTestCase(TestCase):
 
     def setUp(self):
         self.test_data_path = os.path.join(settings.BASE_DIR, "tracking", "test_data")
+
+    def test_email_get_unread_uses_uid_search(self):
+        """The IMAP search should use UID-based searches so valid message UIDs are returned."""
+        imap = Mock()
+        imap.uid.return_value = ("OK", [b"123 456 789"])
+
+        status, uids = __import__("tracking.email_utils", fromlist=["email_get_unread"]).email_get_unread(imap)
+
+        self.assertEqual(status, "OK")
+        self.assertEqual(uids, [b"123", b"456", b"789"])
+        imap.uid.assert_called_once_with("SEARCH", "UNSEEN", "UNFLAGGED")
+
+    def test_email_fetch_rejects_invalid_message_ids(self):
+        """A zero/empty/invalid message ID should never be used in an IMAP FETCH request."""
+        imap = Mock()
+        status, message = __import__("tracking.email_utils", fromlist=["email_fetch"]).email_fetch(imap, "0")
+
+        self.assertFalse(status)
+        self.assertFalse(message)
+        imap.uid.assert_not_called()
+
+        status, message = __import__("tracking.email_utils", fromlist=["email_fetch"]).email_fetch(imap, "  ")
+        self.assertFalse(status)
+        self.assertFalse(message)
 
     def test_validate_latitude_longitude(self):
         """Test the validate_latitude_longitude function"""
