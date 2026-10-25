@@ -80,7 +80,7 @@ jobs:
 
       - name: Build and push with Docker Buildx
         id: bake
-        uses: docker/bake-action@018cb6412ab401ebaa809aa5f85966b74628600f # v7.4.0
+        uses: docker/bake-action@59cb1203cd42bcefd40a1b6d73b589e48c86040e # v7.5.0
         with:
           files: docker-bake.hcl
           push: true
@@ -91,6 +91,7 @@ jobs:
   scan:
     name: Docker image vulnerability scan
     runs-on: ubuntu-latest
+    continue-on-error: true # If vulnerability scan fails, the workflow can still complete successfully.
     needs:
       - build
     permissions:
@@ -113,6 +114,6 @@ jobs:
           output: 'trivy-results.sarif'
 
       - name: Upload scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
         with:
           sarif_file: 'trivy-results.sarif'

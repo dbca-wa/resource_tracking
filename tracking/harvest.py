@@ -1,4 +1,5 @@
 import logging
+import time
 from email.message import EmailMessage
 from imaplib import IMAP4
 from io import BytesIO
@@ -7,7 +8,6 @@ from typing import Literal
 import requests
 import unicodecsv as csv
 from django.conf import settings
-from django.utils import timezone
 
 from tracking import email_utils
 from tracking.models import Device, LoggedPoint
@@ -35,7 +35,7 @@ def harvest_tracking_email(purge_email=False):
         LOGGER.warning("Mailbox not available")
         return
 
-    start = timezone.now()
+    start = time.monotonic()
     created = 0
     flagged = 0
     status, uids = email_utils.email_get_unread(imap)
@@ -107,9 +107,8 @@ def harvest_tracking_email(purge_email=False):
     except IMAP4.abort:
         LOGGER.warning("IMAP abort")
 
-    delta = timezone.now() - start
-    start = start.astimezone(settings.TZ)
-    LOGGER.info(f"Tracking point email harvest run at {start} for {delta.seconds}s")
+    duration = time.monotonic() - start
+    LOGGER.info(f"Tracking point email harvest run for {duration} seconds")
     return True
 
 
