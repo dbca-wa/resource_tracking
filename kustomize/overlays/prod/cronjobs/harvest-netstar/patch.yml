@@ -10,6 +10,7 @@ spec:
         spec:
           containers:
             - name: resourcetracking-cronjob
+              imagePullPolicy: IfNotPresent
               args: ['manage.py', 'harvest_netstar_feed']
               envFrom:
                 - secretRef:
