@@ -6,6 +6,7 @@ metadata:
     app: resourcetracking-cronjob
 spec:
   schedule: ''
+  timeZone: 'Australia/Perth'
   concurrencyPolicy: Forbid
   jobTemplate:
     spec:
