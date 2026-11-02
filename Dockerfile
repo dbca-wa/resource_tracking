@@ -1,17 +1,24 @@
 # syntax=docker/dockerfile:1
 # Args to centralise versions.
 ARG PYTHON_VERSION=3.13-debian13-dev
+ARG GCC_RUNTIME_VERSION=14.2.0-19+deb13u0+dhi5
 
 # ---- Builder stage ----
 FROM dhi.io/python:${PYTHON_VERSION} AS builder
+ARG GCC_RUNTIME_VERSION
 
 RUN <<EOF
 set -euxo pipefail
 apt-get update
-apt-get install -y --no-install-recommends \
+# Install the aligned GCC runtime family and dependent packages
+# in one transaction so APT cannot retain incompatible DHI revisions.
+apt-get install -y --allow-downgrades --no-install-recommends \
+  gcc-14-base="${GCC_RUNTIME_VERSION}" \
+  libgcc-s1="${GCC_RUNTIME_VERSION}" \
+  libstdc++6="${GCC_RUNTIME_VERSION}" \
+  libgfortran5="${GCC_RUNTIME_VERSION}" \
   gdal-bin \
   proj-bin \
-  libgdal36 \
   gcc \
   g++
 EOF
@@ -23,6 +30,7 @@ RUN uv sync --no-group dev --link-mode=copy --compile-bytecode --no-python-downl
 
 # ---- Runtime stage ----
 FROM dhi.io/python:${PYTHON_VERSION} AS runtime
+ARG GCC_RUNTIME_VERSION
 LABEL org.opencontainers.image.title="resource_tracking" \
   org.opencontainers.image.description="DBCA Resource Tracking System" \
   org.opencontainers.image.source="https://github.com/dbca-wa/resource_tracking" \
@@ -32,10 +40,16 @@ LABEL org.opencontainers.image.title="resource_tracking" \
 RUN <<EOF
 set -euxo pipefail
 apt-get update
-apt-get install -y --no-install-recommends \
+
+# Keep the complete GCC runtime dependency transaction together.
+apt-get install -y --allow-downgrades --no-install-recommends \
+  gcc-14-base="${GCC_RUNTIME_VERSION}" \
+  libgcc-s1="${GCC_RUNTIME_VERSION}" \
+  libstdc++6="${GCC_RUNTIME_VERSION}" \
+  libgfortran5="${GCC_RUNTIME_VERSION}" \
   gdal-bin \
-  proj-bin \
-  libgdal36
+  proj-bin
+
 ldconfig
 rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 EOF
