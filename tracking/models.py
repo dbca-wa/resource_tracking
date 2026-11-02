@@ -334,3 +334,7 @@ class LoggedPoint(models.Model):
     class Meta:
         ordering = ("-seen",)
         unique_together = (("device", "seen"),)
+        indexes = [
+            # Supports "newest point per source device type" lookups, e.g. the PRTG metrics view.
+            models.Index(fields=["source_device_type", "seen"], name="lp_type_seen_idx"),
+        ]

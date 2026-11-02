@@ -13,7 +13,7 @@ from django.contrib.admin.utils import construct_change_message
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.gis.geos import LineString, Polygon
 from django.core.serializers import serialize
-from django.db.models import Count, Max, Q
+from django.db.models import Count, Q
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
@@ -49,6 +49,17 @@ JAVASCRIPT_CONTEXT = {
     "person_icon_url": f"{settings.STATIC_URL}img/person.png",
     "boat_icon_url": f"{settings.STATIC_URL}img/boat.png",
     "other_icon_url": f"{settings.STATIC_URL}img/other.png",
+}
+
+# PRTG metrics are reported for a subset of source device types only (some are no longer used).
+PRTG_DEVICE_TYPES = {
+    "fleetcare": "Fleetcare",
+    "dfes": "DFES",
+    "iriditrak": "IridiTrak (email)",
+    "mp70": "MP70 (email)",
+    "tracplus": "TracPlus",
+    "netstar": "Netstar",
+    "spot": "Spot",
 }
 
 
@@ -892,17 +903,26 @@ class PrtgMetricsJSON(LoginRequiredMixin, View):
         since = now - timedelta(minutes=minutes)
         earliest = now - timedelta(days=days)
 
-        # Aggregate views to generate dicts for the newest loggedpoint for each source device type.
+        # Aggregations over a recent subset of logging point data.
         # Where device types have not logged data for the period, they will return null values.
+        # A composite index on (source_device_type, seen) means each "newest point" lookup below is
+        # an index seek, rather than an aggregate over every point logged in the period.
+        newest_seen = LoggedPoint.objects.filter(seen__gte=earliest, seen__lte=now).order_by("-seen").values_list("seen", flat=True).first()
         # Per-device type "most recent" logging point timestamp is queried, as far back as 28 days.
-        per_type_newest = dict(
-            LoggedPoint.objects.filter(seen__lte=now, seen__gte=earliest).values_list("source_device_type").annotate(newest=Max("seen"))
-        )
+        per_type_newest = {
+            device_type: (
+                LoggedPoint.objects.filter(source_device_type=device_type, seen__gte=earliest, seen__lte=now)
+                .order_by("-seen")
+                .values_list("seen", flat=True)
+                .first()
+            )
+            for device_type in PRTG_DEVICE_TYPES
+        }
         # Per-device type count for the previous 15 minutes is used to calculate the rate of logging (points/minute).
         per_type_counts = dict(
             LoggedPoint.objects.filter(seen__gte=since, seen__lte=now).values_list("source_device_type").annotate(c=Count("pk"))
         )
-        newest_seen = max(per_type_newest.values(), default=None)
+        total_count = sum(per_type_counts.values())
 
         # Newest / latest tracking point (all-device tracking delay)
         # Get the most-recent LoggedPoint objects with `seen` <= the current time
@@ -924,20 +944,12 @@ class PrtgMetricsJSON(LoginRequiredMixin, View):
             prtg_channels.append(prtg_delay_channel("All tracking devices delay", None))
 
         # All-device tracking rate estimate: total number of logged points over the period.
-        logging_rate = int(LoggedPoint.objects.filter(seen__gte=since, seen__lte=now).count() / minutes)
+        logging_rate = int(total_count / minutes)
         prtg_channels.append(prtg_rate_channel("All tracking devices logging rate", logging_rate))
 
         # Individual source tracking device type metrics.
         # NOTE: we only track metrics for a subset of source device types (some are no longer used).
-        for device_type, desc in {
-            "fleetcare": "Fleetcare",
-            "dfes": "DFES",
-            "iriditrak": "IridiTrak (email)",
-            "mp70": "MP70 (email)",
-            "tracplus": "TracPlus",
-            "netstar": "Netstar",
-            "spot": "Spot",
-        }.items():
+        for device_type, desc in PRTG_DEVICE_TYPES.items():
             device_type_seen = per_type_newest.get(device_type, None)
             if device_type_seen:
                 delta = now - device_type_seen

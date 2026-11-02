@@ -40,3 +40,5 @@ start_server
 
 # Agent artifacts
 .omo/
+.opencode/
+AGENTS.md
