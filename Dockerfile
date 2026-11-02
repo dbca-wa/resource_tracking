@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Args to centralise versions.
 ARG PYTHON_VERSION=3.13-debian13-dev
-ARG GCC_RUNTIME_VERSION=14.2.0-19+deb13u0+dhi5
+ARG GCC_RUNTIME_VERSION=14.2.0-19+deb13u0+dhi6
 
 # ---- Builder stage ----
 FROM dhi.io/python:${PYTHON_VERSION} AS builder
