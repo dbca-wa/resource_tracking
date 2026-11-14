@@ -477,7 +477,7 @@ def save_tracplus_feed():
         data = parse_tracplus_row(row)
 
         if not data:
-            LOGGER.warning(f"Unable to parse TracPlus feed row: {row['Report ID']}")
+            LOGGER.warning(f"Unable to parse TracPlus feed row: {row}")
             skipped_device += 1
             continue
 

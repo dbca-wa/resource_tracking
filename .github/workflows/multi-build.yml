@@ -83,10 +83,11 @@ jobs:
         uses: docker/bake-action@59cb1203cd42bcefd40a1b6d73b589e48c86040e # v7.5.0
         with:
           files: docker-bake.hcl
+          targets: ci # CI-only target: gha cache + pull
           push: true
           set: |
-            app.tags=${{ env.GHCR_IMAGE }}:latest
-            ${{ steps.image_tag.outputs.has_version_tag == 'true' && format('app.tags={0}:{1}', env.GHCR_IMAGE, steps.image_tag.outputs.value) || '' }}
+            ci.tags=${{ env.GHCR_IMAGE }}:latest
+            ${{ steps.image_tag.outputs.has_version_tag == 'true' && format('ci.tags+={0}:{1}', env.GHCR_IMAGE, steps.image_tag.outputs.value) || '' }}
 
   scan:
     name: Docker image vulnerability scan
@@ -112,6 +113,6 @@ jobs:
           cache-db: true
 
       - name: Upload scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        uses: github/codeql-action/upload-sarif@1fc58d04a4d4374f921bdac573c3811c240f9c26 # v4.39.2
         with:
           sarif_file: ${{ steps.scan.outputs.sarif }}
