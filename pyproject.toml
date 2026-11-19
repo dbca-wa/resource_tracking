@@ -32,7 +32,7 @@ dependencies = [
   "fudgeo==1.5.10",
   "uvloop==0.23.0",
   "requests==2.34.2",
-  "django-valkey[libvalkey]==0.4.1",
+  "django-valkey[libvalkey]==0.5.0",
 ]
 
 [dependency-groups]
